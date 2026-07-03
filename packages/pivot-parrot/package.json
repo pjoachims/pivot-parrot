@@ -1,0 +1,92 @@
+{
+  "name": "pivot-parrot",
+  "version": "0.1.1",
+  "description": "DuckDB-powered pivot table with React UI components",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./engine": {
+      "types": "./dist/engine/index.d.ts",
+      "import": "./dist/engine/index.js",
+      "require": "./dist/engine/index.js"
+    },
+    "./field-options": {
+      "types": "./dist/field-options/index.d.ts",
+      "import": "./dist/field-options/index.js",
+      "require": "./dist/field-options/index.js"
+    },
+    "./sidebar/styles.css": "./src/presentation/sidebar/styles.css",
+    "./base-reset.css": "./src/styles/base-reset.css",
+    "./display": {
+      "types": "./dist/display/index.d.ts",
+      "import": "./dist/display/index.js",
+      "require": "./dist/display/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "build:watch": "rollup -c -w",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run type-check && npm run build"
+  },
+  "keywords": [
+    "pivot",
+    "pivot-table",
+    "duckdb",
+    "react",
+    "analytics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "@duckdb/duckdb-wasm": "^1.28.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.13.12",
+    "ag-grid-community": "^32.3.3",
+    "ag-grid-react": "^32.3.3",
+    "async-mutex": "^0.5.0",
+    "jszip": "^3.10.1",
+    "plotly.js-dist-min": "^2.35.2",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@babel/preset-react": "^7.22.0",
+    "@babel/preset-typescript": "^7.23.0",
+    "@duckdb/node-api": "^1.4.3-r.2",
+    "@rollup/plugin-babel": "^6.0.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
+    "@vitest/coverage-v8": "^2.1.8",
+    "apache-arrow": "^21.1.0",
+    "eslint": "^8.50.0",
+    "jsdom": "^25.0.1",
+    "rollup": "^3.29.0",
+    "rollup-plugin-postcss": "^4.0.2",
+    "tslib": "^2.6.0",
+    "typescript": "^5.2.0",
+    "vitest": "^2.1.8"
+  }
+}

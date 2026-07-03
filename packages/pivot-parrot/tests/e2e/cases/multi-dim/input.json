@@ -1,0 +1,39 @@
+{
+  "config": {
+    "rows": ["region", "product"],
+    "columns": ["year", "channel"],
+    "values": [
+      { "field": "revenue", "aggregation": "Sum" },
+      { "field": "quantity", "aggregation": "Sum" },
+      { "field": "price", "aggregation": "Avg" }
+    ]
+  },
+  "schema": {
+    "region": "string",
+    "product": "string",
+    "year": "int32",
+    "channel": "string",
+    "revenue": "int32",
+    "quantity": "int32",
+    "price": "float64"
+  },
+  "pivotDisplay": true,
+  "data": [
+    { "region": "North", "product": "Widget", "year": 2023, "channel": "Online", "revenue": 100, "quantity": 10, "price": 10.0 },
+    { "region": "North", "product": "Widget", "year": 2023, "channel": "Retail", "revenue": 80, "quantity": 8, "price": 10.0 },
+    { "region": "North", "product": "Widget", "year": 2024, "channel": "Online", "revenue": 150, "quantity": 12, "price": 12.5 },
+    { "region": "North", "product": "Widget", "year": 2024, "channel": "Retail", "revenue": 120, "quantity": 10, "price": 12.0 },
+    { "region": "North", "product": "Gadget", "year": 2023, "channel": "Online", "revenue": 200, "quantity": 8, "price": 25.0 },
+    { "region": "North", "product": "Gadget", "year": 2023, "channel": "Retail", "revenue": 175, "quantity": 7, "price": 25.0 },
+    { "region": "North", "product": "Gadget", "year": 2024, "channel": "Online", "revenue": 250, "quantity": 10, "price": 25.0 },
+    { "region": "North", "product": "Gadget", "year": 2024, "channel": "Retail", "revenue": 225, "quantity": 9, "price": 25.0 },
+    { "region": "South", "product": "Widget", "year": 2023, "channel": "Online", "revenue": 90, "quantity": 9, "price": 10.0 },
+    { "region": "South", "product": "Widget", "year": 2023, "channel": "Retail", "revenue": 70, "quantity": 7, "price": 10.0 },
+    { "region": "South", "product": "Widget", "year": 2024, "channel": "Online", "revenue": 130, "quantity": 11, "price": 11.8 },
+    { "region": "South", "product": "Widget", "year": 2024, "channel": "Retail", "revenue": 100, "quantity": 8, "price": 12.5 },
+    { "region": "South", "product": "Gadget", "year": 2023, "channel": "Online", "revenue": 180, "quantity": 6, "price": 30.0 },
+    { "region": "South", "product": "Gadget", "year": 2023, "channel": "Retail", "revenue": 150, "quantity": 5, "price": 30.0 },
+    { "region": "South", "product": "Gadget", "year": 2024, "channel": "Online", "revenue": 220, "quantity": 8, "price": 27.5 },
+    { "region": "South", "product": "Gadget", "year": 2024, "channel": "Retail", "revenue": 200, "quantity": 7, "price": 28.6 }
+  ]
+}

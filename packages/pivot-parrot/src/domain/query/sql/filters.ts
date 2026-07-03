@@ -1,0 +1,473 @@
+/**
+ * Filter Classes - OOP approach to filter management
+ *
+ * Filters are stored as plain objects in config (React-friendly)
+ * but converted to class instances when needed for SQL generation or display
+ *
+ * Note: toSQL() methods now accept a SQLDialect parameter for engine-specific SQL generation
+ */
+
+import type { SQLDialect } from '../dialects/SQLDialect';
+
+/** Escape LIKE wildcards (%, _) so they match literally. */
+function escapeLikeWildcards(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+/**
+ * Base Filter class
+ */
+class Filter {
+  public field: string;
+
+  constructor({ field }: { field: string }) {
+    this.field = field;
+  }
+
+  /**
+   * Generate SQL WHERE clause fragment
+   * @param {SQLDialect} dialect - SQL dialect for engine-specific generation
+   * @param {boolean} quoteField - Whether to quote the field identifier (default: true)
+   * @returns {string} SQL fragment
+   */
+  toSQL(dialect: SQLDialect, quoteField: boolean = true): string | null {
+    throw new Error('toSQL() must be implemented by subclass');
+  }
+
+  getLabel(): string {
+    throw new Error('getLabel() must be implemented by subclass');
+  }
+}
+
+/**
+ * Date Range Filter (BETWEEN for dates)
+ */
+class DateRangeFilter extends Filter {
+  public start: any;
+  public end: any;
+
+  constructor({ field, start, end, betweenStart, betweenEnd }: any) {
+    super({ field });
+    // Support both naming conventions
+    this.start = start || betweenStart;
+    this.end = end || betweenEnd;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true): string {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const start = dialect.escapeValue(this.start);
+    const end = dialect.escapeValue(this.end);
+    return `${field} BETWEEN '${start}' AND '${end}'`;
+  }
+
+  getLabel(): string {
+    return `${this.start} to ${this.end}`;
+  }
+}
+
+/**
+ * One Of Filter (IN clause with checkboxes)
+ */
+class OneOfFilter extends Filter {
+  public selectedValues: any[];
+  public isNot: boolean;
+
+  constructor({ field, selectedValues, isNot = false }: any) {
+    super({ field });
+    this.selectedValues = selectedValues || [];
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true): string | null {
+    if (!this.selectedValues || this.selectedValues.length === 0) return null;
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    // dialect.quoteValue handles type detection (BigInt, number, string) and quoting
+    const quotedValues = this.selectedValues.map(v => dialect.quoteValue(v));
+    const not = this.isNot ? 'NOT ' : '';
+    return `${field} ${not}IN (${quotedValues.join(', ')})`;
+  }
+
+  getLabel(): string {
+    const prefix = this.isNot ? 'NOT ' : '';
+    return `${prefix}${this.selectedValues.length} selected`;
+  }
+}
+
+/**
+ * Between Filter (numeric ranges)
+ */
+class BetweenFilter extends Filter {
+  public start: any;
+  public end: any;
+
+  constructor({ field, betweenStart, betweenEnd }) {
+    super({ field });
+    this.start = betweenStart;
+    this.end = betweenEnd;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const start = dialect.escapeValue(this.start);
+    const end = dialect.escapeValue(this.end);
+    return `${field} BETWEEN '${start}' AND '${end}'`;
+  }
+
+  getLabel() {
+    return `${this.start} - ${this.end}`;
+  }
+}
+
+/**
+ * Equal Filter
+ */
+class EqualFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = dialect.quoteValue(this.value);
+    if (this.isNot) {
+      return `NOT (${field} = ${value})`;
+    }
+    return `${field} = ${value}`;
+  }
+
+  getLabel() {
+    const prefix = this.isNot ? '≠ ' : '= ';
+    return `${prefix}${this.value}`;
+  }
+}
+
+/**
+ * Contains Filter (LIKE %value%)
+ */
+class ContainsFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = escapeLikeWildcards(dialect.escapeValue(this.value));
+    const not = this.isNot ? 'NOT ' : '';
+    return `${field} ${not}LIKE '%${value}%' ESCAPE '\\'`;
+  }
+
+  getLabel() {
+    const prefix = this.isNot ? 'not contains ' : 'contains ';
+    return `${prefix}"${this.value}"`;
+  }
+}
+
+/**
+ * Starts With Filter
+ */
+class StartsWithFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = escapeLikeWildcards(dialect.escapeValue(this.value));
+    const not = this.isNot ? 'NOT ' : '';
+    return `${field} ${not}LIKE '${value}%' ESCAPE '\\'`;
+  }
+
+  getLabel() {
+    const prefix = this.isNot ? 'not starts with ' : 'starts with ';
+    return `${prefix}"${this.value}"`;
+  }
+}
+
+/**
+ * Ends With Filter
+ */
+class EndsWithFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = escapeLikeWildcards(dialect.escapeValue(this.value));
+    const not = this.isNot ? 'NOT ' : '';
+    return `${field} ${not}LIKE '%${value}' ESCAPE '\\'`;
+  }
+
+  getLabel() {
+    const prefix = this.isNot ? 'not ends with ' : 'ends with ';
+    return `${prefix}"${this.value}"`;
+  }
+}
+
+/**
+ * Regex Filter
+ */
+class RegexFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = dialect.escapeValue(this.value);
+    const operator = dialect.getOperator('regex', this.isNot);
+    return `${field} ${operator} '${value}'`;
+  }
+
+  getLabel() {
+    const prefix = this.isNot ? 'not matches ' : 'matches ';
+    return `${prefix}/${this.value}/`;
+  }
+}
+
+/**
+ * Null Filter
+ */
+class NullFilter extends Filter {
+  public isNot: boolean;
+
+  constructor({ field, isNot = false }) {
+    super({ field });
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    return `${field} IS ${this.isNot ? 'NOT ' : ''}NULL`;
+  }
+
+  getLabel() {
+    return this.isNot ? 'is not null' : 'is null';
+  }
+}
+
+/**
+ * Greater Than Filter
+ */
+class GreaterFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = dialect.quoteValue(this.value);
+    if (this.isNot) {
+      return `NOT (${field} > ${value})`;
+    }
+    return `${field} > ${value}`;
+  }
+
+  getLabel() {
+    return `> ${this.value}`;
+  }
+}
+
+/**
+ * Less Than Filter
+ */
+class LessFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = dialect.quoteValue(this.value);
+    if (this.isNot) {
+      return `NOT (${field} < ${value})`;
+    }
+    return `${field} < ${value}`;
+  }
+
+  getLabel() {
+    return `< ${this.value}`;
+  }
+}
+
+/**
+ * Greater Than or Equal Filter
+ */
+class GreaterEqualFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = dialect.quoteValue(this.value);
+    if (this.isNot) {
+      return `NOT (${field} >= ${value})`;
+    }
+    return `${field} >= ${value}`;
+  }
+
+  getLabel() {
+    return `≥ ${this.value}`;
+  }
+}
+
+/**
+ * Less Than or Equal Filter
+ */
+class LessEqualFilter extends Filter {
+  public value: any;
+  public isNot: boolean;
+
+  constructor({ field, value, isNot = false }) {
+    super({ field });
+    this.value = value;
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true) {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const value = dialect.quoteValue(this.value);
+    if (this.isNot) {
+      return `NOT (${field} <= ${value})`;
+    }
+    return `${field} <= ${value}`;
+  }
+
+  getLabel() {
+    return `≤ ${this.value}`;
+  }
+}
+
+/**
+ * Custom Filter Expression (raw SQL)
+ * User is responsible for writing engine-compatible SQL
+ */
+class CustomFilterExpression extends Filter {
+  public expr: string;
+  public name: string;
+  public isCustom: boolean;
+
+  constructor({ field, expr, name, isCustom }) {
+    super({ field });
+    this.expr = expr;
+    this.name = name;
+    this.isCustom = isCustom;
+  }
+
+  toSQL(dialect: SQLDialect) {
+    // Custom filter expressions are already SQL, just wrap in parentheses
+    // User is responsible for engine compatibility
+    return `(${this.expr})`;
+  }
+
+  getLabel() {
+    return this.name || 'Custom filter';
+  }
+}
+
+/**
+ * Filter Factory - converts plain object to Filter instance
+ *
+ * @param {Object} filterDict - Plain filter object from config
+ * @returns {Filter} Filter instance with toSQL() and getLabel() methods
+ */
+export function buildFilter(filterDict) {
+  const { type, isCustom } = filterDict;
+
+  // Handle custom filter expressions
+  if (type === 'custom_filter' || isCustom) {
+    return new CustomFilterExpression(filterDict);
+  }
+
+  switch (type) {
+    case 'date_range':
+      return new DateRangeFilter(filterDict);
+
+    case 'one_of':
+      return new OneOfFilter(filterDict);
+
+    case 'between':
+      return new BetweenFilter(filterDict);
+
+    case 'equal':
+      return new EqualFilter(filterDict);
+
+    case 'contains':
+      return new ContainsFilter(filterDict);
+
+    case 'starts_with':
+      return new StartsWithFilter(filterDict);
+
+    case 'ends_with':
+      return new EndsWithFilter(filterDict);
+
+    case 'regex':
+      return new RegexFilter(filterDict);
+
+    case 'null':
+      return new NullFilter(filterDict);
+
+    case 'greater':
+      return new GreaterFilter(filterDict);
+
+    case 'less':
+      return new LessFilter(filterDict);
+
+    case 'greater_equal':
+      return new GreaterEqualFilter(filterDict);
+
+    case 'less_equal':
+      return new LessEqualFilter(filterDict);
+
+    case 'custom_expr':
+      return new CustomFilterExpression({
+        ...filterDict,
+        expr: filterDict.value,
+        name: 'Custom expression'
+      });
+
+    default:
+      throw new Error(`Unknown filter type: ${type}`);
+  }
+}

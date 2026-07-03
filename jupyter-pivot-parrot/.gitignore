@@ -1,0 +1,6 @@
+frontend/dist/
+frontend/node_modules/
+jupyter_pivot_parrot/static/
+uv.lock
+.venv/
+.ipynb_checkpoints/

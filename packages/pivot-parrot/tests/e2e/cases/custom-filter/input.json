@@ -1,0 +1,35 @@
+{
+  "config": {
+    "rows": ["region"],
+    "columns": [],
+    "values": [{ "field": "revenue", "aggregation": "Sum" }],
+    "customFilters": [
+      {
+        "id": "high_revenue",
+        "name": "High Revenue",
+        "expr": "revenue >= 150"
+      }
+    ]
+  },
+  "pivotDisplay": true,
+  "schema": {
+    "region": "string",
+    "product": "string",
+    "year": "int32",
+    "revenue": "int32",
+    "quantity": "int32"
+  },
+  "filters": [
+    { "sqlExpr": "revenue >= 150" }
+  ],
+  "data": [
+    { "region": "North", "product": "Widget", "year": 2023, "revenue": 100, "quantity": 10 },
+    { "region": "North", "product": "Widget", "year": 2024, "revenue": 150, "quantity": 12 },
+    { "region": "North", "product": "Gadget", "year": 2023, "revenue": 200, "quantity": 8 },
+    { "region": "North", "product": "Gadget", "year": 2024, "revenue": 250, "quantity": 10 },
+    { "region": "South", "product": "Widget", "year": 2023, "revenue": 80, "quantity": 6 },
+    { "region": "South", "product": "Widget", "year": 2024, "revenue": 120, "quantity": 9 },
+    { "region": "South", "product": "Gadget", "year": 2023, "revenue": 180, "quantity": 7 },
+    { "region": "South", "product": "Gadget", "year": 2024, "revenue": 220, "quantity": 11 }
+  ]
+}

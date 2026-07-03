@@ -1,0 +1,20 @@
+/* Override Streamlit's default button styles */
+button {
+  all: unset;
+  box-sizing: border-box;
+}
+
+/* Re-apply cursor pointer for buttons */
+button {
+  cursor: pointer;
+}
+
+/* Ensure input elements also reset */
+input[type="checkbox"] {
+  all: revert;
+}
+
+input[type="text"] {
+  all: unset;
+  box-sizing: border-box;
+}

@@ -1,0 +1,21 @@
+SQL type	Data type	Value type	API to access or create data type
+TINYINT	ByteType	Byte	ByteType
+SMALLINT	ShortType	Short	ShortType
+INT	IntegerType	Int	IntegerType
+BIGINT	LongType	Long	LongType
+FLOAT	FloatType	Float	FloatType
+DOUBLE	DoubleType	Double	DoubleType
+DECIMAL(p,s)	DecimalType	java.math.BigDecimal	DecimalType
+STRING	StringType	String	StringType
+BINARY	BinaryType	Array[Byte]	BinaryType
+BOOLEAN	BooleanType	Boolean	BooleanType
+TIMESTAMP	TimestampType	java.sql.Timestamp	TimestampType
+TIMESTAMP_NTZ	TimestampNTZType	java.time.LocalDateTime	TimestampNTZType
+DATE	DateType	java.sql.Date	DateType
+year-month interval	YearMonthIntervalType	java.time.Period	YearMonthIntervalType (3)
+day-time interval	DayTimeIntervalType	java.time.Duration	DayTimeIntervalType (3)
+GEOGRAPHY(srid)	GeographyType	org.apache.spark.unsafe.type.GeographyVal	GeographyType
+GEOMETRY(srid)	GeometryType	org.apache.spark.unsafe.type.GeometryVal	GeometryType
+ARRAY	ArrayType	scala.collection.Seq	ArrayType(elementType [, containsNull]). (2)
+MAP	MapType	scala.collection.Map	MapType(keyType, valueType [, valueContainsNull]). (2)
+STRUCT	StructType	org.apache.spark.sql.Row	StructType(fields). fields is a Seq of StructField. 4.

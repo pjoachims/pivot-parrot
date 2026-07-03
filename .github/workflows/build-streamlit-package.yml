@@ -1,0 +1,51 @@
+name: Build Streamlit Component
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Build React package (pivot-parrot)
+        working-directory: packages/pivot-parrot
+        run: |
+          npm install
+          npm run build
+
+      - name: Install Streamlit frontend dependencies
+        working-directory: streamlit-pivot-parrot/streamlit_pivot_parrot/frontend
+        run: npm install
+
+      - name: Build Streamlit frontend
+        working-directory: streamlit-pivot-parrot/streamlit_pivot_parrot/frontend
+        run: npm run build
+
+      - name: Create minimal distributable package
+        run: |
+          mkdir -p dist-package/streamlit_pivot_parrot/frontend
+          cp -r streamlit-pivot-parrot/streamlit_pivot_parrot/frontend/build dist-package/streamlit_pivot_parrot/frontend/
+          cp streamlit-pivot-parrot/streamlit_pivot_parrot/frontend/index.html dist-package/streamlit_pivot_parrot/frontend/
+          cp streamlit-pivot-parrot/streamlit_pivot_parrot/*.py dist-package/streamlit_pivot_parrot/
+          echo "# Streamlit Pivot Parrot - Minimal Frontend Build" > dist-package/BUILD_INFO.txt
+          echo "Built on: $(date +%Y-%m-%d)" >> dist-package/BUILD_INFO.txt
+          echo "Commit: ${{ github.sha }}" >> dist-package/BUILD_INFO.txt
+
+      - name: Upload minimal package
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamlit-pivot-parrot-minimal
+          path: dist-package/
+          retention-days: 30

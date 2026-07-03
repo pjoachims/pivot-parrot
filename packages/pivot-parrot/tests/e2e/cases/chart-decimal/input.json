@@ -1,0 +1,35 @@
+{
+  "config": {
+    "rows": ["region"],
+    "columns": [],
+    "values": [
+      { "field": "revenue", "aggregation": "Sum" },
+      { "field": "big_id", "aggregation": "Max" }
+    ]
+  },
+  "chartConfig": {
+    "chartType": "bar",
+    "xAxis": "region",
+    "metrics": [
+      { "field": "revenue", "chartType": "bar", "axis": "Ax1", "opacity": 0.8 }
+    ],
+    "barMode": "group"
+  },
+  "schema": {
+    "region": "string",
+    "revenue": "decimal<38,19>",
+    "big_id": "int64"
+  },
+  "sqlTypes": {
+    "region": "VARCHAR",
+    "revenue": "DECIMAL(38,19)",
+    "big_id": "BIGINT"
+  },
+  "arrowFormat": true,
+  "data": [
+    { "region": "North", "revenue": 100.5, "big_id": 1000000000001 },
+    { "region": "North", "revenue": 200.5, "big_id": 1000000000002 },
+    { "region": "South", "revenue": 150.25, "big_id": 1000000000003 },
+    { "region": "South", "revenue": 250.75, "big_id": 1000000000004 }
+  ]
+}

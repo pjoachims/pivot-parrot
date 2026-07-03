@@ -1,0 +1,589 @@
+/* Field Options Component Styles - Clean & Modern */
+
+/* CSS Variables for consistent borders across the app */
+/* These variables are used in both CSS classes and inline styles throughout the app */
+/* Usage: border: var(--border-width) solid var(--border-color-medium) */
+:root {
+  --border-color-light: #e5e7eb;   /* Light gray - used for subtle borders */
+  --border-color-medium: #d1d5db;  /* Medium gray - used for prominent borders (headers, sidebars) */
+  --border-color-dark: #9ca3af;    /* Dark gray - used for emphasis */
+  --border-width: 1px;              /* Standard border width */
+
+  /* Text colors */
+  --text-primary: #111827;    /* Headings, high-emphasis text */
+  --text-secondary: #374151;  /* Default body/label text */
+  --text-muted: #6b7280;      /* Secondary/help text, icon default color */
+  --text-disabled: #9ca3af;   /* Disabled controls and placeholder text ONLY - not content */
+  --text-inverse: #ffffff;    /* Text on solid accent/dark backgrounds */
+
+  /* Surface colors */
+  --surface-bg: #ffffff;      /* Base surface (dialogs, panels, inputs) */
+  --surface-subtle: #f9fafb;  /* Recessed panels, headers, empty states */
+  --surface-hover: #f3f4f6;   /* Hover background for list rows/buttons */
+  --surface-emphasis: #f5f5f5; /* Subtotal/grand-total row background in the pivot table */
+
+  /* Accent (single restrained accent, reused everywhere) */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-subtle: #eff6ff;
+
+  /* Accent "chip" (selected-value pills, metric-reference buttons) */
+  --color-accent-chip-bg: #dbeafe;
+  --color-accent-chip-border: #93c5fd;
+  --color-accent-chip-text: #1e40af;
+
+  /* Semantic colors */
+  --color-error: #b91c1c;
+  --color-error-bg: #fee2e2;
+  --color-error-border: #fecaca;
+  --color-warning: #92400e;
+  --color-warning-bg: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-success: #059669;
+  --color-success-bg: #d1fae5;
+  --color-success-border: #a7f3d0;
+
+  /* Focus ring - single global :focus-visible rule below consumes this */
+  --focus-ring-color: var(--color-accent);
+  --focus-ring: 0 0 0 2px var(--focus-ring-color);
+
+  /* Z-index scale (low -> high) */
+  --z-dropdown: 1000;         /* inline menus/dropdowns anchored to a control */
+  --z-overlay: 9999;          /* fullscreen containers (chart fullscreen, debug panel) */
+  --z-popover: 10000;         /* Popover, ContextMenu, tooltips */
+  --z-dialog: 100000;         /* centered modal (BaseDialog) - must sit above popovers */
+  --z-progress: 999999;       /* full-page query progress overlay */
+  --z-progress-tooltip: 1000000;
+
+  /* Radius scale */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* Font-size scale (dialogs/menus use a smaller type scale than the host app) */
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 13px;
+
+  /* Motion */
+  --transition-fast: 150ms ease;
+}
+
+/* Global focus-visible ring. base-reset.css resets inputs/selects/textareas
+   with `all: unset`, whose `input[type="text"]`-style attribute selectors
+   outrank a bare `:focus-visible` pseudo-class in specificity - so `outline`
+   silently lost to the reset on every text input/select/textarea (buttons
+   were unaffected, since `button` alone has lower specificity). `!important`
+   sidesteps the specificity fight entirely rather than chasing it per-element. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color) !important;
+  outline-offset: 2px !important;
+}
+
+@keyframes pp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pp-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-color-light);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pp-spinner {
+    animation: pp-spin 0.7s linear infinite;
+  }
+}
+
+.pp-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Native controls follow the token accent; color-scheme makes the browser
+   paint their chrome (checkbox box, select arrow, scrollbars) to match the
+   active theme instead of always light. Deliberate inline accentColor
+   overrides (e.g. CustomExpressionItem's semantic colors) still win. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-accent);
+}
+
+/* Toolbar brand wordmark: quiet by default, reveals it's a link on hover */
+.pp-brand-link:hover,
+.pp-brand-link:focus-visible {
+  color: var(--text-secondary) !important;
+  text-decoration: underline !important;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Dialog/popover entrance animation. Skipped entirely for users who prefer
+   reduced motion (elements just render at their final state). */
+@media (prefers-reduced-motion: no-preference) {
+  .pp-dialog-overlay {
+    animation: pp-fade-in var(--transition-fast);
+  }
+  .pp-dialog-panel {
+    animation: pp-scale-in var(--transition-fast);
+  }
+}
+
+@keyframes pp-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pp-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Hover-state utilities, replacing JS onMouseEnter/onMouseLeave style
+   mutation. Apply alongside an inline `background` for the non-hover state
+   only when the element isn't in some other "active/selected" state. */
+.pp-row-hover:hover {
+  background: var(--surface-subtle) !important;
+}
+
+.pp-menu-item-hover {
+  background: var(--surface-bg);
+}
+.pp-menu-item-hover:hover {
+  background: var(--surface-subtle);
+}
+
+/* Icon-button hover states (top bar settings menu) */
+.pp-icon-btn-hover:hover {
+  background: var(--surface-hover);
+}
+.pp-icon-btn-muted:hover {
+  color: var(--text-muted);
+}
+.pp-accent-menu-btn:hover {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+.pp-danger-btn-hover:hover {
+  background: var(--color-error-bg);
+}
+.pp-icon-btn-primary-hover:hover {
+  color: var(--text-primary);
+}
+
+/* Solid accent button hover (darken on hover), e.g. a "Copy" action button
+   with a filled accent background - pairs with inline base
+   background: 'var(--color-accent)' */
+.pp-accent-btn-hover:hover {
+  background: var(--color-accent-hover);
+}
+
+/* Custom expression (metric/grouping/filter) row - per-type accent color is
+   supplied via the --pp-item-accent/--pp-item-accent-subtle CSS custom
+   properties set inline on the row (dynamic per-instance value, so a static
+   utility class can't express it; the properties themselves keep the
+   actual color out of JS-driven style mutation). */
+.pp-custom-expr-icon-badge {
+  transition: background-color var(--transition-fast);
+}
+.pp-custom-expr-icon-badge:hover {
+  background-color: var(--pp-item-accent-subtle);
+}
+.pp-fade-btn {
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+.pp-fade-btn:hover {
+  opacity: 1;
+}
+/* Reveal on row hover, or when a fade-btn (or anything else in the row) has
+   keyboard focus - :focus-within keeps Tab-reachability from Task 6 working
+   even though the icons are visually hidden until interacted with. */
+.field-item:hover .pp-fade-btn,
+.field-item:focus-within .pp-fade-btn,
+.zone-field:hover .pp-fade-btn,
+.zone-field:focus-within .pp-fade-btn {
+  opacity: 1;
+}
+.pp-fade-btn-accent:hover {
+  color: var(--pp-item-accent);
+}
+.pp-fade-btn-danger:hover {
+  color: var(--color-error);
+}
+.pp-type-icon-badge {
+  transition: background-color var(--transition-fast);
+}
+.pp-type-icon-badge:hover {
+  background-color: rgba(107, 114, 128, 0.1);
+}
+
+/* "Move to zone" control (ZoneMoveSelect) - keyboard-accessible equivalent
+   of drag-and-drop between Filters/Columns/Rows/Values. */
+.pp-zone-move-select {
+  flex-shrink: 0;
+}
+
+/* Pivot table data-cell hover outline (moved out of PivotDisplay.tsx's
+   inline <style> tag) */
+.pivot-data-cell:hover {
+  box-shadow: inset 0 0 0 1px var(--color-accent) !important;
+}
+
+/* Container */
+.field-options-container {
+  display: flex;
+  flex-direction: column;
+  max-height: 800px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.88rem;
+  background: var(--surface-bg);
+  overflow: visible;
+  border-bottom: var(--border-width) solid var(--border-color-light);
+}
+
+/* Tailwind utility classes used in component */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1 1 0%; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.grid { display: grid; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.pr-8 { padding-right: 2rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.w-full { width: 100%; }
+.w-3 { width: 0.75rem; }
+.w-3\.5 { width: 0.875rem; }
+.w-4 { width: 1rem; }
+.w-5 { width: 1.25rem; }
+.h-3 { height: 0.75rem; }
+.h-3\.5 { height: 0.875rem; }
+.h-4 { height: 1rem; }
+.h-5 { height: 1.25rem; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.font-normal { font-weight: 400; }
+.font-semibold { font-weight: 600; }
+.bg-white { background-color: var(--surface-bg); }
+.bg-gray-100 { background-color: var(--surface-hover); }
+.bg-gray-200 { background-color: var(--border-color-light); }
+.text-gray-400 { color: var(--text-muted); }
+.text-gray-500 { color: var(--text-muted); }
+.text-gray-600 { color: #4b5563; }
+.text-gray-700 { color: var(--text-secondary); }
+/* Referenced by several field-options rows for actionable icon buttons
+   (rename/remove/derive-field). Previously undefined (dead classes, so
+   these hover color changes were silent no-ops) - defined here once so
+   every caller benefits. */
+.text-blue-500 { color: var(--color-accent); }
+.hover\:text-blue-600:hover { color: var(--color-accent-hover); }
+.hover\:text-blue-700:hover { color: var(--color-accent-hover); }
+.hover\:text-red-600:hover { color: var(--color-error); }
+/* Active-filter highlight (DropZonesGrid). Previously undefined (dead
+   classes) so the highlight was a silent no-op - defined here once. */
+.border-blue-500 { border-color: var(--color-accent); }
+.bg-blue-50 { background-color: var(--color-accent-subtle); }
+.border { border-width: 1px; }
+.border-b { border-bottom-width: 1px; }
+.border-r { border-right-width: 1px; }
+.border-gray-200 { border-color: var(--border-color-light); }
+.border-gray-300 { border-color: var(--border-color-medium); }
+.border-gray-400 { border-color: var(--border-color-dark); }
+.rounded { border-radius: 0.25rem; }
+.overflow-y-auto { overflow-y: auto; }
+.cursor-move { cursor: move; }
+.select-none { user-select: none; }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.right-2 { right: 0.5rem; }
+.top-1\/2 { top: 50%; }
+.-translate-y-1\/2 { transform: translateY(-50%); }
+.inline-block { display: inline-block; }
+.align-middle { vertical-align: middle; }
+.inline-flex { display: inline-flex; }
+.space-y-1 > * + * { margin-top: 0.25rem; }
+
+/* Interactive states */
+.hover\:bg-gray-50:hover { background-color: var(--surface-subtle); }
+.hover\:bg-gray-100:hover { background-color: var(--surface-hover); }
+.hover\:text-gray-700:hover { color: var(--text-secondary); }
+.focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
+.focus\:border-blue-500:focus { border-color: var(--color-accent); }
+
+/* Additional spacing utilities */
+.h-1 { height: 0.25rem; }
+.bg-blue-500 { background-color: var(--color-accent); }
+.rounded-full { border-radius: 9999px; }
+.opacity-75 { opacity: 0.75; }
+.-my-0\.5 { margin-top: -0.125rem; margin-bottom: -0.125rem; }
+
+/* Custom drag/drop styles */
+.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.drag-over {
+  background-color: var(--color-accent-subtle);
+  border-color: var(--color-accent-hover);
+}
+
+.field-item {
+  cursor: move;
+}
+
+.drop-zone {
+  min-height: 60px;
+  transition: background-color 0.15s ease;
+}
+
+.drop-zone:empty::after {
+  content: '';
+  display: block;
+  min-height: 60px;
+}
+
+.zone-field {
+  cursor: move;
+  user-select: none;
+}
+
+/* ==========================================================================
+   Built-in dark/light brutalist themes — applied only when the host sets
+   data-theme on <html>; without it the :root defaults above apply.
+   Redefines the same token names on higher-specificity
+   :root[data-theme="dark|light"] selectors, so every existing var(...)
+   consumer above (and throughout the component tree) picks them up for
+   free. Toggle lives in PivotDisplayHeader.tsx.
+   ========================================================================== */
+
+:root[data-theme='dark'] {
+  /* Borders — hard, visible, no ambiguity */
+  --border-color-light: #242424;
+  --border-color-medium: #3a3a3a;
+  --border-color-dark: #5c5c5c;
+  --border-width: 1px;
+
+  /* Text — high-contrast off-white on near-black */
+  --text-primary: #f4f4ef;
+  --text-secondary: #c8c8c0;
+  --text-muted: #8a8a82;
+  --text-disabled: #55554e;
+  --text-inverse: #0a0a0a;
+
+  /* Surfaces — near-black, stepped */
+  --surface-bg: #0a0a0a;
+  --surface-subtle: #131313;
+  --surface-hover: #1e1e1e;
+  --surface-emphasis: #16200f; /* subtotal/grand-total rows — dark w/ a hint of the accent */
+
+  /* Accent — acid green, the one loud color in the room */
+  --color-accent: #a6ff3f;
+  --color-accent-hover: #8fe62c;
+  --color-accent-subtle: #16210b;
+
+  --color-accent-chip-bg: #1c2a10;
+  --color-accent-chip-border: #45641f;
+  --color-accent-chip-text: #c3ff7a;
+
+  /* Semantic colors, re-tuned to read on dark surfaces */
+  --color-error: #ff6b6b;
+  --color-error-bg: #2a1212;
+  --color-error-border: #5c2323;
+
+  --color-warning: #ffb454;
+  --color-warning-bg: #2a1f0d;
+  --color-warning-border: #5c4720;
+
+  --color-success: #4ade80;
+  --color-success-bg: #0f2418;
+  --color-success-border: #1f5c3d;
+
+  --focus-ring-color: var(--color-accent);
+
+  /* Radius — nothing rounded */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+}
+
+:root[data-theme='light'] {
+  /* Borders — hard, visible gray on paper */
+  --border-color-light: #e0e0da;
+  --border-color-medium: #b8b8b0;
+  --border-color-dark: #6b6b64;
+  --border-width: 1px;
+
+  /* Text — near-black on off-white */
+  --text-primary: #0a0a0a;
+  --text-secondary: #3a3a38;
+  --text-muted: #6b6b64;
+  --text-disabled: #a8a8a0;
+  --text-inverse: #f7f7f2;
+
+  /* Surfaces — paper, stepped */
+  --surface-bg: #f7f7f2;
+  --surface-subtle: #eeeee6;
+  --surface-hover: #e4e4da;
+  --surface-emphasis: #e6f2d0; /* subtotal/grand-total rows — pale green tint */
+
+  /* Accent — acid green territory, but darkened for use as text/border on
+     white (raw #a6ff3f fails contrast as foreground; it's still used at
+     full brightness for filled button/chip backgrounds elsewhere). */
+  --color-accent: #4a8a00;
+  --color-accent-hover: #3d7300;
+  --color-accent-subtle: #eef8de;
+
+  --color-accent-chip-bg: #e3f5c4;
+  --color-accent-chip-border: #8fc93f;
+  --color-accent-chip-text: #3d6b00;
+
+  /* Semantic colors, re-tuned to read on light surfaces */
+  --color-error: #c53030;
+  --color-error-bg: #fdecec;
+  --color-error-border: #f5b5b5;
+
+  --color-warning: #a15c00;
+  --color-warning-bg: #fdf1dc;
+  --color-warning-border: #f0cd8e;
+
+  --color-success: #1f7a4d;
+  --color-success-bg: #e6f6ee;
+  --color-success-border: #a8e0c4;
+
+  --focus-ring-color: var(--color-accent);
+
+  /* Radius — nothing rounded, same brutalist DNA */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+}
+
+[data-theme='dark'] body {
+  background: #0a0a0a;
+  color: #f4f4ef;
+  font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+[data-theme='light'] body {
+  background: #f7f7f2;
+  color: #0a0a0a;
+  font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+/* Same rules, scoped to the component's own root (.pp-root, set on Pivot's
+   outer element). The body rules above cover hosts where the component owns
+   the whole page (e.g. the Streamlit iframe); this covers hosts where it's
+   embedded inside a larger page (e.g. JupyterLab) whose <body> text color
+   and font the component must not inherit. Background is also driven by
+   var(--surface-bg) on the root element's own inline style, so only color
+   and font-family need restating here. */
+[data-theme='dark'] .pp-root {
+  color: #f4f4ef;
+  font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+[data-theme='light'] .pp-root {
+  color: #0a0a0a;
+  font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+[data-theme='dark'] ::selection {
+  background: #a6ff3f;
+  color: #0a0a0a;
+}
+
+[data-theme='light'] ::selection {
+  background: #a6ff3f;
+  color: #0a0a0a;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar,
+[data-theme='light'] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border: 2px solid #0a0a0a;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #5c5c5c;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-track {
+  background: #f0f0ea;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #b8b8b0;
+  border: 2px solid #f0f0ea;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: #8a8a82;
+}
+
+/* The SQL Playground / Drilldown results grids use ag-grid's "alpine" theme,
+   which is a separate widget library with its own CSS custom properties
+   (not the pivot-parrot tokens above). Reskin it too via ag-grid's own
+   variables so results tables don't clash with the shell. */
+[data-theme='dark'] .ag-theme-alpine {
+  --ag-background-color: #0a0a0a;
+  --ag-foreground-color: #f4f4ef;
+  --ag-border-color: #3a3a3a;
+  --ag-secondary-border-color: #242424;
+  --ag-header-background-color: #131313;
+  --ag-header-foreground-color: #f4f4ef;
+  --ag-odd-row-background-color: #101010;
+  --ag-row-hover-color: #1e1e1e;
+  --ag-selected-row-background-color: #16210b;
+  --ag-input-background-color: #131313;
+  --ag-input-border-color: #3a3a3a;
+  --ag-checkbox-unchecked-color: #5c5c5c;
+  --ag-checkbox-checked-color: #a6ff3f;
+  --ag-range-selection-border-color: #a6ff3f;
+  --ag-font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  --ag-border-radius: 0px;
+}
+
+[data-theme='light'] .ag-theme-alpine {
+  --ag-background-color: #f7f7f2;
+  --ag-foreground-color: #0a0a0a;
+  --ag-border-color: #b8b8b0;
+  --ag-secondary-border-color: #e0e0da;
+  --ag-header-background-color: #eeeee6;
+  --ag-header-foreground-color: #0a0a0a;
+  --ag-odd-row-background-color: #f0f0ea;
+  --ag-row-hover-color: #e4e4da;
+  --ag-selected-row-background-color: #e6f2d0;
+  --ag-input-background-color: #ffffff;
+  --ag-input-border-color: #b8b8b0;
+  --ag-checkbox-unchecked-color: #8a8a82;
+  --ag-checkbox-checked-color: #4a8a00;
+  --ag-range-selection-border-color: #4a8a00;
+  --ag-font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  --ag-border-radius: 0px;
+}

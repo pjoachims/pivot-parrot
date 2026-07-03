@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jupyter-pivot-parrot"
+version = "0.1.0"
+description = "Jupyter anywidget wrapper for pivot-parrot"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "anywidget>=0.9",
+    "pandas",
+    "pyarrow",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.hatch.build]
+artifacts = [
+    "jupyter_pivot_parrot/static/*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["jupyter_pivot_parrot"]

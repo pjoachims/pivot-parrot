@@ -1,0 +1,207 @@
+/**
+ * Main orchestrator for building pivot display data
+ * Coordinates column building, row building, and value population
+ */
+
+import { toMetricKey, toMetricLabel } from './utils';
+import { buildColumnOutline, buildColumnTree } from './columnBuilder';
+import { buildRowTree } from './rowBuilder';
+import { populateNodeValues } from './valuePopulator';
+import { buildCubeIndex, createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
+import { profiler } from '../query/utils/profiler';
+
+/**
+ * Sort row tree recursively by a value field
+ * Each level is sorted independently based on its values
+ *
+ * @param {Array<Object>} nodes - Row tree nodes
+ * @param {Object} sortConfig - { valueKey: string, direction: 'asc' | 'desc' }
+ * @param {Array<Object>} columnOutline - Column outline to find value index
+ * @param {Object} dtypes - Column name → engine type name mapping
+ */
+function sortRowTree(nodes, sortConfig, columnOutline, dtypes = {}) {
+  const { valueKey, direction } = sortConfig;
+
+  // Find the grand total column for this value
+  // Grand total column has empty path (no dimensions)
+  const valueColIndex = columnOutline.findIndex(col =>
+    col.metric === valueKey && col.path.length === 0
+  );
+
+  if (valueColIndex === -1) {
+    return;
+  }
+
+  // Sort nodes array in place
+  nodes.sort((a, b) => {
+    // Get the raw value for this column from each node.
+    // Use subtotals if available (for parent nodes), otherwise use values (for leaf nodes)
+    const aVal = a.subtotals?.[valueColIndex] ?? a.values?.[valueColIndex];
+    const bVal = b.subtotals?.[valueColIndex] ?? b.values?.[valueColIndex];
+
+    // Handle null/undefined values - push them to the end
+    if (aVal === null || aVal === undefined) return 1;
+    if (bVal === null || bVal === undefined) return -1;
+
+    // Direct comparison on raw values (works for numbers, BigInt, strings)
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      const diff = aVal - bVal;
+      return direction === 'asc' ? diff : -diff;
+    }
+
+    if (typeof aVal === 'bigint' && typeof bVal === 'bigint') {
+      return direction === 'asc' ? (aVal < bVal ? -1 : aVal > bVal ? 1 : 0) : (bVal < aVal ? -1 : bVal > aVal ? 1 : 0);
+    }
+
+    // Otherwise use string comparison with numeric awareness
+    const strA = String(aVal);
+    const strB = String(bVal);
+    return direction === 'asc' ? strA.localeCompare(strB, undefined, { numeric: true }) : strB.localeCompare(strA, undefined, { numeric: true });
+  });
+
+  // Recursively sort children
+  nodes.forEach(node => {
+    if (node.children && node.children.length > 0) {
+      sortRowTree(node.children, sortConfig, columnOutline, dtypes);
+    }
+  });
+}
+
+/**
+ * Main entry point: Build pivot display data using long-to-wide transformation
+ *
+ * @param {Array<Object>} sqlRows - SQL CUBE results
+ * @param {Array<string>} rowFields - Row dimension fields (may include 'Σ Values')
+ * @param {Array<string>} colFields - Column dimension fields (may include 'Σ Values')
+ * @param {Array<Object>} valueFields - Value field configurations
+ * @param {Object} sortConfig - Sort configuration { valueKey, direction }
+ * @param {Object} dtypes - Column name → engine type name mapping
+ * @returns {Object} Pivot display data structure
+ */
+export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields, sortConfig = null, dtypes = {}) {
+  return profiler.profile('buildPivotDisplayData', () => {
+    if (!sqlRows?.length) {
+      return {
+        columnConfig: { colFields: [], hierarchy: [], valueFields: [] },
+        rowGroups: [],
+        grandTotal: null
+      };
+    }
+
+    // Determine where Values appear
+    const rowValuesIndex = rowFields.indexOf('Σ Values');
+    const colValuesIndex = colFields.indexOf('Σ Values');
+    const valuesInRows = rowValuesIndex !== -1;
+
+    const actualRowFields = rowFields.filter(f => f !== 'Σ Values');
+    const actualColFields = colFields.filter(f => f !== 'Σ Values');
+
+    // Build hash index for O(1) lookups (order-independent)
+    const allFields = [...actualRowFields, ...actualColFields];
+
+    // Check if index is cached on sqlRows (attached by PivotCalculator)
+    const cubeIndex = sqlRows._cubeIndex || profiler.profile('buildCubeIndex', () =>
+      buildCubeIndex(sqlRows, allFields)
+    );
+
+    // 1. Build column outline (flat, for value indexing)
+    const columnOutline = profiler.profile('buildColumnOutline', () =>
+      buildColumnOutline(
+        sqlRows,
+        actualColFields,
+        valueFields,
+        colValuesIndex,
+        valuesInRows,
+        dtypes
+      )
+    );
+
+    // 1b. Build column tree (hierarchical, for headers)
+    const columnTree = profiler.profile('buildColumnTree', () =>
+      buildColumnTree(
+        columnOutline,
+        actualColFields,
+        valueFields,
+        colValuesIndex,
+        valuesInRows
+      )
+    );
+
+    // 2. Build row tree
+    const rowTree = profiler.profile('buildRowTree', () =>
+      buildRowTree(
+        sqlRows,
+        actualRowFields,
+        valueFields,
+        rowValuesIndex,
+        dtypes
+      )
+    );
+
+    // 3. Populate values arrays using hash index
+    profiler.profile('populateNodeValues', () =>
+      populateNodeValues(
+        rowTree,
+        sqlRows,
+        actualRowFields,
+        columnOutline,
+        actualColFields,
+        rowValuesIndex,
+        rowFields,  // Pass original rowFields with Σ Values
+        cubeIndex,  // Pass hash index for O(1) lookups
+        dtypes
+      )
+    );
+
+    // 3b. Sort row tree if sortConfig is provided
+    if (sortConfig && sortConfig.valueKey) {
+      profiler.profile('sortRowTree', () =>
+        sortRowTree(rowTree, sortConfig, columnOutline, dtypes)
+      );
+    }
+
+    // 4. Build grand total row(s) (all row dimensions aggregated)
+    // When values in rows: create separate grand total row per metric
+    // When values in columns: create single grand total row
+    let grandTotalRow = null;
+
+    if (valuesInRows) {
+      // Multiple grand total rows, one per metric
+      grandTotalRow = profiler.profile('buildGrandTotal', () =>
+        valueFields.map(vf => {
+          const metric = toMetricKey(vf);
+          const values = columnOutline.map((col) => {
+            const hash = createCellHash([], actualRowFields, col.path, actualColFields);
+            return lookupCubeValue(cubeIndex, hash, metric);
+          });
+          return {
+            metric,
+            metricLabel: toMetricLabel(vf),
+            values
+          };
+        })
+      );
+    } else {
+      // Single grand total row
+      grandTotalRow = profiler.profile('buildGrandTotal', () =>
+        columnOutline.map((col) => {
+          const hash = createCellHash([], actualRowFields, col.path, actualColFields);
+          return lookupCubeValue(cubeIndex, hash, col.metric);
+        })
+      );
+    }
+
+    // Return in format compatible with PivotDisplay
+    return {
+      columnConfig: {
+        colFields: actualColFields,
+        hierarchy: columnTree,  // Hierarchical tree for headers
+        valueFields: valueFields.map(toMetricKey)
+      },
+      rowGroups: rowTree,
+      grandTotal: grandTotalRow,
+      cubeIndex,  // Return index for caching!
+      _columnOutline: columnOutline  // Keep flat outline for debugging
+    };
+  });
+}

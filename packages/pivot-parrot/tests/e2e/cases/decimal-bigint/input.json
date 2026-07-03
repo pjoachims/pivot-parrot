@@ -1,0 +1,27 @@
+{
+  "config": {
+    "rows": ["region"],
+    "columns": [],
+    "values": [
+      { "field": "revenue", "aggregation": "Sum" },
+      { "field": "big_id", "aggregation": "Max" }
+    ]
+  },
+  "pivotDisplay": true,
+  "schema": {
+    "region": "string",
+    "revenue": "decimal<38,19>",
+    "big_id": "int64"
+  },
+  "sqlTypes": {
+    "region": "VARCHAR",
+    "revenue": "DECIMAL(38,19)",
+    "big_id": "BIGINT"
+  },
+  "data": [
+    { "region": "North", "revenue": 100.123456789012345678, "big_id": 1000000000001 },
+    { "region": "North", "revenue": 200.987654321098765432, "big_id": 1000000000002 },
+    { "region": "South", "revenue": 150.555555555555555555, "big_id": 1000000000003 },
+    { "region": "South", "revenue": 250.444444444444444444, "big_id": 1000000000004 }
+  ]
+}

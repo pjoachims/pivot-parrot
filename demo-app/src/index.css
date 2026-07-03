@@ -1,0 +1,12 @@
+/* Import unified base CSS reset - shared with Streamlit frontend */
+@import 'pivot-parrot/base-reset.css';
+
+/* Spinner animation for demo app */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

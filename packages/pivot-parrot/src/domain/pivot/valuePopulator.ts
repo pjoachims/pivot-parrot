@@ -1,0 +1,111 @@
+/**
+ * Value population logic for pivot tables
+ * Populates values arrays for nodes in the row tree
+ */
+
+import { createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
+
+/**
+ * Populate values arrays for all nodes in the tree
+ *
+ * @param {Array<Object>} nodes - Tree nodes to populate
+ * @param {Array<Object>} sqlRows - SQL CUBE results
+ * @param {Array<string>} rowFields - Row dimension fields
+ * @param {Array<Object>} columnOutline - Ordered column definitions
+ * @param {Array<string>} colFields - Column dimension fields
+ * @param {number} valuesIndex - Position of Σ Values in rows (-1 if in columns)
+ * @param {Array<string>} originalRowFields - Original row fields including Σ Values
+ * @param {Map} cubeIndex - Hash index for O(1) lookups
+ * @param {Object} dtypes - Column name → engine type name mapping
+ */
+export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, colFields, valuesIndex, originalRowFields, cubeIndex, dtypes = {}) {
+  nodes.forEach(node => {
+    const valuesInRows = valuesIndex !== -1;
+    const hasChildren = node.children && node.children.length > 0;
+
+    if (valuesInRows) {
+      // Special case: when Values is at position 0, metric nodes ARE at depth 0
+      // They need subtotals if they have children
+      if (valuesIndex === 0 && node.depth === 0 && hasChildren) {
+        // This is a metric parent node - give it subtotals
+        const metricNameWrapped = node.path[0]; // The metric is the first element
+        // Unwrap the metric name from {v, t} - it's always wrapped as STRING
+        const metricName = metricNameWrapped.v;
+
+        node.subtotals = columnOutline.map((col) => {
+          // Use hash lookup: all row dimensions grouped, match column path
+          const hash = createCellHash([], rowFields, col.path, colFields);
+          return lookupCubeValue(cubeIndex, hash, metricName);
+        });
+
+        node.values = null;
+
+        // Recurse for children
+        populateNodeValues(node.children, sqlRows, rowFields, columnOutline, colFields, valuesIndex, originalRowFields, cubeIndex, dtypes);
+        return;
+      }
+
+      // Node must be at or below Values level to have values
+      if (node.path.length <= valuesIndex) {
+        node.values = null;
+
+        // Parent nodes (above metric level) should get subtotals if depth 0 or 1
+        if (hasChildren && (node.depth === 0 || node.depth === 1)) {
+          // Build subtotals for this parent node (aggregate across all metrics)
+          node.subtotals = columnOutline.map(col => {
+            // Use hash lookup: match parent path, remaining rows grouped
+            const hash = createCellHash(node.path, rowFields, col.path, colFields);
+            return lookupCubeValue(cubeIndex, hash, col.metric || 'value');
+          });
+        }
+
+        // Still recurse for children
+        if (hasChildren) {
+          populateNodeValues(node.children, sqlRows, rowFields, columnOutline, colFields, valuesIndex, originalRowFields, cubeIndex, dtypes);
+        }
+        return;
+      }
+
+      // Split path at Values position
+      const beforePath = node.path.slice(0, valuesIndex);
+      const rowMetricWrapped = node.path[valuesIndex];
+      // Unwrap the metric name from {v, t} - it's always wrapped as STRING
+      const rowMetric = rowMetricWrapped.v;
+      const afterPath = node.path.slice(valuesIndex + 1);
+
+      // IMPORTANT: Use originalRowFields (with Σ Values) for slicing, not actualRowFields
+      const originalFields = originalRowFields || rowFields;  // Fallback for backward compat
+      const beforeFields = originalFields.slice(0, valuesIndex).filter(f => f !== 'Σ Values');
+      const afterFields = originalFields.slice(valuesIndex + 1).filter(f => f !== 'Σ Values');
+
+      node.values = columnOutline.map(col => {
+        // Use hash lookup: combine before + after paths (skipping Values position)
+        const rowPath = [...beforePath, ...afterPath];
+        const rowFieldsWithoutValues = [...beforeFields, ...afterFields];
+        const hash = createCellHash(rowPath, rowFieldsWithoutValues, col.path, colFields);
+        return lookupCubeValue(cubeIndex, hash, rowMetric);
+      });
+    } else {
+      // Values in columns - use hash lookup (O(1) instead of O(n))
+      const valuesArray = columnOutline.map(col => {
+        const hash = createCellHash(node.path, rowFields, col.path, colFields);
+        return lookupCubeValue(cubeIndex, hash, col.metric);
+      });
+
+      // Parent nodes get subtotals ONLY at depth 0 (grand total) and depth 1 (first dimension)
+      if (hasChildren) {
+        if (node.depth === 0 || node.depth === 1) {
+          node.subtotals = valuesArray;
+        }
+        node.values = null;  // Parent nodes don't show values directly
+      } else {
+        node.values = valuesArray;
+      }
+    }
+
+    // Recursively populate children
+    if (hasChildren) {
+      populateNodeValues(node.children, sqlRows, rowFields, columnOutline, colFields, valuesIndex, originalRowFields, cubeIndex, dtypes);
+    }
+  });
+}

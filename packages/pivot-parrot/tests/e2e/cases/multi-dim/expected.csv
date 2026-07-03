@@ -1,0 +1,9 @@
+Row Labels,2023,2023,2023,2023,2023,2023,Subtotal,Subtotal,Subtotal,2024,2024,2024,2024,2024,2024,Subtotal,Subtotal,Subtotal,Subtotal,Subtotal,Subtotal
+,Online,Online,Online,Retail,Retail,Retail,,,,Online,Online,Online,Retail,Retail,Retail,,,,,,
+,,,,,,,Sum_revenue,Sum_quantity,Avg_price,,,,,,,Sum_revenue,Sum_quantity,Avg_price,Sum_revenue,Sum_quantity,Avg_price
+North,,,,,,,,,,,,,,,,,,,,,
+    Gadget,200,8,25,175,7,25,375,15,25,250,10,25,225,9,25,475,19,25,850,34,25
+    Widget,100,10,10,80,8,10,180,18,10,150,12,12.5,120,10,12,270,22,12.25,450,40,11.125
+South,,,,,,,,,,,,,,,,,,,,,
+    Gadget,180,6,30,150,5,30,330,11,30,220,8,27.5,200,7,28.6,420,15,28.05,750,26,29.025
+    Widget,90,9,10,70,7,10,160,16,10,130,11,11.8,100,8,12.5,230,19,12.15,390,35,11.075

@@ -1,0 +1,1 @@
+recursive-include streamlit_pivot_parrot/frontend/build *

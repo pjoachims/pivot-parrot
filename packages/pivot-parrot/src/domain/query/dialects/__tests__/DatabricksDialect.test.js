@@ -1,0 +1,638 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { DatabricksDialect } from '../DatabricksDialect';
+import { buildFilter } from '../../sql/filters';
+
+describe('DatabricksDialect', () => {
+  let dialect;
+
+  beforeEach(() => {
+    dialect = new DatabricksDialect();
+  });
+
+  describe('Dialect Name', () => {
+    it('should return databricks as name', () => {
+      expect(dialect.name).toBe('databricks');
+    });
+  });
+
+  describe('Identifier Quoting (Backticks)', () => {
+    it('should not quote simple alphanumeric identifiers', () => {
+      expect(dialect.quoteIdentifier('column_name')).toBe('column_name');
+      expect(dialect.quoteIdentifier('Column123')).toBe('Column123');
+      expect(dialect.quoteIdentifier('_private')).toBe('_private');
+    });
+
+    it('should quote identifiers with spaces using backticks', () => {
+      expect(dialect.quoteIdentifier('first name')).toBe('`first name`');
+      expect(dialect.quoteIdentifier('Sales Amount')).toBe('`Sales Amount`');
+    });
+
+    it('should quote identifiers with special characters using backticks', () => {
+      expect(dialect.quoteIdentifier('user@domain')).toBe('`user@domain`');
+      expect(dialect.quoteIdentifier('item-id')).toBe('`item-id`');
+      expect(dialect.quoteIdentifier('price$')).toBe('`price$`');
+    });
+
+    it('should quote identifiers starting with numbers using backticks', () => {
+      expect(dialect.quoteIdentifier('2023_sales')).toBe('`2023_sales`');
+      expect(dialect.quoteIdentifier('1st_quarter')).toBe('`1st_quarter`');
+    });
+
+    it('should handle SQL injection attempts with backticks', () => {
+      expect(dialect.quoteIdentifier("'; DROP TABLE users--")).toBe("`'; DROP TABLE users--`");
+      expect(dialect.quoteIdentifier('col"; DELETE FROM')).toBe('`col"; DELETE FROM`');
+    });
+
+    it('should escape embedded backticks by doubling them', () => {
+      expect(dialect.quoteIdentifier('col`name')).toBe('`col``name`');
+      expect(dialect.quoteIdentifier('a`b`c')).toBe('`a``b``c`');
+    });
+
+    it('should produce a re-parseable identifier when embedded backticks are escaped', () => {
+      const quoted = dialect.quoteIdentifier('weird`col');
+      // Stripping the outer backticks and un-doubling should round-trip to the original name
+      const inner = quoted.slice(1, -1).replace(/``/g, '`');
+      expect(inner).toBe('weird`col');
+    });
+  });
+
+  describe('Databricks-Specific Aggregations', () => {
+    it('should support APPROX_COUNT_DISTINCT aggregation', () => {
+      expect(dialect.getAggregation('approx_count_distinct', 'user_id')).toBe('APPROX_COUNT_DISTINCT(user_id)');
+    });
+
+    it('should still support standard aggregations', () => {
+      expect(dialect.getAggregation('sum', 'amount')).toBe('SUM(amount)');
+      expect(dialect.getAggregation('avg', 'price')).toBe('AVG(price)');
+      expect(dialect.getAggregation('count_distinct', 'user_id')).toBe('COUNT(DISTINCT user_id)');
+    });
+
+    it('should check APPROX_COUNT_DISTINCT support', () => {
+      expect(dialect.supports('aggregation', 'approx_count_distinct')).toBe(true);
+    });
+  });
+
+  describe('Databricks-Specific Operators', () => {
+    it('should use RLIKE for regex operator', () => {
+      expect(dialect.operators.regex).toBe('RLIKE');
+    });
+  });
+
+  describe('Databricks Date/Time Functions', () => {
+    it('should support Spark SQL date extraction functions', () => {
+      expect(dialect.getFunction('year', 'order_date')).toBe('YEAR(order_date)');
+      expect(dialect.getFunction('quarter', 'order_date')).toBe('QUARTER(order_date)');
+      expect(dialect.getFunction('month', 'order_date')).toBe('MONTH(order_date)');
+      expect(dialect.getFunction('hour', 'timestamp_col')).toBe('HOUR(timestamp_col)');
+      expect(dialect.getFunction('minute', 'timestamp_col')).toBe('MINUTE(timestamp_col)');
+      expect(dialect.getFunction('second', 'timestamp_col')).toBe('SECOND(timestamp_col)');
+    });
+
+    it('should support unix_timestamp and from_unixtime functions', () => {
+      expect(dialect.getFunction('unix_timestamp', 'timestamp_col')).toBe('UNIX_TIMESTAMP(timestamp_col)');
+      expect(dialect.getFunction('from_unixtime', '1609459200')).toBe('FROM_UNIXTIME(1609459200)');
+    });
+
+    it('should check function support', () => {
+      expect(dialect.supports('function', 'year')).toBe(true);
+      expect(dialect.supports('function', 'quarter')).toBe(true);
+      expect(dialect.supports('function', 'month')).toBe(true);
+      expect(dialect.supports('function', 'unix_timestamp')).toBe(true);
+      expect(dialect.supports('function', 'from_unixtime')).toBe(true);
+    });
+  });
+
+  describe('Date Column Formatting', () => {
+    it('should format date columns using DATE_FORMAT with yyyy-MM-dd', () => {
+      expect(dialect.formatDateColumn('order_date', 'date')).toBe("DATE_FORMAT(order_date, 'yyyy-MM-dd')");
+    });
+
+    it('should format timestamp columns using DATE_FORMAT with full format', () => {
+      expect(dialect.formatDateColumn('created_at', 'timestamp')).toBe("DATE_FORMAT(created_at, 'yyyy-MM-dd HH:mm:ss')");
+    });
+
+    it('should return column as-is for non-date types', () => {
+      expect(dialect.formatDateColumn('amount', 'integer')).toBe('amount');
+      expect(dialect.formatDateColumn('name', 'string')).toBe('name');
+    });
+  });
+
+  // ==================== UI FILTER TESTS ====================
+
+  describe('UI Filters - EqualFilter', () => {
+    it('should generate equality comparison with backtick quoting', () => {
+      const filter = buildFilter({
+        type: 'equal',
+        field: 'Order Status',
+        value: 'active'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("`Order Status` = 'active'");
+    });
+
+    it('should generate NOT equal when isNot is true', () => {
+      const filter = buildFilter({
+        type: 'equal',
+        field: 'status',
+        value: 'deleted',
+        isNot: true
+      });
+
+      expect(filter.toSQL(dialect)).toBe("NOT (status = 'deleted')");
+    });
+
+    it('should escape single quotes in values', () => {
+      const filter = buildFilter({
+        type: 'equal',
+        field: 'name',
+        value: "O'Brien"
+      });
+
+      expect(filter.toSQL(dialect)).toBe("name = 'O''Brien'");
+    });
+  });
+
+  describe('UI Filters - OneOfFilter', () => {
+    it('should generate IN clause with backtick quoting', () => {
+      const filter = buildFilter({
+        type: 'one_of',
+        field: 'Product Category',
+        selectedValues: ['Electronics', 'Books', 'Clothing']
+      });
+
+      expect(filter.toSQL(dialect)).toBe("`Product Category` IN ('Electronics', 'Books', 'Clothing')");
+    });
+
+    it('should generate NOT IN when isNot is true', () => {
+      const filter = buildFilter({
+        type: 'one_of',
+        field: 'status',
+        selectedValues: ['cancelled', 'refunded'],
+        isNot: true
+      });
+
+      expect(filter.toSQL(dialect)).toBe("status NOT IN ('cancelled', 'refunded')");
+    });
+
+    it('should escape values with single quotes', () => {
+      const filter = buildFilter({
+        type: 'one_of',
+        field: 'author',
+        selectedValues: ["O'Reilly", "D'Angelo"]
+      });
+
+      expect(filter.toSQL(dialect)).toBe("author IN ('O''Reilly', 'D''Angelo')");
+    });
+
+    it('should return null for empty selection', () => {
+      const filter = buildFilter({
+        type: 'one_of',
+        field: 'category',
+        selectedValues: []
+      });
+
+      expect(filter.toSQL(dialect)).toBeNull();
+    });
+  });
+
+  describe('UI Filters - DateRangeFilter', () => {
+    it('should generate BETWEEN SQL for date ranges', () => {
+      const filter = buildFilter({
+        type: 'date_range',
+        field: 'order_date',
+        start: '2023-01-01',
+        end: '2023-12-31'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("order_date BETWEEN '2023-01-01' AND '2023-12-31'");
+    });
+
+    it('should quote field names with spaces using backticks', () => {
+      const filter = buildFilter({
+        type: 'date_range',
+        field: 'Order Date',
+        start: '2023-01-01',
+        end: '2023-12-31'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("`Order Date` BETWEEN '2023-01-01' AND '2023-12-31'");
+    });
+  });
+
+  describe('UI Filters - BetweenFilter', () => {
+    it('should generate BETWEEN SQL for numeric ranges', () => {
+      const filter = buildFilter({
+        type: 'between',
+        field: 'price',
+        betweenStart: 10,
+        betweenEnd: 100
+      });
+
+      expect(filter.toSQL(dialect)).toBe("price BETWEEN '10' AND '100'");
+    });
+
+    it('should quote field names with special characters using backticks', () => {
+      const filter = buildFilter({
+        type: 'between',
+        field: 'Sales Amount',
+        betweenStart: 1000,
+        betweenEnd: 5000
+      });
+
+      expect(filter.toSQL(dialect)).toBe("`Sales Amount` BETWEEN '1000' AND '5000'");
+    });
+  });
+
+  describe('UI Filters - ContainsFilter', () => {
+    it('should generate LIKE with wildcards', () => {
+      const filter = buildFilter({
+        type: 'contains',
+        field: 'description',
+        value: 'premium'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '\\'");
+    });
+
+    it('should generate NOT LIKE when isNot is true', () => {
+      const filter = buildFilter({
+        type: 'contains',
+        field: 'notes',
+        value: 'test',
+        isNot: true
+      });
+
+      expect(filter.toSQL(dialect)).toBe("notes NOT LIKE '%test%' ESCAPE '\\'");
+    });
+
+    it('should escape single quotes in value', () => {
+      const filter = buildFilter({
+        type: 'contains',
+        field: 'text',
+        value: "it's"
+      });
+
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '\\'");
+    });
+  });
+
+  describe('UI Filters - StartsWithFilter', () => {
+    it('should generate LIKE with trailing wildcard', () => {
+      const filter = buildFilter({
+        type: 'starts_with',
+        field: 'name',
+        value: 'John'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '\\'");
+    });
+
+    it('should support NOT variant', () => {
+      const filter = buildFilter({
+        type: 'starts_with',
+        field: 'email',
+        value: 'test',
+        isNot: true
+      });
+
+      expect(filter.toSQL(dialect)).toBe("email NOT LIKE 'test%' ESCAPE '\\'");
+    });
+  });
+
+  describe('UI Filters - EndsWithFilter', () => {
+    it('should generate LIKE with leading wildcard', () => {
+      const filter = buildFilter({
+        type: 'ends_with',
+        field: 'email',
+        value: '@example.com'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '\\'");
+    });
+
+    it('should support NOT variant', () => {
+      const filter = buildFilter({
+        type: 'ends_with',
+        field: 'filename',
+        value: '.tmp',
+        isNot: true
+      });
+
+      expect(filter.toSQL(dialect)).toBe("filename NOT LIKE '%.tmp' ESCAPE '\\'");
+    });
+  });
+
+  describe('UI Filters - NullFilter', () => {
+    it('should generate IS NULL', () => {
+      const filter = buildFilter({
+        type: 'null',
+        field: 'deleted_at'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("deleted_at IS NULL");
+    });
+
+    it('should generate IS NOT NULL when isNot is true', () => {
+      const filter = buildFilter({
+        type: 'null',
+        field: 'email',
+        isNot: true
+      });
+
+      expect(filter.toSQL(dialect)).toBe("email IS NOT NULL");
+    });
+
+    it('should quote field names with spaces using backticks', () => {
+      const filter = buildFilter({
+        type: 'null',
+        field: 'Last Login'
+      });
+
+      expect(filter.toSQL(dialect)).toBe("`Last Login` IS NULL");
+    });
+  });
+
+  describe('UI Filters - Comparison Filters', () => {
+    it('should generate greater than comparison', () => {
+      const filter = buildFilter({
+        type: 'greater',
+        field: 'age',
+        value: 18
+      });
+
+      expect(filter.toSQL(dialect)).toBe("age > 18");
+    });
+
+    it('should generate less than comparison', () => {
+      const filter = buildFilter({
+        type: 'less',
+        field: 'age',
+        value: 65
+      });
+
+      expect(filter.toSQL(dialect)).toBe("age < 65");
+    });
+
+    it('should generate >= comparison', () => {
+      const filter = buildFilter({
+        type: 'greater_equal',
+        field: 'quantity',
+        value: 10
+      });
+
+      expect(filter.toSQL(dialect)).toBe("quantity >= 10");
+    });
+
+    it('should generate <= comparison', () => {
+      const filter = buildFilter({
+        type: 'less_equal',
+        field: 'discount',
+        value: 0.5
+      });
+
+      expect(filter.toSQL(dialect)).toBe("discount <= 0.5");
+    });
+  });
+
+  describe('UI Filters - SQL Injection Prevention', () => {
+    it('should prevent injection through field names', () => {
+      const maliciousField = "col'; DROP TABLE users--";
+
+      const filter = buildFilter({
+        type: 'equal',
+        field: maliciousField,
+        value: 'test'
+      });
+
+      const sql = filter.toSQL(dialect);
+      expect(sql).toContain('`'); // Should use backticks
+      expect(sql).toBe(`\`${maliciousField}\` = 'test'`);
+    });
+
+    it('should prevent injection through filter values', () => {
+      const maliciousValue = "' OR '1'='1";
+
+      const filter = buildFilter({
+        type: 'equal',
+        field: 'username',
+        value: maliciousValue
+      });
+
+      const sql = filter.toSQL(dialect);
+      expect(sql).toBe("username = ''' OR ''1''=''1'"); // Quotes escaped
+    });
+
+    it('should prevent injection in IN clauses', () => {
+      const filter = buildFilter({
+        type: 'one_of',
+        field: 'id',
+        selectedValues: ["1' OR '1'='1", "2'; DROP TABLE--"]
+      });
+
+      const sql = filter.toSQL(dialect);
+      expect(sql).toContain("''"); // Quotes escaped
+      expect(sql).toMatch(/IN \('.*', '.*'\)/);
+    });
+  });
+
+  // ==================== DRILLDOWN FILTER TESTS ====================
+
+  describe('Drilldown Filters - buildWhereClause', () => {
+    it('should build simple equality filter for string field', () => {
+      const filters = [
+        { field: 'status', value: 'active', typeName: 'utf8' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(status = 'active')");
+    });
+
+    it('should build equality filter for numeric field', () => {
+      const filters = [
+        { field: 'quantity', value: 100, typeName: 'int32' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(quantity = 100)");
+    });
+
+    it('should build equality filter for boolean field', () => {
+      const filters = [
+        { field: 'is_active', value: true, typeName: 'bool' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(is_active = TRUE)");
+    });
+
+    it('should build NULL filter', () => {
+      const filters = [
+        { field: 'deleted_at', value: null, dtype: null }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("deleted_at IS NULL");
+    });
+
+    it('should quote field names with spaces using backticks', () => {
+      const filters = [
+        { field: 'Order Status', value: 'shipped', typeName: 'utf8' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(`Order Status` = 'shipped')");
+    });
+
+    it('should combine multiple filters with AND', () => {
+      const filters = [
+        { field: 'region', value: 'North', typeName: 'utf8' },
+        { field: 'quantity', value: 100, typeName: 'int32' },
+        { field: 'is_active', value: true, typeName: 'bool' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(region = 'North') AND (quantity = 100) AND (is_active = TRUE)");
+    });
+
+    it('should handle date filters using Databricks DATE syntax', () => {
+      const filters = [
+        { field: 'order_date', value: '2023-01-15', typeName: 'date32' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(order_date = DATE '2023-01-15')");
+    });
+
+    it('should handle timestamp filters using TIMESTAMP_MILLIS', () => {
+      const filters = [
+        { field: 'created_at', value: 1609459200000, typeName: 'timestamp' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(created_at = TIMESTAMP_MILLIS(1609459200000))");
+    });
+
+    it('should handle bigint values', () => {
+      const filters = [
+        { field: 'user_id', value: 9223372036854775807n, typeName: 'int64' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(user_id = 9223372036854775807)");
+    });
+
+    it('should handle double/float values', () => {
+      const filters = [
+        { field: 'price', value: 99.99, typeName: 'double' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(price = 99.99)");
+    });
+
+    it('should escape single quotes in string values', () => {
+      const filters = [
+        { field: 'name', value: "O'Reilly", typeName: 'utf8' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(name = 'O''Reilly')");
+    });
+
+    it('should handle SQL injection attempts in drilldown filters', () => {
+      const filters = [
+        { field: 'username', value: "'; DROP TABLE users--", typeName: 'utf8' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toContain("''"); // Quotes should be escaped
+      expect(whereClause).toBe("(username = '''; DROP TABLE users--')");
+    });
+
+    it('should handle empty filter array', () => {
+      const whereClause = dialect.buildWhereClause([]);
+      expect(whereClause).toBe('');
+    });
+
+    it('should handle filters with sqlExpr (custom expressions)', () => {
+      const filters = [
+        {
+          field: 'custom',
+          sqlExpr: 'UPPER(name)',
+          value: 'JOHN',
+          typeName: 'utf8'
+        }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(UPPER(name) = 'JOHN')");
+    });
+
+    it('should handle filters with sqlExpr and NULL value', () => {
+      const filters = [
+        {
+          field: 'custom',
+          sqlExpr: 'TRIM(name)',
+          value: null,
+          dtype: null
+        }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(TRIM(name)) IS NULL");
+    });
+
+    it('should handle filters with sqlExpr only (complete condition)', () => {
+      const filters = [
+        {
+          field: 'custom',
+          sqlExpr: 'price > 100 AND quantity < 50'
+        }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toBe("(price > 100 AND quantity < 50)");
+    });
+  });
+
+  describe('Drilldown Filters - Complex Scenarios', () => {
+    it('should handle mixed data types in drilldown', () => {
+      const filters = [
+        { field: 'status', value: 'active', typeName: 'utf8' },
+        { field: 'quantity', value: 100, typeName: 'int32' },
+        { field: 'price', value: 99.99, typeName: 'double' },
+        { field: 'is_premium', value: true, typeName: 'bool' },
+        { field: 'order_date', value: '2023-01-15', typeName: 'date32' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toContain("(status = 'active')");
+      expect(whereClause).toContain("(quantity = 100)");
+      expect(whereClause).toContain("(price = 99.99)");
+      expect(whereClause).toContain("(is_premium = TRUE)");
+      expect(whereClause).toContain("(order_date = DATE '2023-01-15')");
+      expect(whereClause).toMatch(/AND/g); // Should have AND between filters
+    });
+
+    it('should handle drilldown with special characters in field names', () => {
+      const filters = [
+        { field: 'Product-Category', value: 'Electronics', typeName: 'utf8' },
+        { field: 'Sales Amount', value: 1000, typeName: 'int32' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      expect(whereClause).toContain('`Product-Category`');
+      expect(whereClause).toContain('`Sales Amount`');
+    });
+
+    it('should handle drilldown with date conversion from unix timestamp', () => {
+      const filters = [
+        { field: 'event_date', value: 1609459200, typeName: 'date32' }
+      ];
+
+      const whereClause = dialect.buildWhereClause(filters);
+      // Databricks uses FROM_UNIXTIME for numeric dates
+      expect(whereClause).toContain('DATE(FROM_UNIXTIME(');
+    });
+  });
+});

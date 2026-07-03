@@ -1,0 +1,134 @@
+{
+  "description": "Mock CUBE results for testing charts",
+  "salesByCategoryAndRegion": {
+    "cubeResults": [
+      {
+        "category": "Furniture",
+        "region": "East",
+        "sum_sales": 1000,
+        "_grouping_category": 0,
+        "_grouping_region": 0
+      },
+      {
+        "category": "Furniture",
+        "region": "West",
+        "sum_sales": 1500,
+        "_grouping_category": 0,
+        "_grouping_region": 0
+      },
+      {
+        "category": "Technology",
+        "region": "East",
+        "sum_sales": 2000,
+        "_grouping_category": 0,
+        "_grouping_region": 0
+      },
+      {
+        "category": "Technology",
+        "region": "West",
+        "sum_sales": 2500,
+        "_grouping_category": 0,
+        "_grouping_region": 0
+      },
+      {
+        "category": "Furniture",
+        "region": null,
+        "sum_sales": 2500,
+        "_grouping_category": 0,
+        "_grouping_region": 1
+      },
+      {
+        "category": "Technology",
+        "region": null,
+        "sum_sales": 4500,
+        "_grouping_category": 0,
+        "_grouping_region": 1
+      },
+      {
+        "category": null,
+        "region": "East",
+        "sum_sales": 3000,
+        "_grouping_category": 1,
+        "_grouping_region": 0
+      },
+      {
+        "category": null,
+        "region": "West",
+        "sum_sales": 4000,
+        "_grouping_category": 1,
+        "_grouping_region": 0
+      },
+      {
+        "category": null,
+        "region": null,
+        "sum_sales": 7000,
+        "_grouping_category": 1,
+        "_grouping_region": 1
+      }
+    ],
+    "config": {
+      "filters": [],
+      "rows": ["category"],
+      "columns": ["region"],
+      "values": [
+        {
+          "field": "sales",
+          "aggregation": "sum",
+          "isCustom": false
+        }
+      ],
+      "customMetrics": [],
+      "derivedFields": []
+    },
+    "dtypes": {
+      "category": 4,
+      "region": 4,
+      "sum_sales": 3,
+      "_grouping_category": 7,
+      "_grouping_region": 7
+    }
+  },
+  "salesByDate": {
+    "cubeResults": [
+      {
+        "date": "2024-01-01",
+        "sum_sales": 1200,
+        "_grouping_date": 0
+      },
+      {
+        "date": "2024-01-02",
+        "sum_sales": 1800,
+        "_grouping_date": 0
+      },
+      {
+        "date": "2024-01-03",
+        "sum_sales": 1500,
+        "_grouping_date": 0
+      },
+      {
+        "date": null,
+        "sum_sales": 4500,
+        "_grouping_date": 1
+      }
+    ],
+    "config": {
+      "filters": [],
+      "rows": ["date"],
+      "columns": [],
+      "values": [
+        {
+          "field": "sales",
+          "aggregation": "sum",
+          "isCustom": false
+        }
+      ],
+      "customMetrics": [],
+      "derivedFields": []
+    },
+    "dtypes": {
+      "date": 1,
+      "sum_sales": 3,
+      "_grouping_date": 7
+    }
+  }
+}
