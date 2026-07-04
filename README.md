@@ -11,6 +11,10 @@
   <img src="https://img.shields.io/badge/data-Apache%20Arrow-e25a1c" alt="Apache Arrow" />
 </p>
 
+<p align="center">
+  <a href="https://pjoachims.github.io/pivot-parrot/"><b>🦜 Try the live demo</b></a> — pivot a sample dataset or upload your own CSV, right in the browser.
+</p>
+
 ---
 
 <p align="center">
@@ -104,6 +108,8 @@ import * as duckdb from '@duckdb/duckdb-wasm';
 
 <Pivot config={{ mode: 'local', duckdb, data: arrowBytes }} />
 ```
+
+The [live demo](https://pjoachims.github.io/pivot-parrot/) is this component wrapped in a small shell ([`demo-app/`](demo-app)), deployed to GitHub Pages on every push to `main`.
 
 ## Features
 

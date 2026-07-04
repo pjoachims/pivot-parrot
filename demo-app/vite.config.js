@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Set by the Pages deploy workflow (serves under /pivot-parrot/); '/' locally
+  base: process.env.BASE_PATH || '/',
   plugins: [react()],
   resolve: {
     // Remove alias - use package.json exports instead for proper module resolution
