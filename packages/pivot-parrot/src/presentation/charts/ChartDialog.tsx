@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import BaseDialog from '../shared/BaseDialog';
+import { Icon } from '../shared/Icon';
 import BarLineChartConfig from './BarLineChart';
 import ScatterChartConfig from './ScatterChart';
 import TreemapChartConfig from './TreemapChart';
@@ -46,32 +47,6 @@ interface TreemapConfig {
 type ChartConfigOutput = BarLineConfig | ScatterConfig | TreemapConfig;
 
 // Chart type icons as simple SVG components
-const BarChartIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <rect x="3" y="12" width="4" height="9" rx="1" />
-    <rect x="10" y="6" width="4" height="15" rx="1" />
-    <rect x="17" y="9" width="4" height="12" rx="1" />
-  </svg>
-);
-
-const ScatterIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="7" cy="15" r="2" />
-    <circle cx="12" cy="9" r="2" />
-    <circle cx="17" cy="13" r="2" />
-    <circle cx="9" cy="18" r="1.5" />
-    <circle cx="15" cy="7" r="1.5" />
-  </svg>
-);
-
-const TreemapIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <rect x="3" y="3" width="18" height="18" rx="1" />
-    <line x1="3" y1="12" x2="21" y2="12" />
-    <line x1="12" y1="3" x2="12" y2="12" />
-    <line x1="8" y1="12" x2="8" y2="21" />
-  </svg>
-);
 
 export default function ChartDialog({ config, fields, chartDisplayMode = 'full', initialChartConfig = null, onGenerate, onCancel }: ChartDialogProps) {
   const availableFields = usePivotStore((s) => s.availableFields);
@@ -214,10 +189,10 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
   };
 
   const chartTypes = [
-    { value: 'bar-line', label: 'Bar / Line', icon: BarChartIcon },
-    { value: 'scatter', label: 'Scatter', icon: ScatterIcon },
-    { value: 'treemap', label: 'Treemap', icon: TreemapIcon }
-  ];
+    { value: 'bar-line', label: 'Bar / Line', icon: 'chart-bar' },
+    { value: 'scatter', label: 'Scatter', icon: 'chart-scatter' },
+    { value: 'treemap', label: 'Treemap', icon: 'chart-treemap' }
+  ] as const;
 
   return (
     <BaseDialog
@@ -228,46 +203,25 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
       submitDisabled={dimensions.length === 0}
       maxWidth="480px"
     >
-      {/* No Dimensions Warning */}
       {dimensions.length === 0 && (
-        <div style={styles.warning}>
-          <div style={styles.warningText}>
-            No dimensions available. Add at least one dimension to rows or columns.
-          </div>
+        <div className="pp-alert" style={{ color: 'var(--color-warning)', background: 'var(--color-warning-bg)', borderColor: 'var(--color-warning-border)' }}>
+          No dimensions available. Add at least one dimension to rows or columns.
         </div>
       )}
 
-      {/* Chart Type Selector - Card Style */}
-      <div style={styles.chartTypeSelector}>
-        {chartTypes.map(type => {
-          const isSelected = chartType === type.value;
-          const Icon = type.icon;
-          return (
-            <button
-              key={type.value}
-              onClick={() => setChartType(type.value)}
-              style={{
-                ...styles.chartTypeCard,
-                borderColor: isSelected ? 'var(--color-accent)' : 'var(--border-color-light)',
-                backgroundColor: isSelected ? 'var(--color-accent-subtle)' : 'var(--surface-bg)'
-              }}
-            >
-              <div style={{ color: isSelected ? 'var(--color-accent)' : 'var(--text-muted)' }}>
-                <Icon />
-              </div>
-              <span style={{
-                fontSize: '10px',
-                fontWeight: isSelected ? 600 : 500,
-                color: isSelected ? 'var(--color-accent)' : 'var(--text-secondary)'
-              }}>
-                {type.label}
-              </span>
-            </button>
-          );
-        })}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-2)' }} role="group" aria-label="Chart type">
+        {chartTypes.map(type => (
+          <button
+            key={type.value}
+            onClick={() => setChartType(type.value)}
+            aria-pressed={chartType === type.value}
+            className="pp-btn"
+          >
+            <Icon name={type.icon} />
+            {type.label}
+          </button>
+        ))}
       </div>
-
-      <div style={styles.divider} />
 
       {/* Bar/Line Configuration */}
       {chartType === 'bar-line' && (
@@ -326,97 +280,28 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
         />
       )}
 
-      <div style={styles.divider} />
-
-      {/* Display Mode */}
-      <div style={styles.displaySection}>
-        <label style={styles.displayLabel}>Display</label>
-        <div style={styles.displayModeSelector}>
-          {[
-            { value: 'hidden', label: 'Hide' },
-            { value: 'full', label: 'Full' },
-            { value: 'split-right', label: 'Right' },
-            { value: 'split-below', label: 'Below' }
-          ].map(mode => (
-            <button
-              key={mode.value}
-              onClick={() => setDisplayMode(mode.value)}
-              style={{
-                ...styles.displayModeButton,
-                backgroundColor: displayMode === mode.value ? 'var(--text-secondary)' : 'var(--surface-bg)',
-                color: displayMode === mode.value ? 'var(--text-inverse)' : 'var(--text-muted)',
-                borderColor: displayMode === mode.value ? 'var(--text-secondary)' : 'var(--border-color-medium)'
-              }}
-            >
-              {mode.label}
-            </button>
-          ))}
+      <div className="pp-section">
+        <div className="pp-label-row">
+          <span className="pp-label">Display</span>
+          <div className="pp-seg" role="group" aria-label="Display">
+            {[
+              { value: 'hidden', label: 'Hide' },
+              { value: 'full', label: 'Full' },
+              { value: 'split-right', label: 'Right' },
+              { value: 'split-below', label: 'Below' }
+            ].map(mode => (
+              <button
+                key={mode.value}
+                onClick={() => setDisplayMode(mode.value)}
+                aria-pressed={displayMode === mode.value}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </BaseDialog>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  divider: {
-    height: '1px',
-    backgroundColor: 'var(--border-color-light)',
-    margin: '12px 0'
-  },
-  chartTypeSelector: {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '4px'
-  },
-  chartTypeCard: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: '4px',
-    padding: '10px 8px',
-    border: '1.5px solid var(--border-color-light)',
-    borderRadius: '6px',
-    backgroundColor: 'var(--surface-bg)',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease'
-  },
-  displaySection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px'
-  },
-  displayLabel: {
-    fontSize: '11px',
-    fontWeight: 500,
-    color: 'var(--text-secondary)',
-    minWidth: '48px'
-  },
-  displayModeSelector: {
-    display: 'flex',
-    gap: '4px',
-    flex: 1
-  },
-  displayModeButton: {
-    flex: 1,
-    padding: '5px 8px',
-    fontSize: '10px',
-    fontWeight: 500,
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease'
-  },
-  warning: {
-    padding: '8px 10px',
-    marginBottom: '12px',
-    backgroundColor: 'var(--color-warning-bg)',
-    border: '1px solid var(--color-warning-border)',
-    borderRadius: '4px'
-  },
-  warningText: {
-    fontSize: '10px',
-    lineHeight: 1.4,
-    color: 'var(--color-warning)'
-  }
-};

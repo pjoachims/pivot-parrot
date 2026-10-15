@@ -191,14 +191,16 @@ export function DialogsManager({
           onClose={() => setShowSqlDialog(false)}
           width={700}
         >
-          <div style={{ padding: '12px' }}>
-            <div style={{
+          <div className="pp-dialog-body">
+            <pre style={{
+              margin: 0,
+              padding: 'var(--space-3)',
               background: 'var(--surface-subtle)',
               border: '1px solid var(--border-color-light)',
               borderRadius: 'var(--radius-sm)',
-              padding: '12px',
-              fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+              fontFamily: 'inherit',
               fontSize: 'var(--text-sm)',
+              lineHeight: 1.5,
               maxHeight: '500px',
               overflowY: 'auto',
               whiteSpace: 'pre-wrap',
@@ -214,27 +216,13 @@ export function DialogsManager({
                 const cleanSQL = previewSQL.replace(/,\s*CAST\(GROUPING\([^)]+\)\s+AS\s+INTEGER\)\s+AS\s+_grouping_\w+/gi, '');
                 return cleanSQL;
               })()}
-            </div>
-            <div style={{ marginTop: '12px', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+            </pre>
+            <div className="pp-hint">
               Note: This is the exact SQL that will be executed. Internal grouping columns have been hidden for clarity.
             </div>
-            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowSqlDialog(false)}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 'var(--text-base)',
-                  fontWeight: 500,
-                  color: 'var(--text-inverse)',
-                  background: 'var(--color-accent)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer'
-                }}
-              >
-                Close
-              </button>
-            </div>
+          </div>
+          <div className="pp-dialog-footer">
+            <button onClick={() => setShowSqlDialog(false)} className="pp-btn">Close</button>
           </div>
         </Popover>
       )}

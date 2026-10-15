@@ -1,5 +1,4 @@
 import React from 'react';
-import { styles } from './styles';
 import { formatExample } from './validation';
 import { usePivotLocale } from '../../../../application/state/store';
 
@@ -9,18 +8,19 @@ import { usePivotLocale } from '../../../../application/state/store';
  */
 export function FormatSection({ formatType, setFormatType, decimals, setDecimals, currency, setCurrency, useThousandSeparator, setUseThousandSeparator }) {
   const locale = usePivotLocale();
+  const id = React.useId();
   return (
-    <div style={styles.formatSection}>
-      <div style={styles.formatLabel}>Display Format</div>
+    <section className="pp-section" aria-label="Display format">
+      <div className="pp-section-title">Display Format</div>
 
-      <div style={styles.formatRow}>
-        {/* Format Type */}
-        <div style={{...styles.field, flex: 1, marginBottom: 0}}>
-          <label style={styles.label}>Type</label>
+      <div className="pp-row">
+        <div className="pp-field" style={{ flex: '2 1 0' }}>
+          <label className="pp-label" htmlFor={`${id}-type`}>Type</label>
           <select
+            id={`${id}-type`}
             value={formatType}
             onChange={(e) => setFormatType(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="auto">Auto (Engine Default)</option>
             <option value="number">Number</option>
@@ -29,29 +29,29 @@ export function FormatSection({ formatType, setFormatType, decimals, setDecimals
           </select>
         </div>
 
-        {/* Decimal Places (hide when auto) */}
         {formatType !== 'auto' && (
-          <div style={{...styles.field, width: '80px', marginBottom: 0}}>
-            <label style={styles.label}>Decimals</label>
+          <div className="pp-field">
+            <label className="pp-label" htmlFor={`${id}-decimals`}>Decimals</label>
             <input
+              id={`${id}-decimals`}
               type="number"
               min="0"
               max="10"
               value={decimals}
               onChange={(e) => setDecimals(e.target.value)}
-              style={styles.input}
+              className="pp-input"
             />
           </div>
         )}
 
-        {/* Currency (only show if formatType is currency) */}
         {formatType === 'currency' && (
-          <div style={{...styles.field, width: '90px', marginBottom: 0}}>
-            <label style={styles.label}>Currency</label>
+          <div className="pp-field">
+            <label className="pp-label" htmlFor={`${id}-currency`}>Currency</label>
             <select
+              id={`${id}-currency`}
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              style={styles.select}
+              className="pp-select"
             >
               <option value="USD">$ USD</option>
               <option value="EUR">€ EUR</option>
@@ -62,25 +62,21 @@ export function FormatSection({ formatType, setFormatType, decimals, setDecimals
         )}
       </div>
 
-      {/* Thousand Separator (show when not auto) */}
       {formatType !== 'auto' && (
-        <div style={{...styles.field, marginTop: '8px', marginBottom: 0}}>
-          <label style={{...styles.label, display: 'flex', alignItems: 'center', cursor: 'pointer'}}>
-            <input
-              type="checkbox"
-              checked={useThousandSeparator}
-              onChange={(e) => setUseThousandSeparator(e.target.checked)}
-              style={{marginRight: '6px', cursor: 'pointer'}}
-            />
-            Use thousand separator (e.g., {formatExample(1234.56, 'number', 2, currency, true, locale)})
-          </label>
-        </div>
+        <label className="pp-check">
+          <input
+            type="checkbox"
+            checked={useThousandSeparator}
+            onChange={(e) => setUseThousandSeparator(e.target.checked)}
+          />
+          Thousand separator ({formatExample(1234.56, 'number', 2, currency, true, locale)})
+        </label>
       )}
 
-      {/* Format Preview */}
-      <div style={styles.formatPreview}>
-        Preview: {formatExample(1234.5678, formatType, decimals, currency, useThousandSeparator, locale)}
+      <div className="pp-readout">
+        <span>Preview</span>
+        <span>{formatExample(1234.5678, formatType, decimals, currency, useThousandSeparator, locale)}</span>
       </div>
-    </div>
+    </section>
   );
 }

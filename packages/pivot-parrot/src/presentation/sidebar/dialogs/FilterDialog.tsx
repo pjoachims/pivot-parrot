@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Popover from '../shared/Popover';
 import { getAvailableFilters, getDefaultFilterType, getFilterCategory } from '../../../application/utils/filterConfig';
-import { styles } from './filter-styles';
+import { Icon } from '../../shared/Icon';
 import { usePivotStore } from '../../../application/state/store';
 import { RELATIVE_DATE_UNITS, type RelativeDate } from '../../../domain/models/types';
 import { relativeDateLabel } from '../../../domain/query/sql/filters';
@@ -20,25 +20,9 @@ const RELATIVE_PRESETS: RelativeDate[] = [
 
 function IsNotToggle({ isNot, setIsNot }) {
   return (
-    <div style={styles.toggleContainer}>
-      <button
-        onClick={() => setIsNot(false)}
-        style={{
-          ...styles.toggleButton,
-          ...(!isNot ? styles.toggleButtonActive : {})
-        }}
-      >
-        IS
-      </button>
-      <button
-        onClick={() => setIsNot(true)}
-        style={{
-          ...styles.toggleButton,
-          ...(isNot ? styles.toggleButtonActive : {})
-        }}
-      >
-        NOT
-      </button>
+    <div className="pp-seg" role="group" aria-label="Match">
+      <button onClick={() => setIsNot(false)} aria-pressed={!isNot}>IS</button>
+      <button onClick={() => setIsNot(true)} aria-pressed={isNot}>NOT</button>
     </div>
   );
 }
@@ -259,14 +243,13 @@ export function FilterDialog({
       case 'basic':
         return (
           <>
-            {/* Filter Type Dropdown with IS/IS NOT toggle */}
-            <div style={styles.field}>
-              <label style={styles.label}>Filter Type</label>
-              <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
+            <div className="pp-field">
+              <label className="pp-label">Filter Type</label>
+              <div className="pp-row">
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  style={{...styles.select, flex: 1}}
+                  className="pp-select"
                 >
                   {basicFilters.map(ft => (
                     <option key={ft.value} value={ft.value}>
@@ -278,23 +261,22 @@ export function FilterDialog({
               </div>
             </div>
 
-            {/* Value Input (not for null) */}
             {filterType !== 'null' && (
-              <div style={styles.field}>
-                <label style={styles.label}>Value</label>
+              <div className="pp-field">
+                <label className="pp-label">Value</label>
                 <input
                   type={dtypeCategory === 'numeric' ? 'number' : dtypeCategory === 'date' ? 'date' : 'text'}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   placeholder="Enter value"
-                  style={styles.input}
+                  className="pp-input"
                   autoFocus
                 />
               </div>
             )}
 
             {filterType === 'null' && (
-              <div style={{fontSize: 'var(--text-xs)', color: 'var(--text-muted)', padding: '8px 0'}}>
+              <div className="pp-hint">
                 This filter checks for NULL values. No additional input required.
               </div>
             )}
@@ -304,7 +286,7 @@ export function FilterDialog({
       case 'relative':
         return (
           <>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '12px'}}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-1)' }}>
               {RELATIVE_PRESETS.map(preset => {
                 const label = relativeDateLabel(preset);
                 const active = label === relativeDateLabel(relative);
@@ -313,19 +295,20 @@ export function FilterDialog({
                     key={label}
                     onClick={() => setRelative(preset)}
                     aria-pressed={active}
-                    style={{...styles.quickFilterButton, ...(active ? {borderColor: 'var(--color-accent)', color: 'var(--color-accent)'} : {})}}
+                    className="pp-btn pp-btn--sm"
                   >
                     {label}
                   </button>
                 );
               })}
             </div>
-            <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
+            <div className="pp-row">
               <select
                 aria-label="Mode"
                 value={relative.mode}
                 onChange={(e) => setRelative({...relative, mode: e.target.value as RelativeDate['mode']})}
-                style={styles.select}
+                className="pp-select"
+                style={{ flex: '1 1 0' }}
               >
                 <option value="last">Last</option>
                 <option value="previous">Previous</option>
@@ -337,19 +320,21 @@ export function FilterDialog({
                 step={1}
                 value={relative.n || ''}
                 onChange={(e) => setRelative({...relative, n: Math.floor(Number(e.target.value)) || 0})}
-                style={{...styles.input, width: '64px'}}
+                className="pp-input"
+                style={{ width: '56px', flex: '0 0 auto', textAlign: 'right' }}
               />
               <select
                 aria-label="Unit"
                 value={relative.unit}
                 onChange={(e) => setRelative({...relative, unit: e.target.value as RelativeDate['unit']})}
-                style={{...styles.select, flex: 1}}
+                className="pp-select"
+                style={{ flex: '1 1 0' }}
               >
                 {RELATIVE_DATE_UNITS.map(unit => <option key={unit} value={unit}>{unit}s</option>)}
               </select>
               <IsNotToggle isNot={isNot} setIsNot={setIsNot} />
             </div>
-            <div style={{fontSize: 'var(--text-xs)', color: 'var(--text-muted)', padding: '8px 0 0'}}>
+            <div className="pp-hint">
               {relativeDateLabel(relativeToApply, isNot)}, counted from the day the query runs. A saved view stays relative.
             </div>
           </>
@@ -357,26 +342,25 @@ export function FilterDialog({
 
       case 'between':
         return (
-          <div style={styles.betweenContainer}>
-            <div style={{flex: 1}}>
-              <label style={styles.label}>From</label>
+          <div className="pp-row">
+            <div className="pp-field">
+              <label className="pp-label">From</label>
               <input
                 type={dtypeCategory === 'numeric' ? 'number' : dtypeCategory === 'date' ? 'date' : 'text'}
                 value={betweenStart}
                 onChange={(e) => setBetweenStart(e.target.value)}
-                style={styles.input}
+                className="pp-input"
                 placeholder="Start"
                 autoFocus
               />
             </div>
-            <div style={styles.betweenSeparator}>to</div>
-            <div style={{flex: 1}}>
-              <label style={styles.label}>To</label>
+            <div className="pp-field">
+              <label className="pp-label">To</label>
               <input
                 type={dtypeCategory === 'numeric' ? 'number' : dtypeCategory === 'date' ? 'date' : 'text'}
                 value={betweenEnd}
                 onChange={(e) => setBetweenEnd(e.target.value)}
-                style={styles.input}
+                className="pp-input"
                 placeholder="End"
               />
             </div>
@@ -385,14 +369,14 @@ export function FilterDialog({
 
       case 'regex':
         return (
-          <div style={styles.field}>
-            <label style={styles.label}>Regex Pattern</label>
+          <div className="pp-field">
+            <label className="pp-label">Regex Pattern</label>
             <input
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="Enter regex pattern"
-              style={styles.input}
+              className="pp-input"
               autoFocus
             />
           </div>
@@ -400,30 +384,23 @@ export function FilterDialog({
 
       case 'custom_expr':
         return (
-          <div style={styles.field}>
-            <label style={styles.label}>SQL Expression</label>
+          <div className="pp-field">
+            <label className="pp-label">SQL Expression</label>
             <input
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="{{field}} = 'High' OR {{field}} IS NULL"
-              style={styles.input}
+              className="pp-input"
               autoFocus
             />
-            <div style={{fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px'}}>
+            <div className="pp-hint" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
               <span>Use</span>
               <button
                 type="button"
                 onClick={() => setValue(value + '{{field}}')}
-                style={{
-                  background: 'var(--surface-hover)',
-                  border: '1px solid var(--border-color-light)',
-                  borderRadius: '2px',
-                  padding: '1px 4px',
-                  fontSize: '9px',
-                  cursor: 'pointer',
-                  fontFamily: 'monospace'
-                }}
+                className="pp-btn pp-btn--sm"
+                style={{ height: '20px', padding: '0 6px', fontSize: 'var(--text-xs)' }}
               >
                 {'{{field}}'}
               </button>
@@ -436,40 +413,31 @@ export function FilterDialog({
         return (
           <>
             {fetchError && (
-              <div style={{
-                background: 'var(--color-error-bg)',
-                border: '1px solid var(--color-error-border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '5px 8px',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-error)',
-                marginBottom: '8px'
-              }}>
-                {fetchError}
-              </div>
+              <div className="pp-alert">{fetchError}</div>
             )}
 
-            {/* Filter Selection Panel */}
             {showFilterSelection && applicableFilters.length > 0 && (
-              <div style={styles.filterSelectionPanel}>
-                <div style={styles.filterSelectionTitle}>Apply filters when fetching:</div>
-                <div style={styles.filterSelectionButtons}>
-                  <button
-                    onClick={() => setSelectedFiltersForFetch(applicableFilters.map(f => f.field))}
-                    style={styles.filterSelectionSmallButton}
-                  >
-                    Select All
-                  </button>
-                  <button
-                    onClick={() => setSelectedFiltersForFetch([])}
-                    style={styles.filterSelectionSmallButton}
-                  >
-                    None
-                  </button>
+              <div className="pp-stack" style={{ gap: 'var(--space-2)', padding: 'var(--space-3)', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-sm)' }}>
+                <div className="pp-label-row">
+                  <span className="pp-label">Apply filters when fetching</span>
+                  <span style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                    <button
+                      onClick={() => setSelectedFiltersForFetch(applicableFilters.map(f => f.field))}
+                      className="pp-btn pp-btn--quiet pp-btn--sm"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setSelectedFiltersForFetch([])}
+                      className="pp-btn pp-btn--quiet pp-btn--sm"
+                    >
+                      None
+                    </button>
+                  </span>
                 </div>
-                <div style={styles.filterList}>
+                <div style={{ maxHeight: '100px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                   {applicableFilters.map((filter, idx) => (
-                    <label key={idx} style={styles.filterItem}>
+                    <label key={idx} className="pp-check">
                       <input
                         type="checkbox"
                         checked={selectedFiltersForFetch.includes(filter.field)}
@@ -480,205 +448,156 @@ export function FilterDialog({
                             setSelectedFiltersForFetch(selectedFiltersForFetch.filter(f => f !== filter.field));
                           }
                         }}
-                        style={styles.filterItemCheckbox}
                       />
                       <span>{filter.field} {filter.type && `(${filter.type})`}</span>
                     </label>
                   ))}
                 </div>
-                <div style={styles.filterSelectionFooter}>
-                  <button
-                    onClick={executeFetch}
-                    disabled={loadingValues}
-                    style={{
-                      ...styles.customValueButton,
-                      ...(loadingValues ? styles.customValueButtonDisabled : {}),
-                      flex: 1
-                    }}
-                  >
-                    {loadingValues ? 'Fetching...' : 'Fetch'}
-                  </button>
-                  <button
-                    onClick={() => setShowFilterSelection(false)}
-                    style={{...styles.cancelButton, flex: 0}}
-                  >
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+                  <button onClick={() => setShowFilterSelection(false)} className="pp-btn pp-btn--sm">
                     Cancel
+                  </button>
+                  <button onClick={executeFetch} disabled={loadingValues} className="pp-btn pp-btn--sm">
+                    {loadingValues ? 'Fetching...' : 'Fetch'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Custom Value Input */}
-            <div style={styles.field}>
-              <label style={styles.label}>Add Custom Value</label>
-              <div style={styles.customValueContainer}>
+            <div className="pp-field">
+              <label className="pp-label">Add Custom Value</label>
+              <div className="pp-row">
                 <input
                   type="text"
                   value={customValue}
                   onChange={(e) => setCustomValue(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAddCustomValue()}
                   placeholder="Type value..."
-                  style={styles.customValueInput}
+                  className="pp-input"
                 />
                 <button
                   onClick={handleAddCustomValue}
                   disabled={!customValue.trim()}
-                  style={{
-                    ...styles.customValueButton,
-                    ...(!customValue.trim() ? styles.customValueButtonDisabled : {})
-                  }}
+                  className="pp-btn"
                 >
                   Add
                 </button>
               </div>
             </div>
 
-            {/* List Actions */}
-            <div style={styles.listActions}>
-              <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                <label style={styles.listActionsLabel}>
+            <div className="pp-field">
+              <div className="pp-label-row">
+                <span className="pp-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}>
                   Available Values
                   {selectedValues.length > 0 && (
-                    <span style={{color: 'var(--color-accent)', fontSize: '9px', marginLeft: '4px', fontWeight: 600}}>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
                       ({selectedValues.length} selected)
                     </span>
                   )}
                   {allAvailableValues.length > 0 && selectedValues.length === 0 && (
-                    <span style={{color: 'var(--text-muted)', fontSize: '9px', marginLeft: '4px'}}>
+                    <span style={{ color: 'var(--text-muted)' }}>
                       ({allAvailableValues.length})
                     </span>
                   )}
-                </label>
-                {hasCache && (
-                  <button
-                    onClick={handleFetchUniqueValues}
-                    disabled={loadingValues}
-                    aria-label="Refetch values"
-                    style={{
-                      padding: '2px 6px',
-                      fontSize: '8px',
-                      color: 'var(--text-muted)',
-                      background: 'var(--surface-bg)',
-                      border: '1px solid var(--border-color-light)',
-                      borderRadius: '2px',
-                      cursor: loadingValues ? 'not-allowed' : 'pointer'
-                    }}
-                    title="Refetch values"
-                  >
-                    ↻
-                  </button>
-                )}
-              </div>
-              <div style={styles.listActionsButtons}>
-                <button
-                  onClick={handleSelectAll}
-                  disabled={allAvailableValues.length === 0}
-                  style={{
-                    ...styles.listActionButton,
-                    ...(allAvailableValues.length === 0 ? styles.listActionButtonDisabled : {})
-                  }}
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={handleClearAll}
-                  style={styles.listActionButton}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            {/* Search */}
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search..."
-              style={styles.searchInput}
-            />
-            {shown?.truncated && (
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '4px 0' }}>
-                Only the first {uniqueValues.length} values were fetched, and search looks only at these.
-                Add a missing value above, or narrow the fetch with other filters.
-              </div>
-            )}
-
-            {/* Value List - with selected items at top */}
-            <div style={styles.valueListContainer}>
-              {filteredValues.length === 0 ? (
-                <div style={styles.valueListEmpty}>
-                  {hasCache ? (
-                    'No values found'
-                  ) : (
+                  {hasCache && (
                     <button
                       onClick={handleFetchUniqueValues}
                       disabled={loadingValues}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: 'var(--text-xs)',
-                        fontWeight: 500,
-                        color: 'var(--color-accent)',
-                        background: 'var(--surface-bg)',
-                        border: '1px solid var(--border-color-medium)',
-                        borderRadius: '2px',
-                        cursor: loadingValues ? 'not-allowed' : 'pointer'
-                      }}
+                      aria-label="Refetch values"
+                      title="Refetch values"
+                      className="pp-icon-btn pp-icon-btn--sm"
                     >
-                      {loadingValues ? 'Fetching...' : 'Fetch Unique Values'}
+                      <Icon name="refresh" />
                     </button>
                   )}
+                </span>
+                <span style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                  <button
+                    onClick={handleSelectAll}
+                    disabled={allAvailableValues.length === 0}
+                    className="pp-btn pp-btn--quiet pp-btn--sm"
+                  >
+                    Select All
+                  </button>
+                  <button onClick={handleClearAll} className="pp-btn pp-btn--quiet pp-btn--sm">
+                    Clear
+                  </button>
+                </span>
+              </div>
+
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search..."
+                className="pp-input"
+              />
+              {shown?.truncated && (
+                <div className="pp-hint">
+                  Only the first {uniqueValues.length} values were fetched, and search looks only at these.
+                  Add a missing value above, or narrow the fetch with other filters.
                 </div>
-              ) : (
-                <>
-                  {/* Reorder: selected first, then unselected */}
-                  {[
-                    ...displayedValues.filter(val => selectedValues.includes(val)),
-                    ...displayedValues.filter(val => !selectedValues.includes(val))
-                  ].map((val, idx) => {
-                    const isSelected = selectedValues.includes(val);
-                    return (
-                      <label
-                        key={idx}
-                        className={!isSelected ? 'pp-row-hover' : undefined}
-                        style={{
-                          ...styles.valueListItem,
-                          ...(isSelected ? {background: 'var(--color-accent-subtle)', borderBottom: '1px solid var(--border-color-light)'} : {})
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleValue(val)}
-                          style={styles.valueListItemCheckbox}
-                        />
-                        <span style={{...(isSelected ? {fontWeight: 500, color: 'var(--color-accent-chip-text)'} : {})}}>{String(val)}</span>
-                      </label>
-                    );
-                  })}
-                  {hasMoreValues && (
-                    <div style={styles.moreValuesFooter}>
-                      <div>
-                        Showing {displayedValues.length} of {filteredValues.length}
-                        {searchTerm && ' (filtered)'}
-                      </div>
-                      {!showAllValues && (
-                        <button
-                          onClick={() => setShowAllValues(true)}
-                          style={styles.showAllButton}
-                        >
-                          Show All ({Math.min(filteredValues.length, MAX_DISPLAY_LIMIT)})
-                        </button>
-                      )}
-                      {showAllValues && filteredValues.length > MAX_DISPLAY_LIMIT && (
-                        <div style={{fontSize: '8px', color: 'var(--text-muted)', marginTop: '2px'}}>
-                          Max {MAX_DISPLAY_LIMIT} displayed. Use search.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
               )}
+
+              <div style={valueListStyle}>
+                {filteredValues.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '96px', padding: 'var(--space-2)' }} className="pp-hint">
+                    {hasCache ? (
+                      'No values found'
+                    ) : (
+                      <button onClick={handleFetchUniqueValues} disabled={loadingValues} className="pp-btn">
+                        {loadingValues ? 'Fetching...' : 'Fetch Unique Values'}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {[
+                      ...displayedValues.filter(val => selectedValues.includes(val)),
+                      ...displayedValues.filter(val => !selectedValues.includes(val))
+                    ].map((val, idx) => {
+                      const isSelected = selectedValues.includes(val);
+                      return (
+                        <label
+                          key={idx}
+                          className={`pp-check${isSelected ? '' : ' pp-row-hover'}`}
+                          style={{
+                            display: 'flex',
+                            minHeight: 'var(--control-h-sm)',
+                            padding: '0 var(--space-2)',
+                            borderBottom: '1px solid var(--border-color-light)',
+                            color: 'var(--text-primary)',
+                            ...(isSelected ? { background: 'var(--color-accent-subtle)' } : {})
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleValue(val)}
+                          />
+                          <span className="pp-truncate" style={isSelected ? { fontWeight: 600 } : undefined}>{String(val)}</span>
+                        </label>
+                      );
+                    })}
+                    {hasMoreValues && (
+                      <div className="pp-hint" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)', padding: 'var(--space-1) var(--space-2)', background: 'var(--surface-subtle)' }}>
+                        <span>
+                          Showing {displayedValues.length} of {filteredValues.length}
+                          {searchTerm && ' (filtered)'}
+                        </span>
+                        {!showAllValues && (
+                          <button onClick={() => setShowAllValues(true)} className="pp-btn pp-btn--quiet pp-btn--sm">
+                            Show All ({Math.min(filteredValues.length, MAX_DISPLAY_LIMIT)})
+                          </button>
+                        )}
+                        {showAllValues && filteredValues.length > MAX_DISPLAY_LIMIT && (
+                          <span>Max {MAX_DISPLAY_LIMIT} displayed. Use search.</span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </>
         );
@@ -688,6 +607,8 @@ export function FilterDialog({
     }
   };
 
+  const advancedActive = ['between', 'regex'].includes(activeTab);
+
   return (
     <Popover
       title={`Filter: ${displayName}`}
@@ -695,89 +616,76 @@ export function FilterDialog({
       position={position}
       width={400}
     >
-      <div style={styles.container}>
-        {/* Tabs */}
-        <div style={styles.tabs}>
-          <button
-            onClick={() => handleTabChange('basic')}
-            style={{
-              ...styles.tab,
-              ...(activeTab === 'basic' ? styles.tabActive : {})
-            }}
-          >
-            Basic
+      <div className="pp-tabs" role="tablist">
+        <button role="tab" aria-selected={activeTab === 'basic'} onClick={() => handleTabChange('basic')} className="pp-tab">
+          Basic
+        </button>
+        {offersRelative && (
+          <button role="tab" aria-selected={activeTab === 'relative'} onClick={() => handleTabChange('relative')} className="pp-tab">
+            Relative
           </button>
-          {offersRelative && (
+        )}
+        {hasOneOf && (
+          <button role="tab" aria-selected={activeTab === 'one_of'} onClick={() => handleTabChange('one_of')} className="pp-tab">
+            One Of
+          </button>
+        )}
+        {advancedFilters.length > 0 && (
+          <div style={{ position: 'relative', display: 'flex' }}>
             <button
-              onClick={() => handleTabChange('relative')}
-              style={{
-                ...styles.tab,
-                ...(activeTab === 'relative' ? styles.tabActive : {})
-              }}
+              role="tab"
+              aria-selected={advancedActive}
+              aria-haspopup="menu"
+              aria-expanded={showAdvancedDropdown}
+              onClick={() => setShowAdvancedDropdown(!showAdvancedDropdown)}
+              onBlur={() => setTimeout(() => setShowAdvancedDropdown(false), 150)}
+              className="pp-tab"
             >
-              Relative
+              Advanced
+              <Icon name="chevron-down" />
             </button>
-          )}
-          {hasOneOf && (
-            <button
-              onClick={() => handleTabChange('one_of')}
-              style={{
-                ...styles.tab,
-                ...(activeTab === 'one_of' ? styles.tabActive : {})
-              }}
-            >
-              One Of
-            </button>
-          )}
-          {advancedFilters.length > 0 && (
-            <div style={styles.advancedDropdownContainer}>
-              <button
-                onClick={() => setShowAdvancedDropdown(!showAdvancedDropdown)}
-                onBlur={() => setTimeout(() => setShowAdvancedDropdown(false), 150)}
-                style={{
-                  ...styles.tab,
-                  ...(['between', 'regex'].includes(activeTab) ? styles.tabActive : {})
-                }}
-              >
-                Advanced ▾
-              </button>
-              {showAdvancedDropdown && (
-                <div style={styles.advancedDropdown}>
-                  {advancedFilters.map(ft => (
-                    <button
-                      key={ft.value}
-                      onClick={() => {
-                        setActiveTab(ft.value);
-                        setFilterType(ft.value);
-                        setShowAdvancedDropdown(false);
-                      }}
-                      className="pp-menu-item-hover"
-                      style={styles.advancedDropdownItem}
-                    >
-                      {ft.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+            {showAdvancedDropdown && (
+              <div className="pp-menu" role="menu" style={{ position: 'absolute', top: '100%', left: 0, marginTop: '2px', zIndex: 'var(--z-dropdown)' as any }}>
+                {advancedFilters.map(ft => (
+                  <button
+                    key={ft.value}
+                    role="menuitemradio"
+                    aria-checked={activeTab === ft.value}
+                    onClick={() => {
+                      setActiveTab(ft.value);
+                      setFilterType(ft.value);
+                      setShowAdvancedDropdown(false);
+                    }}
+                    className="pp-menu-item"
+                  >
+                    {ft.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-        {/* Content */}
-        <div style={styles.body}>
-          {renderFilterContent()}
-        </div>
+      <div className="pp-dialog-body">
+        {renderFilterContent()}
+      </div>
 
-        {/* Footer */}
-        <div style={styles.footer}>
-          <button onClick={onClose} style={styles.cancelButton}>
-            Cancel
-          </button>
-          <button onClick={handleApply} style={styles.applyButton}>
-            Apply
-          </button>
-        </div>
+      <div className="pp-dialog-footer">
+        <button onClick={onClose} className="pp-btn">
+          Cancel
+        </button>
+        <button onClick={handleApply} className="pp-btn pp-btn--primary">
+          Apply
+        </button>
       </div>
     </Popover>
   );
 }
+
+const valueListStyle: React.CSSProperties = {
+  border: '1px solid var(--border-color-medium)',
+  borderRadius: 'var(--radius-sm)',
+  maxHeight: '200px',
+  overflowY: 'auto'
+};

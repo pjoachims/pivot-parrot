@@ -305,7 +305,7 @@ describe('FilterDialog', () => {
       render(<FilterDialog {...defaultProps} />);
 
       // Click Advanced dropdown
-      const advancedTab = screen.getByText(/Advanced ▾/i);
+      const advancedTab = screen.getByRole('tab', { name: /Advanced/i });
       fireEvent.click(advancedTab);
 
       // Should show advanced filter options dropdown
@@ -343,7 +343,7 @@ describe('FilterDialog', () => {
 
     it('stores "Last 7 days" as a relative filter, not as dates', () => {
       render(<FilterDialog {...dateProps()} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Relative' }));
       fireEvent.click(screen.getByRole('button', { name: 'Last 7 days' }));
       fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
@@ -357,7 +357,7 @@ describe('FilterDialog', () => {
 
     it('replaces an absolute range with a relative one without keeping its dates', () => {
       render(<FilterDialog {...dateProps()} existingFilter={{ field: 'order_date', type: 'between', betweenStart: '2026-01-01', betweenEnd: '2026-01-31' }} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Relative' }));
       fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
       fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
@@ -371,7 +371,7 @@ describe('FilterDialog', () => {
 
     it('stores a custom "Previous 3 weeks"', () => {
       render(<FilterDialog {...dateProps()} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Relative' }));
       fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'previous' } });
       fireEvent.change(screen.getByLabelText('Count'), { target: { value: '' } });
       expect(screen.getByLabelText('Count'), 'cleared while retyping').toHaveValue(null);
@@ -395,12 +395,12 @@ describe('FilterDialog', () => {
 
     it('is not offered for a string field', () => {
       render(<FilterDialog {...defaultProps} />);
-      expect(screen.queryByRole('button', { name: 'Relative' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: 'Relative' })).not.toBeInTheDocument();
     });
 
     it('is not offered for a time-of-day field', () => {
       render(<FilterDialog {...defaultProps} field={{ name: 'start_time' }} fieldType={{ name: 'time64', category: 'temporal' }} />);
-      expect(screen.queryByRole('button', { name: 'Relative' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: 'Relative' })).not.toBeInTheDocument();
     });
   });
 });

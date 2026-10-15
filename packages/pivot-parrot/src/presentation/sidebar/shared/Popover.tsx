@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from 'react';
 import { useDialogA11y } from '../../shared/useDialogA11y';
 import { useClickOutside } from '../../shared/useClickOutside';
 import { useFixedPosition } from '../../shared/useFixedPosition';
+import { Icon } from '../../shared/Icon';
 
 interface PopoverProps {
   children: React.ReactNode;
@@ -14,7 +15,7 @@ interface PopoverProps {
 /**
  * Shared minimal popover component
  */
-export default function Popover({ children, onClose, title, position, width = 280 }: PopoverProps) {
+export default function Popover({ children, onClose, title, position, width = 320 }: PopoverProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -47,10 +48,8 @@ export default function Popover({ children, onClose, title, position, width = 28
   // Calculate position
   const getDialogStyle = () => {
     const baseStyle = {
-      ...styles.dialog,
       width: `${width}px`,
-      maxHeight: `${window.innerHeight - 40}px`,
-      overflowY: 'auto' as const
+      maxHeight: `${window.innerHeight - 40}px`
     };
 
     if (!position) return baseStyle;
@@ -65,20 +64,22 @@ export default function Popover({ children, onClose, title, position, width = 28
   };
 
   return (
-    <div style={styles.overlay} className="pp-dialog-overlay">
+    <div style={overlayStyle} className="pp-dialog-overlay">
       <div
         ref={dialogRef}
         style={getDialogStyle()}
-        className="pp-dialog-panel"
+        className="pp-dialog pp-dialog-panel"
         role="dialog"
         aria-modal="true"
         aria-label={title ? undefined : 'Dialog'}
         aria-labelledby={title ? titleId : undefined}
       >
         {title && (
-          <div style={styles.header}>
-            <h3 id={titleId} style={styles.title}>{title}</h3>
-            <button onClick={onClose} style={styles.closeButton} aria-label="Close dialog" title="Close">×</button>
+          <div className="pp-dialog-header">
+            <h3 id={titleId} className="pp-dialog-title">{title}</h3>
+            <button onClick={onClose} className="pp-icon-btn" aria-label="Close dialog" title="Close">
+              <Icon name="x" />
+            </button>
           </div>
         )}
         {children}
@@ -87,45 +88,12 @@ export default function Popover({ children, onClose, title, position, width = 28
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0, 0, 0, 0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 'var(--z-popover)' as any
-  },
-  dialog: {
-    background: 'var(--surface-bg)',
-    borderRadius: 'var(--radius-sm)',
-    border: '1px solid var(--border-color-medium)',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-  },
-  header: {
-    padding: '8px 10px',
-    borderBottom: '1px solid var(--border-color-light)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  title: {
-    margin: 0,
-    fontSize: 'var(--text-sm)',
-    fontWeight: 500,
-    color: 'var(--text-secondary)'
-  },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    fontSize: '16px',
-    color: 'var(--text-disabled)',
-    cursor: 'pointer',
-    padding: 0,
-    lineHeight: 1
-  }
+const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0, 0, 0, 0.2)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 'var(--z-popover)' as any
 };
