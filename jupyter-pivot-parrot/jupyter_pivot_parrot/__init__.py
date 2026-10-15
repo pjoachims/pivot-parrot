@@ -86,7 +86,7 @@ def _schema_fields(table):
     return [{"name": field.name, "type": str(field.type)} for field in table.schema]
 
 
-def _build_initial_config(rows, columns, values, custom_metrics, custom_filters, custom_groupings, active_filters):
+def _build_initial_config(rows, columns, values, custom_metrics, custom_filters, custom_groupings, active_filters, field_name_overrides=None):
     """Build initial config object."""
     return {
         "config": {
@@ -97,6 +97,7 @@ def _build_initial_config(rows, columns, values, custom_metrics, custom_filters,
             "customMetrics": custom_metrics or [],
             "customFilters": custom_filters or [],
             "customGroupings": custom_groupings or [],
+            "fieldNameOverrides": field_name_overrides or {},
         }
     }
 
@@ -142,6 +143,10 @@ class PivotParrot(anywidget.AnyWidget):
         Initial auto-update setting. Default: True.
     auto_execute : bool, optional
         Auto-select first numeric field with sum aggregation. Default: False.
+    locale : str, optional
+        BCP 47 locale for numbers, dates and CSV export, e.g. 'de-DE'. Default: 'en-US'.
+    field_name_overrides : dict of str to str, optional
+        Display names by field id, e.g. {'revenue': 'Umsatz'}. Default: none.
     """
 
     _esm = pathlib.Path(__file__).parent / "static" / "widget.js"
@@ -156,6 +161,7 @@ class PivotParrot(anywidget.AnyWidget):
     auto_execute = Bool(False).tag(sync=True)
     enable_sql_playground = Bool(True).tag(sync=True)
     dialect = Unicode("duckdb").tag(sync=True)
+    locale = Unicode("en-US").tag(sync=True)
     mode = Unicode("local").tag(sync=True)
     fields = List(Dict(), default_value=[]).tag(sync=True)
     sample_data = Bytes(b"").tag(sync=True)
@@ -175,6 +181,7 @@ class PivotParrot(anywidget.AnyWidget):
         custom_filters=None,
         custom_groupings=None,
         active_filters=None,
+        field_name_overrides=None,
         pivot_timeout=60,
         **kwargs,
     ):
@@ -194,6 +201,7 @@ class PivotParrot(anywidget.AnyWidget):
             custom_filters,
             custom_groupings,
             active_filters,
+            field_name_overrides,
         )
         kwargs.setdefault("config", kwargs["initial_config"]["config"])
         kwargs["pivot_timeout"] = pivot_timeout

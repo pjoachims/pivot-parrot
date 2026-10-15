@@ -88,7 +88,7 @@ function getLocalPivotConfig(model) {
       autoUpdate: model.get('auto_update'),
       autoExecute: model.get('auto_execute'),
       enableSQLPlayground: model.get('enable_sql_playground'),
-      locale: 'en-US'
+      locale: model.get('locale')
     },
     engineSettings: {
       dialect: model.get('dialect')
@@ -114,7 +114,7 @@ function getRemotePivotConfig(model, dataEngine) {
       autoUpdate: model.get('auto_update'),
       autoExecute: model.get('auto_execute'),
       enableSQLPlayground: false,
-      locale: 'en-US'
+      locale: model.get('locale')
     },
     engineSettings: {
       dialect: model.get('dialect'),

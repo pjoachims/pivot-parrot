@@ -131,3 +131,15 @@ def test_remote_execute_query_error_replies_with_error_status():
             [],
         )
     ]
+
+
+def test_widget_passes_locale_and_field_name_overrides():
+    widget = PivotParrot(
+        data=pd.DataFrame({"state": ["CA"]}),
+        locale="de-DE",
+        field_name_overrides={"state": "State"},
+    )
+
+    assert widget.locale == "de-DE"
+    assert widget.initial_config["config"]["fieldNameOverrides"] == {"state": "State"}
+    assert PivotParrot(data=pd.DataFrame({"state": ["CA"]})).locale == "en-US"

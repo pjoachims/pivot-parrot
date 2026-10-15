@@ -52,7 +52,7 @@ export function StreamlitPivotParrot() {
       settings: {
         autoUpdate: configRef.current.autoUpdate,
         enableSQLPlayground: configRef.current.mode === 'local' && configRef.current.enableSQLPlayground,
-        locale: 'en-US'
+        locale: configRef.current.locale
       },
       engineSettings: {
         pivotTimeout: configRef.current.pivotTimeout,
@@ -120,6 +120,7 @@ export function StreamlitPivotParrot() {
           instanceKey: sessionConfig.instanceKey || 'pivot_default',
           fields: sessionConfig.fields || null,
           height: componentConfig.height ?? 800,
+          locale: componentConfig.locale || 'en-US',
           pivotTimeout: componentConfig.pivotTimeout ?? 60000,
           uniqueValuesTimeout: componentConfig.uniqueValuesTimeout ?? 20000,
           drilldownTimeout: componentConfig.drilldownTimeout ?? 30000,

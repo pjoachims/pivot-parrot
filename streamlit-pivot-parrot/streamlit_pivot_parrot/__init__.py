@@ -36,7 +36,9 @@ def pivot_table(
     dialect='duckdb',
     enable_sql_playground=True,
     auto_update=None,
-    auto_execute=False
+    auto_execute=False,
+    locale='en-US',
+    field_name_overrides=None
 ):
     """
     Display an interactive pivot table in Streamlit.
@@ -94,6 +96,10 @@ def pivot_table(
         preference persists across Streamlit reruns. Default: True
     auto_execute : bool, optional
         Auto-select first numeric field with sum aggregation. Default: False
+    locale : str, optional
+        BCP 47 locale for numbers, dates and CSV export, e.g. 'de-DE'. Default: 'en-US'
+    field_name_overrides : dict of str to str, optional
+        Display names by field id, e.g. {'revenue': 'Umsatz'}. Default: none
     """
     # Determine mode
     if connection and (query or table):
@@ -117,7 +123,9 @@ def pivot_table(
             dialect=dialect,
             enable_sql_playground=enable_sql_playground,
             auto_update=False if auto_update is None else auto_update,
-            auto_execute=auto_execute
+            auto_execute=auto_execute,
+            locale=locale,
+            field_name_overrides=field_name_overrides
         )
     elif data is not None:
         return _pivot_local(
@@ -134,7 +142,9 @@ def pivot_table(
             dialect=dialect,
             enable_sql_playground=enable_sql_playground,
             auto_update=True if auto_update is None else auto_update,
-            auto_execute=auto_execute
+            auto_execute=auto_execute,
+            locale=locale,
+            field_name_overrides=field_name_overrides
         )
     else:
         raise ValueError("Must provide either 'data' or 'connection' with 'query'/'table'")
@@ -154,7 +164,9 @@ def _pivot_local(
     dialect='duckdb',
     enable_sql_playground=True,
     auto_update=True,
-    auto_execute=False
+    auto_execute=False,
+    locale='en-US',
+    field_name_overrides=None
 ):
     """Local mode: All computation in browser with DuckDB WASM"""
     import pyarrow as pa
@@ -192,7 +204,8 @@ def _pivot_local(
             'instanceKey': stable_key
         },
         'componentConfig': {
-            'height': height
+            'height': height,
+            'locale': locale
         },
         'engineConfig': {
             'dialect': dialect,
@@ -205,7 +218,7 @@ def _pivot_local(
         'arrowBytes': arrow_bytes_b64,
         'initial_config': _build_initial_config(
             rows, columns, values, custom_metrics, custom_filters,
-            custom_groupings, active_filters
+            custom_groupings, active_filters, field_name_overrides
         ),
         'key': stable_key,
         'default': None
@@ -234,7 +247,9 @@ def _pivot_remote(
     dialect='duckdb',
     enable_sql_playground=True,
     auto_update=True,
-    auto_execute=False
+    auto_execute=False,
+    locale='en-US',
+    field_name_overrides=None
 ):
     """Remote mode: Server-side query execution"""
     import streamlit as st
@@ -287,7 +302,8 @@ def _pivot_remote(
             'pivotTimeout': pivot_timeout * 1000,
             'uniqueValuesTimeout': unique_values_timeout * 1000,
             'drilldownTimeout': drilldown_timeout * 1000,
-            'timeoutEnabled': timeout_enabled
+            'timeoutEnabled': timeout_enabled,
+            'locale': locale
         },
         'engineConfig': {
             'dialect': dialect,
@@ -300,7 +316,7 @@ def _pivot_remote(
         'sampleData': schema_result['sampleData'],
         'initial_config': _build_initial_config(
             rows, columns, values, custom_metrics, custom_filters,
-            custom_groupings, active_filters
+            custom_groupings, active_filters, field_name_overrides
         ),
         'key': stable_key,
         'default': None
@@ -415,7 +431,7 @@ def _pivot_remote(
     return result
 
 
-def _build_initial_config(rows, columns, values, custom_metrics, custom_filters, custom_groupings, active_filters):
+def _build_initial_config(rows, columns, values, custom_metrics, custom_filters, custom_groupings, active_filters, field_name_overrides=None):
     """Build initial config object"""
     return {
         'config': {
@@ -425,7 +441,8 @@ def _build_initial_config(rows, columns, values, custom_metrics, custom_filters,
             'filters': active_filters or [],
             'customMetrics': custom_metrics or [],
             'customFilters': custom_filters or [],
-            'customGroupings': custom_groupings or []
+            'customGroupings': custom_groupings or [],
+            'fieldNameOverrides': field_name_overrides or {}
         }
     }
 
