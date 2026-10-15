@@ -6,7 +6,10 @@ import Popover from '../shared/Popover';
  * Only supports numeric comparison operators and a single value
  */
 export function HavingFilterDialog({ field, displayName, onApply, onClose, existingFilter, anchorEl }) {
-  const [operator, setOperator] = useState(existingFilter?.type || 'greater');
+  // "Not equal" is a negated equal filter; no filter type of its own.
+  const [operator, setOperator] = useState(
+    existingFilter?.type === 'equal' && existingFilter.isNot ? 'not_equal' : existingFilter?.type || 'greater'
+  );
   const [value, setValue] = useState(existingFilter?.value || '');
 
   const operators = [
@@ -21,7 +24,8 @@ export function HavingFilterDialog({ field, displayName, onApply, onClose, exist
   const handleApply = () => {
     const filter = {
       field: field.name,
-      type: operator,
+      type: operator === 'not_equal' ? 'equal' : operator,
+      isNot: operator === 'not_equal',
       value: value,
       filterType: 'having'
     };
