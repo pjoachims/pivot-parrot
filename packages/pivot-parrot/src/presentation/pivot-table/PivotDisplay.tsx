@@ -12,6 +12,7 @@ import { ContextMenu } from '../shared/ContextMenu';
 import { ChevronContextMenu } from '../shared/ChevronContextMenu';
 import { useClickOutside } from '../shared/useClickOutside';
 import { useExpansionState } from '../../application/hooks/useExpansionState';
+import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
 import { usePivotStore } from '../../application/state/store';
 
@@ -26,7 +27,6 @@ interface PivotDisplayProps {
   detectedTypes?: Record<string, any>;
   derivedFieldsMap?: Record<string, any>;
   availableFields?: any[];
-  onToggleGroup?: any;
   config?: any;
   stickyHeaders?: boolean;
   title?: string;
@@ -35,7 +35,7 @@ interface PivotDisplayProps {
   onOpenSQL?: (() => void) | null;
 }
 
-const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}, dataEngine = null, rowFields, detectedTypes = {}, derivedFieldsMap = {}, availableFields = [], onToggleGroup, config = {}, stickyHeaders = true, title = '', locale = 'en-US', onDrilldown = null, onOpenSQL = null }: PivotDisplayProps) {
+const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}, dataEngine = null, rowFields, detectedTypes = {}, derivedFieldsMap = {}, availableFields = [], config = {}, stickyHeaders = true, title = '', locale = 'en-US', onDrilldown = null, onOpenSQL = null }: PivotDisplayProps) {
     // Read display state from store (everything PivotDisplay needs is here now)
     // No more prop drilling for display state!
     const parentRef = useRef(null);
@@ -56,8 +56,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     // Expansion state management
     const { expanded, fieldExpanded, toggle, toggleField, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({
         data,
-        rowFields,
-        onToggleGroup
+        rowFields
     });
 
     // Context menu management
@@ -152,7 +151,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       const flat = [];
 
       function flattenNode(node, path = [], depth = 0) {
-        const key = path.join('-');
+        const key = rowKey(node);
         const isOpen = !!expanded[key];
         const kids = node.children || [];
         const hasKids = kids.length > 0;

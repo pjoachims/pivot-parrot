@@ -147,7 +147,7 @@ export function PivotRow({
             style={styles.expandButton}
             onClick={(e) => {
               e.stopPropagation();
-              toggle(path);
+              toggle(rowKey);
             }}
             onContextMenu={(e) => {
               e.preventDefault();
