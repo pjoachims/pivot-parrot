@@ -59,7 +59,7 @@ export function AvailableFieldItem({
         className="pp-field-row__icon"
         style={{ cursor: 'help' }}
       >
-        <TypeIcon type={detectedType} size={14} />
+        <TypeIcon type={detectedType} />
       </span>
 
       <label className="pp-field-row__label">{displayName}</label>
