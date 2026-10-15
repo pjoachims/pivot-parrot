@@ -75,8 +75,8 @@ describe('DuckDBDialect', () => {
   });
 
   describe('DuckDB-Specific Operators', () => {
-    it('should use REGEXP_MATCHES for regex operator', () => {
-      expect(dialect.operators.regex).toBe('REGEXP_MATCHES');
+    it('should use regexp_matches() for regex', () => {
+      expect(dialect.getFunction('regex_match', 'r', "'^A'")).toBe("regexp_matches(r, '^A')");
     });
   });
 

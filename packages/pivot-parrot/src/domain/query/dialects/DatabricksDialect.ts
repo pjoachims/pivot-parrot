@@ -44,8 +44,7 @@ export class DatabricksDialect extends SQLDialect {
     // Databricks has native MODE function (available in Runtime 14.1+)
     this.aggregations.mode = (field) => `MODE(${field})`;
 
-    // Databricks uses RLIKE for regex (Spark SQL syntax)
-    this.operators.regex = 'RLIKE';
+    this.functions.regex_match = (field, pattern) => `${field} RLIKE ${pattern}`;
 
     // Databricks/Spark SQL date/time functions
     // Spark prefers named functions over EXTRACT

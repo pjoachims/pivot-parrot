@@ -73,8 +73,8 @@ describe('DatabricksDialect', () => {
   });
 
   describe('Databricks-Specific Operators', () => {
-    it('should use RLIKE for regex operator', () => {
-      expect(dialect.operators.regex).toBe('RLIKE');
+    it('should use RLIKE for regex', () => {
+      expect(dialect.getFunction('regex_match', 'r', "'^A'")).toBe("r RLIKE '^A'");
     });
   });
 

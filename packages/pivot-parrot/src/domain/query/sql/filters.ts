@@ -254,9 +254,8 @@ class RegexFilter extends Filter {
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = dialect.escapeValue(this.value);
-    const operator = dialect.getOperator('regex', this.isNot);
-    return `${field} ${operator} '${value}'`;
+    const condition = dialect.getFunction('regex_match', field, `'${dialect.escapeValue(this.value)}'`);
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {

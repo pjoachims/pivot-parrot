@@ -108,3 +108,13 @@ describe('excluding values keeps the blanks', () => {
     expect(await select('region', whereOf({ field: 'region', type: 'one_of', selectedValues: ['A', null] }))).toEqual(['A', null]);
   });
 });
+
+describe('regex filter on DuckDB', () => {
+  it('matches', async () => {
+    expect(await select('region', whereOf({ field: 'region', type: 'regex', value: '^A' }))).toEqual(['A']);
+  });
+
+  it('negated keeps the blanks', async () => {
+    expect(await select('region', whereOf({ field: 'region', type: 'regex', value: '^A', isNot: true }))).toEqual(['B', null]);
+  });
+});

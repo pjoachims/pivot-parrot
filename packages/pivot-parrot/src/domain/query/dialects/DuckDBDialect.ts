@@ -62,8 +62,7 @@ export class DuckDBDialect extends SQLDialect {
     this.aggregations.median = (field) => `MEDIAN(${field})`;
     this.aggregations.mode = (field) => `MODE(${field})`;
 
-    // DuckDB uses REGEXP_MATCHES for regex
-    this.operators.regex = 'REGEXP_MATCHES';
+    this.functions.regex_match = (field, pattern) => `regexp_matches(${field}, ${pattern})`;
 
     // DuckDB-specific date/time functions
     this.functions.date_part = (part, field) => `DATE_PART('${part}', ${field})`;

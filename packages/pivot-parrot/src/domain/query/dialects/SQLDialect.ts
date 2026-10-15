@@ -12,13 +12,11 @@ import { Arrow, uint32ArrayToNumber } from '../../types/ArrowTypes';
  * Registries:
  * - types: Arrow type name → ArrowTypeDefinition (with toDisplay, toSQL)
  * - aggregations: Aggregation name → SQL generator function
- * - operators: Operator name → SQL operator string
  * - functions: Function name → SQL generator function
  */
 export class SQLDialect {
   public types: Record<string, ArrowTypeDefinition>;
   public aggregations: Record<string, (field: string, options?: any) => string>;
-  public operators: Record<string, string>;
   public functions: Record<string, (...args: any[]) => string>;
 
   constructor() {
@@ -40,11 +38,6 @@ export class SQLDialect {
       // approx_count_distinct not included - not universal
     };
 
-    // Operator registry: operator name → SQL operator string
-    this.operators = {
-      // regex not included - not universal
-    };
-
     // Function registry: function name → generator function
     // Only includes SQL standard functions (SQL-92/SQL-99)
     this.functions = {
@@ -54,6 +47,7 @@ export class SQLDialect {
       'cast_to_string': (expr) => `CAST(${expr} AS VARCHAR)`,
       'lpad': (expr, len, char) => `LPAD(CAST(${expr} AS VARCHAR), ${len}, '${char}')`,
       // unix_timestamp and from_unixtime removed - MySQL/Databricks-specific
+      // regex_match(field, patternLiteral) not included - not universal
       // Subclasses should add database-specific functions as needed
     };
   }
@@ -276,26 +270,6 @@ export class SQLDialect {
     return this.getAggregation(aggKey, quotedField);
   }
 
-  // ==================== OPERATOR REGISTRY ====================
-
-  /**
-   * Get SQL operator string
-   * @param {string} opName - Operator name (regex, etc.)
-   * @param {boolean} isNot - Whether to negate (NOT operator)
-   * @returns {string} SQL operator
-   * @throws {Error} If operator not supported by this dialect
-   */
-  getOperator(opName: string, isNot: boolean = false): string {
-    const op = this.operators[opName];
-    if (!op) {
-      throw new Error(
-        `Operator '${opName}' is not supported by ${this.name} dialect. ` +
-        `Available: ${Object.keys(this.operators).join(', ') || 'none'}`
-      );
-    }
-    return isNot ? `NOT ${op}` : op;
-  }
-
   // ==================== FUNCTION REGISTRY ====================
 
   /**
@@ -336,7 +310,7 @@ export class SQLDialect {
 
   /**
    * Check if this dialect supports a specific feature
-   * @param {string} type - Registry type ('aggregation', 'operator', 'type', 'function')
+   * @param {string} type - Registry type ('aggregation', 'type', 'function')
    * @param {string} name - Feature name
    * @returns {boolean}
    */
@@ -344,8 +318,6 @@ export class SQLDialect {
     switch (type) {
       case 'aggregation':
         return name in this.aggregations;
-      case 'operator':
-        return name in this.operators;
       case 'type':
         return name in this.types;
       case 'function':
