@@ -75,17 +75,13 @@ export function buildWhereClauses(filters, customFilters = [], dialect, values =
           name: customFilter.name
         }).toSQL(dialect);
       }
+    } else if (isHaving && aggSQL) {
+      filterSQL = buildFilter({ ...f, field: aggSQL }).toSQL(dialect, false);
     } else {
       filterSQL = buildFilter(f).toSQL(dialect);
     }
 
     if (!filterSQL) return;
-
-    // For HAVING filters, replace field reference with aggregation SQL
-    if (isHaving && aggSQL) {
-      const quotedField = dialect.quoteIdentifier(f.field);
-      filterSQL = filterSQL.replace(quotedField, aggSQL);
-    }
 
     // Route to appropriate clause
     if (isHaving) {

@@ -175,13 +175,16 @@ describe('HAVING on multi-word aggregations', () => {
     expect(await pivot(having('Std Dev', 'qty', 'greater', 110))).toHaveLength(0);
   });
 
-  it('buildWhereClauses (the filter dialog path)', async () => {
+  it.each([
+    [false, ['A', 'B', null]],
+    [true, []],
+  ])('buildWhereClauses (the filter dialog path), isNot %s', async (isNot, expected) => {
     const { havingClause } = buildWhereClauses(
-      [{ field: 'COUNT DISTINCT_customer', type: 'greater', value: 0 }], [], dialect,
+      [{ field: 'COUNT DISTINCT_customer', type: 'greater', value: 0, isNot }], [], dialect,
       [{ field: 'customer', aggregation: 'Count Distinct' }],
     );
     const reader = await conn.runAndReadAll(`SELECT region FROM pivot_data GROUP BY region ${havingClause} ORDER BY region`);
-    expect(reader.getRows().map(r => r[0])).toEqual(['A', 'B', null]);
+    expect(reader.getRows().map(r => r[0])).toEqual(expected);
   });
 });
 
