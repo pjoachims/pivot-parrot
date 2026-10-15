@@ -1,6 +1,7 @@
 import { FieldItem } from './FieldItem';
 import { FieldKind, PivotTableConfig } from '../models/types';
 import { fieldDisplayName } from './fieldDisplayName';
+import { findAggregation } from './aggregations';
 
 /**
  * Lookup a field by ID across all possible sources and return a FieldItem.
@@ -9,7 +10,7 @@ import { fieldDisplayName } from './fieldDisplayName';
  *
  * Checks:
  * 1. availableFields (base fields, derived fields)
- * 2. config.values (active aggregations like SUM_sales)
+ * 2. aggregations like SUM_sales, in config.values or as a HAVING filter
  * 3. config.customMetrics
  * 4. config.customFilters
  * 5. config.customGroupings
@@ -30,26 +31,22 @@ export function getFieldById(
     return fieldItem;
   }
 
-  // 2. Check active aggregations (e.g., SUM_sales)
-  for (const valueConfig of config.values || []) {
-    if (valueConfig.isCustom) continue;
+  // 2. Check aggregations (e.g., SUM_sales): in Values, or a HAVING filter
+  const aggregation = findAggregation(fieldId, config);
+  if (aggregation) {
+    const sourceField = availableFields.find(f => f.id === aggregation.field);
 
-    const aggId = `${valueConfig.aggregation.toUpperCase()}_${valueConfig.field}`;
-    if (aggId === fieldId) {
-      const sourceField = availableFields.find(f => f.id === valueConfig.field);
-
-      return {
-        id: aggId,
-        name: fieldDisplayName(aggId, config, availableFields),
-        dtype: sourceField?.dtype || 'double',
-        originalType: null,
-        kind: FieldKind.AGGREGATION,
-        sourceField: valueConfig.field,
-        aggregation: valueConfig.aggregation,
-        formula: null,
-        format: null
-      };
-    }
+    return {
+      id: fieldId,
+      name: fieldDisplayName(fieldId, config, availableFields),
+      dtype: sourceField?.dtype || 'double',
+      originalType: null,
+      kind: FieldKind.AGGREGATION,
+      sourceField: aggregation.field,
+      aggregation: aggregation.aggregation,
+      formula: null,
+      format: null
+    };
   }
 
   // 3. Check custom metrics
