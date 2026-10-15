@@ -1,0 +1,74 @@
+import React from 'react';
+
+/**
+ * The one inline icon set: 24-unit grid, 2-unit round stroke, drawn at
+ * --icon-size (14px) by the .pp-icon class. Paths follow Lucide (ISC).
+ */
+const PATHS = {
+  x: ['M18 6 6 18', 'm6 6 12 12'],
+  plus: ['M5 12h14', 'M12 5v14'],
+  check: ['M20 6 9 17l-5-5'],
+  pencil: [
+    'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
+    'm15 5 4 4'
+  ],
+  trash: ['M3 6h18', 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6', 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'],
+  move: ['m16 3 4 4-4 4', 'M20 7H4', 'm8 21-4-4 4-4', 'M4 17h16'],
+  'chevron-right': ['m9 18 6-6-6-6'],
+  'chevron-down': ['m6 9 6 6 6-6'],
+  sigma: ['M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2'],
+  layers: [
+    'M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z',
+    'm22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65',
+    'm22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'
+  ],
+  filter: ['M22 3H2l8 9.46V19l4 2v-8.54L22 3z'],
+  columns: ['M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 3v18', 'M15 3v18'],
+  rows: ['M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M3 9h18', 'M3 15h18'],
+  'calendar-plus': ['M8 2v4', 'M16 2v4', 'M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8', 'M3 10h18', 'M16 19h6', 'M19 16v6'],
+  camera: [
+    'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z',
+    'M15 13a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'
+  ],
+  search: ['M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', 'm21 21-4.3-4.3'],
+  info: ['M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z', 'M12 16v-4', 'M12 8h.01'],
+  list: ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'],
+  braces: [
+    'M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1',
+    'M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1'
+  ],
+  copy: ['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'],
+  download: ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'm7 10 5 5 5-5', 'M12 15V3'],
+  play: ['m6 3 14 9-14 9V3z'],
+  'chart-bar': ['M3 3v16a2 2 0 0 0 2 2h16', 'M18 17V9', 'M13 17V5', 'M8 17v-3'],
+  'chart-scatter': ['M3 3v16a2 2 0 0 0 2 2h16', 'M7.5 7.5h.01', 'M18.5 5.5h.01', 'M11.5 11.5h.01', 'M7.5 16.5h.01', 'M17.5 14.5h.01'],
+  'chart-treemap': ['M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M11 3v18', 'M11 12h10', 'M16 12v9'],
+  refresh: ['M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8', 'M21 3v5h-5', 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16', 'M8 16H3v5']
+} as const;
+
+export type IconName = keyof typeof PATHS;
+
+interface IconProps {
+  name: IconName;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+export function Icon({ name, className, style }: IconProps) {
+  return (
+    <svg
+      className={className ? `pp-icon ${className}` : 'pp-icon'}
+      style={style}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {PATHS[name].map(d => <path key={d} d={d} />)}
+    </svg>
+  );
+}

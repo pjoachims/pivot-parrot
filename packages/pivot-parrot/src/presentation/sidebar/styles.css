@@ -59,10 +59,33 @@
   --radius-sm: 4px;
   --radius-md: 6px;
 
-  /* Font-size scale (dialogs/menus use a smaller type scale than the host app) */
+  /* Font-size scale (dialogs/menus use a smaller type scale than the host app).
+     --text-xs is the floor: nothing in the UI renders smaller. */
   --text-xs: 10px;
   --text-sm: 11px;
+  --text-md: 12px;
   --text-base: 13px;
+
+  /* Spacing scale: every gap, padding and margin is one of these */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+
+  /* Control geometry: one height for dialog/popover/toolbar controls, one
+     compact height for the sidebar (chips, small buttons), one row height
+     for the field list. Icons are one size; icon buttons are square. */
+  --control-h: 28px;
+  --control-h-sm: 24px;
+  --row-h: 22px;
+  --icon-size: 14px;
+  --icon-btn-sm: 20px;
+
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.16);
+
+  /* Native <select> arrow, drawn by us because hosts that load
+     base-reset.css strip it with `all: unset` */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   /* Motion */
   --transition-fast: 150ms ease;
@@ -110,9 +133,468 @@
    paint their chrome (checkbox box, select arrow, scrollbars) to match the
    active theme instead of always light. Deliberate inline accentColor
    overrides (e.g. CustomExpressionItem's semantic colors) still win. */
-input[type='checkbox'],
-input[type='radio'] {
+/* :root prefix: base-reset.css reverts checkboxes with
+   `input[type="checkbox"] { all: revert }`, which ties a bare attribute
+   selector and won on load order (checkboxes rendered browser-blue). */
+:root input[type='checkbox'],
+:root input[type='radio'],
+:root input[type='range'] {
   accent-color: var(--color-accent);
+}
+
+/* ==========================================================================
+   Shared controls. Every button, input, select and textarea in the
+   sidebar, dialogs, popovers and toolbars uses these classes; components
+   keep only layout in inline styles.
+
+   Text controls use a doubled class: base-reset.css resets them with
+   `input[type="text"] { all: unset }` (specificity 0,1,1), which a single
+   class would lose to.
+   ========================================================================== */
+
+.pp-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex-shrink: 0;
+  display: block;
+}
+
+.pp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-h);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-sm);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.pp-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-color-dark);
+}
+.pp-btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--text-inverse);
+}
+.pp-btn--primary:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+.pp-btn--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.pp-btn--quiet:hover {
+  border-color: transparent;
+  color: var(--text-primary);
+}
+.pp-btn--sm {
+  height: var(--control-h-sm);
+  padding: 0 var(--space-2);
+}
+.pp-btn--block {
+  width: 100%;
+}
+/* Selection is a state, so it is the one place a neutral button takes the accent */
+.pp-btn[aria-pressed='true'],
+.pp-btn.is-selected {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--text-primary);
+}
+.pp-btn:disabled,
+.pp-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+}
+.pp-icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.pp-icon-btn--sm {
+  width: var(--icon-btn-sm);
+  height: var(--icon-btn-sm);
+}
+.pp-icon-btn--danger:hover {
+  color: var(--color-error);
+}
+
+.pp-input.pp-input,
+.pp-select.pp-select,
+.pp-textarea.pp-textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: var(--control-h);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1.4;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+.pp-input.pp-input:hover,
+.pp-select.pp-select:hover,
+.pp-textarea.pp-textarea:hover {
+  border-color: var(--border-color-dark);
+}
+.pp-input.pp-input::placeholder,
+.pp-textarea.pp-textarea::placeholder {
+  color: var(--text-disabled);
+}
+.pp-input.pp-input--sm,
+.pp-select.pp-select--sm {
+  height: var(--control-h-sm);
+  font-size: var(--text-sm);
+}
+.pp-select.pp-select {
+  appearance: none;
+  padding-right: 24px;
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px 14px;
+  /* an unset select ignores align; line-height centers the text */
+  line-height: calc(var(--control-h) - 2px);
+  cursor: pointer;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-select.pp-select.pp-select--sm {
+  line-height: calc(var(--control-h-sm) - 2px);
+}
+/* Number inputs: no native spinner (it renders as a white browser widget
+   in the dark theme); arrow keys still step the value */
+.pp-input.pp-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.pp-input.pp-input[type='number']::-webkit-inner-spin-button,
+.pp-input.pp-input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pp-textarea.pp-textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 6px var(--space-2);
+  line-height: 1.5;
+  resize: vertical;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color-medium) transparent;
+}
+.pp-textarea.pp-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+.pp-textarea.pp-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pp-textarea.pp-textarea::-webkit-scrollbar-thumb {
+  background: var(--border-color-medium);
+  border: 2px solid var(--surface-bg);
+  border-radius: 4px;
+}
+.pp-textarea.pp-textarea::-webkit-resizer {
+  background: transparent;
+}
+/* Text controls draw focus on their own edge, not 2px outside it (the
+   global ring's offset drew a box around the box) */
+.pp-input.pp-input:focus-visible,
+.pp-select.pp-select:focus-visible,
+.pp-textarea.pp-textarea:focus-visible {
+  outline-offset: -1px !important;
+  border-color: var(--focus-ring-color);
+}
+
+/* Form anatomy: a field is a label over a control; a row lays fields side by
+   side with their controls bottom-aligned; a section is a titled group set
+   off by a rule, never by a nested box. */
+.pp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.pp-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+.pp-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 16px;
+}
+.pp-hint {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.pp-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.pp-row > .pp-field {
+  flex: 1 1 0;
+}
+.pp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.pp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.pp-check input {
+  margin: 0;
+}
+.pp-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color-light);
+}
+.pp-section-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pp-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.pp-readout > :last-child {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.pp-alert {
+  padding: 6px var(--space-2);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
+/* Segmented control (IS / NOT, display modes): one bordered strip, the
+   pressed segment carries the selection state */
+.pp-seg {
+  display: inline-flex;
+  flex-shrink: 0;
+  height: var(--control-h);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.pp-seg > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-left: 1px solid var(--border-color-light);
+  background: var(--surface-bg);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pp-seg > button:first-child {
+  border-left: 0;
+}
+.pp-seg > button:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+.pp-seg > button[aria-pressed='true'] {
+  background: var(--color-accent-subtle);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Tabs under a dialog header */
+.pp-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-color-light);
+}
+.pp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 32px;
+  margin-bottom: -1px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pp-tab:hover {
+  color: var(--text-primary);
+}
+.pp-tab[aria-selected='true'] {
+  color: var(--text-primary);
+  border-bottom-color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Dialog anatomy, shared by the centered BaseDialog and the anchored
+   Popover: header (title + close), body (a stack of fields), footer
+   (actions right-aligned, primary last). */
+.pp-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+  color: var(--text-primary);
+  font-size: var(--text-md);
+}
+.pp-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-bottom: 1px solid var(--border-color-light);
+}
+.pp-dialog-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.pp-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+.pp-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-color-light);
+}
+
+/* Menus (toolbar dropdowns, context menus): same panel, compact rows */
+.pp-menu {
+  min-width: 160px;
+  padding: var(--space-1) 0;
+  background: var(--surface-bg);
+  border: 1px solid var(--border-color-medium);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+  font-size: var(--text-sm);
+}
+.pp-menu-title {
+  padding: 6px var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pp-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pp-menu-item:hover {
+  background: var(--surface-hover);
+}
+.pp-menu-item .pp-icon {
+  color: var(--text-muted);
+}
+.pp-menu-item[aria-checked='true'] {
+  background: var(--color-accent-subtle);
 }
 
 /* Toolbar brand wordmark: quiet by default, reveals it's a link on hover */
@@ -422,6 +904,9 @@ input[type='radio'] {
   /* Radius — nothing rounded */
   --radius-sm: 0px;
   --radius-md: 0px;
+
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 :root[data-theme='light'] {
@@ -473,6 +958,8 @@ input[type='radio'] {
   /* Radius — nothing rounded, same brutalist DNA */
   --radius-sm: 0px;
   --radius-md: 0px;
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b6b64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 [data-theme='dark'] body {
