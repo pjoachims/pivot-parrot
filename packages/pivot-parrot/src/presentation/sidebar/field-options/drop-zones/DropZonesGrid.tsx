@@ -7,6 +7,7 @@ import ValueItem from './ValueItem';
 import { enrichValuesWithMetrics } from '../../../../application/utils/fieldUtils';
 import { getFieldById } from '../../../../application/utils/getFieldById';
 import { fieldDisplayName, valueDisplayName } from '../../../../domain/field/fieldDisplayName';
+import { relativeDateLabel } from '../../../../domain/query/sql/filters';
 
 /**
  * DropZonesGrid component
@@ -214,13 +215,15 @@ export default function DropZonesGrid() {
           // Check if filter has been configured (has values)
           const hasActiveFilter = field.value !== undefined ||
             (field.selectedValues && field.selectedValues.length > 0) ||
-            (field.betweenStart !== undefined && field.betweenEnd !== undefined);
+            (field.betweenStart !== undefined && field.betweenEnd !== undefined) ||
+            field.relative !== undefined;
+          const name = fieldDisplayName(fieldId, config, availableFields);
 
           return (
             <div key={fieldId} className="relative" data-filter-field={fieldId}>
               <FieldItem
                 field={fieldItem}
-                label={fieldDisplayName(fieldId, config, availableFields)}
+                label={field.type === 'relative_date' ? `${name}: ${relativeDateLabel(field.relative)}` : name}
                 zone="filters"
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}

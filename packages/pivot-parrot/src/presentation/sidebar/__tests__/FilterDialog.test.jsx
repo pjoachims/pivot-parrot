@@ -333,4 +333,67 @@ describe('FilterDialog', () => {
       expect(closeButton).toBeInTheDocument();
     });
   });
+
+  describe('Relative dates', () => {
+    const dateProps = () => ({
+      ...defaultProps,
+      field: { name: 'order_date' },
+      fieldType: { name: 'date32', category: 'temporal' },
+    });
+
+    it('stores "Last 7 days" as a relative filter, not as dates', () => {
+      render(<FilterDialog {...dateProps()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Last 7 days' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(defaultProps.onApply).toHaveBeenCalledWith({
+        field: 'order_date',
+        type: 'relative_date',
+        relative: { mode: 'last', n: 7, unit: 'day' },
+        isNot: false,
+      });
+    });
+
+    it('replaces an absolute range with a relative one without keeping its dates', () => {
+      render(<FilterDialog {...dateProps()} existingFilter={{ field: 'order_date', type: 'between', betweenStart: '2026-01-01', betweenEnd: '2026-01-31' }} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(defaultProps.onApply).toHaveBeenCalledWith({
+        field: 'order_date',
+        type: 'relative_date',
+        relative: { mode: 'previous', n: 1, unit: 'month' },
+        isNot: false,
+      });
+    });
+
+    it('stores a custom "Previous 3 weeks"', () => {
+      render(<FilterDialog {...dateProps()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
+      fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'previous' } });
+      fireEvent.change(screen.getByLabelText('Count'), { target: { value: '3' } });
+      fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'week' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(defaultProps.onApply).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'relative_date',
+        relative: { mode: 'previous', n: 3, unit: 'week' },
+      }));
+    });
+
+    it('reopens a relative filter in relative mode', () => {
+      render(<FilterDialog {...dateProps()} existingFilter={{ field: 'order_date', type: 'relative_date', relative: { mode: 'previous', n: 2, unit: 'quarter' } }} />);
+
+      expect(screen.getByLabelText('Mode')).toHaveValue('previous');
+      expect(screen.getByLabelText('Count')).toHaveValue(2);
+      expect(screen.getByLabelText('Unit')).toHaveValue('quarter');
+    });
+
+    it('is not offered for a string field', () => {
+      render(<FilterDialog {...defaultProps} />);
+      expect(screen.queryByRole('button', { name: 'Relative' })).not.toBeInTheDocument();
+    });
+  });
 });

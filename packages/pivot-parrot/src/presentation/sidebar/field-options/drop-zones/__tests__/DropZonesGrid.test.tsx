@@ -41,4 +41,25 @@ describe('DropZonesGrid', () => {
     expect(screen.getByText('sum of Nettoumsatz')).toBeInTheDocument();
     expect(screen.queryByText('category_1')).not.toBeInTheDocument();
   });
+
+  it('shows a relative date filter by its label, never by resolved dates', () => {
+    const store = createPivotStore('drop-zones-relative');
+    act(() => {
+      store.getState().setAvailableFields([fromSchema({ name: 'order_date', type: 'date32' })]);
+      store.getState().setConfig({
+        rows: [],
+        columns: [],
+        filters: [{ field: 'order_date', type: 'relative_date', relative: { mode: 'last', n: 7, unit: 'day' } }],
+        values: [],
+      });
+    });
+
+    render(
+      <PivotStoreContext.Provider value={{ store, instanceKey: 'drop-zones-relative' }}>
+        <DropZonesGrid />
+      </PivotStoreContext.Provider>
+    );
+
+    expect(screen.getByText('order_date: Last 7 days')).toBeInTheDocument();
+  });
 });

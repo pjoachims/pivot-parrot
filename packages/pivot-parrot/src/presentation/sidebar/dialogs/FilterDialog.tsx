@@ -3,6 +3,45 @@ import Popover from '../shared/Popover';
 import { getAvailableFilters, getDefaultFilterType, getFilterCategory } from '../../../application/utils/filterConfig';
 import { styles } from './filter-styles';
 import { usePivotStore } from '../../../application/state/store';
+import { RELATIVE_DATE_UNITS, type RelativeDate } from '../../../domain/models/types';
+import { relativeDateLabel } from '../../../domain/query/sql/filters';
+
+const RELATIVE_PRESETS: RelativeDate[] = [
+  { mode: 'last', n: 1, unit: 'day' },
+  { mode: 'previous', n: 1, unit: 'day' },
+  { mode: 'last', n: 7, unit: 'day' },
+  { mode: 'last', n: 30, unit: 'day' },
+  { mode: 'last', n: 1, unit: 'week' },
+  { mode: 'previous', n: 1, unit: 'week' },
+  { mode: 'last', n: 1, unit: 'month' },
+  { mode: 'previous', n: 1, unit: 'month' },
+  { mode: 'last', n: 1, unit: 'year' },
+];
+
+function IsNotToggle({ isNot, setIsNot }) {
+  return (
+    <div style={styles.toggleContainer}>
+      <button
+        onClick={() => setIsNot(false)}
+        style={{
+          ...styles.toggleButton,
+          ...(!isNot ? styles.toggleButtonActive : {})
+        }}
+      >
+        IS
+      </button>
+      <button
+        onClick={() => setIsNot(true)}
+        style={{
+          ...styles.toggleButton,
+          ...(isNot ? styles.toggleButtonActive : {})
+        }}
+      >
+        NOT
+      </button>
+    </div>
+  );
+}
 
 export function FilterDialog({
   field,
@@ -24,6 +63,7 @@ export function FilterDialog({
   const dtypeCategory = getFilterCategory(fieldType, field.kind);
   const filterTypes = getAvailableFilters(fieldType, field.kind);
   const defaultFilterType = getDefaultFilterType(fieldType, field.kind);
+  const isTemporal = dtypeCategory === 'date' || dtypeCategory === 'timestamp';
 
   // Categorize filters
   const basicFilters = filterTypes.filter(ft =>
@@ -38,6 +78,7 @@ export function FilterDialog({
   const getInitialTab = () => {
     if (!existingFilter?.type) return 'basic';
     if (existingFilter.type === 'one_of') return 'one_of';
+    if (existingFilter.type === 'relative_date') return 'relative';
     // Return actual filter type for advanced filters (between, regex, custom_expr)
     if (['between', 'regex', 'custom_expr'].includes(existingFilter.type)) return existingFilter.type;
     return 'basic';
@@ -53,6 +94,7 @@ export function FilterDialog({
   const [betweenStart, setBetweenStart] = useState(existingFilter?.betweenStart || '');
   const [fetched, setFetched] = useState(null); // This dialog's own fetch, {values, truncated}
   const [betweenEnd, setBetweenEnd] = useState(existingFilter?.betweenEnd || '');
+  const [relative, setRelative] = useState<RelativeDate>(existingFilter?.relative ?? RELATIVE_PRESETS[2]);
   const [searchTerm, setSearchTerm] = useState('');
   const [abortController, setAbortController] = useState(null);
   const [showAllValues, setShowAllValues] = useState(false);
@@ -137,7 +179,12 @@ export function FilterDialog({
   );
 
   const handleApply = () => {
-    const filter = {
+    const filter = filterType === 'relative_date' ? {
+      field: fieldId,
+      type: filterType,
+      relative,
+      isNot
+    } : {
       field: fieldId,
       type: filterType,
       isNot: filterType !== 'between' && isNot,
@@ -198,75 +245,9 @@ export function FilterDialog({
       setFilterType(basicFilters[0].value);
     } else if (tab === 'one_of') {
       setFilterType('one_of');
+    } else if (tab === 'relative') {
+      setFilterType('relative_date');
     }
-  };
-
-  // Helper to format date in local timezone (YYYY-MM-DD)
-  const formatLocalDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Quick date filter helpers
-  const applyQuickDateFilter = (rangeType) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let start, end;
-
-    switch (rangeType) {
-      case 'today':
-        start = end = formatLocalDate(today);
-        break;
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        start = end = formatLocalDate(yesterday);
-        break;
-      case 'last7days':
-        const last7 = new Date(today);
-        last7.setDate(last7.getDate() - 7);
-        start = formatLocalDate(last7);
-        end = formatLocalDate(today);
-        break;
-      case 'last30days':
-        const last30 = new Date(today);
-        last30.setDate(last30.getDate() - 30);
-        start = formatLocalDate(last30);
-        end = formatLocalDate(today);
-        break;
-      case 'thisMonth':
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        start = formatLocalDate(monthStart);
-        end = formatLocalDate(today);
-        break;
-      case 'lastMonth':
-        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        start = formatLocalDate(lastMonthStart);
-        end = formatLocalDate(lastMonthEnd);
-        break;
-      case 'thisYear':
-        const yearStart = new Date(today.getFullYear(), 0, 1);
-        start = formatLocalDate(yearStart);
-        end = formatLocalDate(today);
-        break;
-      case 'lastYear':
-        const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
-        const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31);
-        start = formatLocalDate(lastYearStart);
-        end = formatLocalDate(lastYearEnd);
-        break;
-      default:
-        return;
-    }
-
-    setBetweenStart(start);
-    setBetweenEnd(end);
-    setFilterType('between');
-    setActiveTab('between');
   };
 
   // Render content based on active tab
@@ -275,24 +256,6 @@ export function FilterDialog({
       case 'basic':
         return (
           <>
-            {/* Quick Date Filters for date/timestamp fields */}
-            {(dtypeCategory === 'date' || dtypeCategory === 'timestamp') && (
-              <div style={{marginBottom: '12px'}}>
-                <label style={{...styles.label, marginBottom: '6px', display: 'block'}}>Quick Filters</label>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px'}}>
-                  <button onClick={() => applyQuickDateFilter('today')} style={styles.quickFilterButton}>Today</button>
-                  <button onClick={() => applyQuickDateFilter('yesterday')} style={styles.quickFilterButton}>Yesterday</button>
-                  <button onClick={() => applyQuickDateFilter('last7days')} style={styles.quickFilterButton}>Last 7 Days</button>
-                  <button onClick={() => applyQuickDateFilter('last30days')} style={styles.quickFilterButton}>Last 30 Days</button>
-                  <button onClick={() => applyQuickDateFilter('thisMonth')} style={styles.quickFilterButton}>This Month</button>
-                  <button onClick={() => applyQuickDateFilter('lastMonth')} style={styles.quickFilterButton}>Last Month</button>
-                  <button onClick={() => applyQuickDateFilter('thisYear')} style={styles.quickFilterButton}>This Year</button>
-                  <button onClick={() => applyQuickDateFilter('lastYear')} style={styles.quickFilterButton}>Last Year</button>
-                </div>
-                <div style={{borderTop: '1px solid var(--border-color-light)', margin: '12px 0'}}></div>
-              </div>
-            )}
-
             {/* Filter Type Dropdown with IS/IS NOT toggle */}
             <div style={styles.field}>
               <label style={styles.label}>Filter Type</label>
@@ -308,26 +271,7 @@ export function FilterDialog({
                     </option>
                   ))}
                 </select>
-                <div style={styles.toggleContainer}>
-                  <button
-                    onClick={() => setIsNot(false)}
-                    style={{
-                      ...styles.toggleButton,
-                      ...(!isNot ? styles.toggleButtonActive : {})
-                    }}
-                  >
-                    IS
-                  </button>
-                  <button
-                    onClick={() => setIsNot(true)}
-                    style={{
-                      ...styles.toggleButton,
-                      ...(isNot ? styles.toggleButtonActive : {})
-                    }}
-                  >
-                    NOT
-                  </button>
-                </div>
+                <IsNotToggle isNot={isNot} setIsNot={setIsNot} />
               </div>
             </div>
 
@@ -351,6 +295,60 @@ export function FilterDialog({
                 This filter checks for NULL values. No additional input required.
               </div>
             )}
+          </>
+        );
+
+      case 'relative':
+        return (
+          <>
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '12px'}}>
+              {RELATIVE_PRESETS.map(preset => {
+                const label = relativeDateLabel(preset);
+                const active = label === relativeDateLabel(relative);
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setRelative(preset)}
+                    aria-pressed={active}
+                    style={{...styles.quickFilterButton, ...(active ? {borderColor: 'var(--color-accent)', color: 'var(--color-accent)'} : {})}}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{display: 'flex', gap: '6px', alignItems: 'center'}}>
+              <select
+                aria-label="Mode"
+                value={relative.mode}
+                onChange={(e) => setRelative({...relative, mode: e.target.value as RelativeDate['mode']})}
+                style={styles.select}
+              >
+                <option value="last">Last</option>
+                <option value="previous">Previous</option>
+              </select>
+              <input
+                aria-label="Count"
+                type="number"
+                min={1}
+                step={1}
+                value={relative.n}
+                onChange={(e) => setRelative({...relative, n: Math.max(1, Math.floor(Number(e.target.value)) || 1)})}
+                style={{...styles.input, width: '64px'}}
+              />
+              <select
+                aria-label="Unit"
+                value={relative.unit}
+                onChange={(e) => setRelative({...relative, unit: e.target.value as RelativeDate['unit']})}
+                style={{...styles.select, flex: 1}}
+              >
+                {RELATIVE_DATE_UNITS.map(unit => <option key={unit} value={unit}>{unit}s</option>)}
+              </select>
+              <IsNotToggle isNot={isNot} setIsNot={setIsNot} />
+            </div>
+            <div style={{fontSize: 'var(--text-xs)', color: 'var(--text-muted)', padding: '8px 0 0'}}>
+              {relativeDateLabel(relative)}, counted from the day the query runs. A saved view stays relative.
+            </div>
           </>
         );
 
@@ -706,6 +704,17 @@ export function FilterDialog({
           >
             Basic
           </button>
+          {isTemporal && (
+            <button
+              onClick={() => handleTabChange('relative')}
+              style={{
+                ...styles.tab,
+                ...(activeTab === 'relative' ? styles.tabActive : {})
+              }}
+            >
+              Relative
+            </button>
+          )}
           {hasOneOf && (
             <button
               onClick={() => handleTabChange('one_of')}
