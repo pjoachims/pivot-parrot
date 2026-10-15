@@ -151,6 +151,8 @@ export interface PivotUISettings {
   autoUpdate?: boolean;
   autoExecute?: boolean;
   enableSQLPlayground?: boolean;
+  /** The built-in Snapshots panel (default true). A host with its own saved-views UI hides it and uses the ref's getView/loadView. */
+  showSnapshots?: boolean;
   locale?: string;
   height?: number;
   uniqueValuesLimit?: number | null;  // Max unique values to fetch (null = auto based on row count)
