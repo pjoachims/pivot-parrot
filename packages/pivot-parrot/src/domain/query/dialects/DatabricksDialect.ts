@@ -60,6 +60,11 @@ export class DatabricksDialect extends SQLDialect {
     this.functions.unix_timestamp = (field) => `UNIX_TIMESTAMP(${field})`;
     this.functions.from_unixtime = (expr) => `FROM_UNIXTIME(${expr})`;
     this.functions.floor = (expr) => `FLOOR(${expr})`;
+    this.functions.period_start = (unit, offset) => {
+      const start = unit === 'day' ? 'current_date()' : `trunc(current_date(), '${unit.toUpperCase()}')`;
+      const months = { month: 1, quarter: 3, year: 12 }[unit];
+      return months ? `add_months(${start}, ${offset * months})` : `date_add(${start}, ${offset * (unit === 'week' ? 7 : 1)})`;
+    };
 
     // Databricks uses STRING instead of VARCHAR (VARCHAR requires length)
     this.functions.cast_to_string = (expr) => `CAST(${expr} AS STRING)`;

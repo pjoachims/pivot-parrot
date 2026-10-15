@@ -69,6 +69,8 @@ export class DuckDBDialect extends SQLDialect {
     this.functions.epoch_ms = (field) => `EPOCH_MS(${field})`;
     this.functions.to_timestamp = (expr) => `TO_TIMESTAMP(${expr})`;
     this.functions.floor = (expr) => `FLOOR(${expr})`;
+    this.functions.period_start = (unit, offset) =>
+      `CAST(date_trunc('${unit}', current_date) + INTERVAL (${offset}) ${unit.toUpperCase()} AS DATE)`;
   }
 
   get name() {

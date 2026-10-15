@@ -69,6 +69,20 @@ export interface ValueConfig {
   isCustom?: boolean;
 }
 
+export const RELATIVE_DATE_UNITS = ['day', 'week', 'month', 'quarter', 'year'] as const;
+export type RelativeDateUnit = typeof RELATIVE_DATE_UNITS[number];
+
+/**
+ * A date range relative to the engine's current_date, kept as data so a saved view moves with the calendar.
+ * 'last': the n calendar periods ending with the current one, which counts even if partial.
+ * 'previous': the n complete periods before the current one.
+ */
+export interface RelativeDate {
+  mode: 'last' | 'previous';
+  n: number;
+  unit: RelativeDateUnit;
+}
+
 /**
  * Filter configuration
  * Unified type for both UI state and query state
@@ -80,6 +94,7 @@ export interface Filter {
   selectedValues?: PrimitiveValue[];  // Multiple values for one_of
   betweenStart?: PrimitiveValue;  // Start value for between
   betweenEnd?: PrimitiveValue;  // End value for between
+  relative?: RelativeDate;  // For relative_date
   isNot?: boolean;  // Negation flag
   isCustom?: boolean;
 
