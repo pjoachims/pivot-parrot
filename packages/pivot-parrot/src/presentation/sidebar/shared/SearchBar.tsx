@@ -6,31 +6,41 @@ import React from 'react';
  */
 export default function SearchBar({ searchQuery, onSearchChange }) {
   return (
-    <div style={{ width: '180px', position: 'relative' }}>
+    <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
       <svg
-        className="text-gray-600 pointer-events-none"
-        width="16"
-        height="16"
+        className="pointer-events-none"
+        width="13"
+        height="13"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
-        style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', zIndex: 1 }}
+        style={{
+          position: 'absolute',
+          left: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--text-muted)'
+        }}
       >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
       <input
-        type="text"
-        placeholder="Search"
+        type="search"
+        placeholder="Search fields"
         aria-label="Search fields"
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-full py-1 text-sm"
         style={{
-          background: 'var(--surface-hover)',
-          border: 'none',
+          width: '100%',
+          boxSizing: 'border-box',
+          height: '26px',
+          padding: '0 8px 0 26px',
+          fontSize: 'inherit',
+          color: 'var(--text-primary)',
+          background: 'var(--surface-bg)',
+          border: '1px solid var(--border-color-medium)',
           borderRadius: '4px',
-          paddingLeft: '8px',
-          paddingRight: '40px'
+          outline: 'none'
         }}
       />
     </div>
