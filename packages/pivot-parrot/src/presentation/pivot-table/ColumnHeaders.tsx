@@ -1,4 +1,5 @@
 import React from 'react';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 /**
  * Format a column header value based on field type
@@ -109,7 +110,7 @@ export function ColumnHeaders({
   }
 
   // When values are in rows, we don't need an extra row for metric names
-  const valuesInRows = rowFields && rowFields.some(f => f === 'Σ Values');
+  const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
   const numHeaderRows = valuesInRows
     ? Math.max(data.columnConfig.colFields.length, 1)  // Just dimension rows
     : Math.max(data.columnConfig.colFields.length + 1, 1);  // Dimensions + metric row

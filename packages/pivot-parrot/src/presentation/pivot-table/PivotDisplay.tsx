@@ -12,6 +12,7 @@ import { useExpansionState } from '../../application/hooks/useExpansionState';
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
 import { usePivotStore } from '../../application/state/store';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 const ROW_HEIGHT = 25; // Single source of truth for row height
 
@@ -149,7 +150,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     // Calculate grand total row count
     // When values in rows: grandTotal is array of {metric, values} objects
     // When values in columns: grandTotal is simple array of values
-    const valuesInRows = rowFields && rowFields.some(f => f === 'Σ Values');
+    const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
 
     // Check if grandTotal is array of metric objects (has 'metric' property)
     const isMultiMetricGrandTotal = Array.isArray(data.grandTotal) &&
@@ -205,8 +206,8 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
   };
 
   // Check if we have no real grouping (just values, no rows/cols)
-  const hasRealRows = rowFields && rowFields.length > 0 && rowFields.some(f => f !== 'Σ Values');
-  const hasRealCols = data.columnConfig.colFields && data.columnConfig.colFields.length > 0 && data.columnConfig.colFields.some(f => f !== 'Σ Values');
+  const hasRealRows = rowFields && rowFields.length > 0 && rowFields.some(f => f !== SIGMA_VALUES_ID);
+  const hasRealCols = data.columnConfig.colFields && data.columnConfig.colFields.length > 0 && data.columnConfig.colFields.some(f => f !== SIGMA_VALUES_ID);
   const isJustValues = !hasRealRows && !hasRealCols && data.grandTotal;
 
   return (<div style={styles.container}>

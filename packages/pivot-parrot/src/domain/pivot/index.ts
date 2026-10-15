@@ -9,6 +9,7 @@ import { buildRowTree } from './rowBuilder';
 import { populateNodeValues } from './valuePopulator';
 import { buildCubeIndex, createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
 import { profiler } from '../query/utils/profiler';
+import { SIGMA_VALUES_ID } from '../models/types';
 
 /**
  * Sort each level of the row tree by one value, in place. `sortValue` gives a
@@ -70,12 +71,12 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
     }
 
     // Determine where Values appear
-    const rowValuesIndex = rowFields.indexOf('Σ Values');
-    const colValuesIndex = colFields.indexOf('Σ Values');
+    const rowValuesIndex = rowFields.indexOf(SIGMA_VALUES_ID);
+    const colValuesIndex = colFields.indexOf(SIGMA_VALUES_ID);
     const valuesInRows = rowValuesIndex !== -1;
 
-    const actualRowFields = rowFields.filter(f => f !== 'Σ Values');
-    const actualColFields = colFields.filter(f => f !== 'Σ Values');
+    const actualRowFields = rowFields.filter(f => f !== SIGMA_VALUES_ID);
+    const actualColFields = colFields.filter(f => f !== SIGMA_VALUES_ID);
 
     // Build hash index for O(1) lookups (order-independent)
     const allFields = [...actualRowFields, ...actualColFields];

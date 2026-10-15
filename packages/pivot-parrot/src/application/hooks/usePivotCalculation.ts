@@ -3,6 +3,7 @@ import { buildPivotSQL } from '../../domain/query/sql/buildPivotSQL';
 import { buildCubeIndex } from '../utils/cubeIndex';
 import { createLogger } from '../utils/logger';
 import { usePivotStore } from '../state/store';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 const logger = createLogger('PivotCalculation');
 
@@ -61,8 +62,8 @@ export function usePivotCalculation({
    */
   const computeFieldsHash = useCallback((config) => {
     return [
-      ...config.rows.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== 'Σ Values'),
-      ...config.columns.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== 'Σ Values')
+      ...config.rows.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== SIGMA_VALUES_ID),
+      ...config.columns.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== SIGMA_VALUES_ID)
     ].sort().join(',');
   }, []);
 
@@ -72,7 +73,7 @@ export function usePivotCalculation({
   const buildIndex = useCallback((data, config) => {
     const rowFieldNames = config.rows.map(f => typeof f === 'string' ? f : f.id);
     const colFieldNames = config.columns.map(f => typeof f === 'string' ? f : f.id);
-    const allFieldNames = [...rowFieldNames, ...colFieldNames].filter(f => f !== 'Σ Values');
+    const allFieldNames = [...rowFieldNames, ...colFieldNames].filter(f => f !== SIGMA_VALUES_ID);
     return buildCubeIndex(data, allFieldNames);
   }, []);
 

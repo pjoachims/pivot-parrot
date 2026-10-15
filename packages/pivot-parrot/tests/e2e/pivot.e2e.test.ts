@@ -153,7 +153,7 @@ describe('Pivot E2E', () => {
           const csv = buildPivotCSV(
             displayData,
             leafCols,
-            rowFields.filter((f: string) => f !== 'Σ Values'),
+            rowFields,
             false, // showRowSubtotals
             false, // showGrandTotal
             input.config

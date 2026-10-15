@@ -7,6 +7,7 @@ import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
 import { findValueFormat } from './formatters';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 // Escape a string for safe use inside a RegExp
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -125,7 +126,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
   const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
 
   const lines: CsvCell[][] = [];
-  const valuesIndex = (rowFields || []).indexOf('Σ Values');
+  const valuesIndex = (rowFields || []).indexOf(SIGMA_VALUES_ID);
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
 

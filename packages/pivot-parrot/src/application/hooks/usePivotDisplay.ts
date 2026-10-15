@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { buildPivotDisplayData } from '../../domain/pivot';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 /**
  * Custom hook to build pivot display from query results
@@ -25,8 +26,8 @@ export function usePivotDisplay(
 
     // Compute order-independent hash of current fields
     const currentFieldsHash = [
-      ...executionConfig.rows.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== 'Σ Values'),
-      ...executionConfig.columns.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== 'Σ Values')
+      ...executionConfig.rows.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== SIGMA_VALUES_ID),
+      ...executionConfig.columns.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== SIGMA_VALUES_ID)
     ].sort().join(',');
 
     // Check if dimensions changed (fields added/removed vs just rearranged)
@@ -48,7 +49,7 @@ export function usePivotDisplay(
         uniqueColCombos.add(colKey);
       });
 
-      const metricsPerMember = rowFieldNames.includes('Σ Values') ? 1 : enrichedValues.length;
+      const metricsPerMember = rowFieldNames.includes(SIGMA_VALUES_ID) ? 1 : enrichedValues.length;
       const estimatedColumns = uniqueColCombos.size * metricsPerMember;
       if (estimatedColumns > MAX_COLUMNS) {
         // Return error object instead of throwing (prevents React crash)

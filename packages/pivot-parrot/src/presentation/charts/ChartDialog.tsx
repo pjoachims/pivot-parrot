@@ -5,6 +5,7 @@ import ScatterChartConfig from './ScatterChart';
 import TreemapChartConfig from './TreemapChart';
 import { usePivotStore } from '../../application/state/store';
 import { fieldDisplayName, valueDisplayName } from '../../domain/field/fieldDisplayName';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 interface ChartDialogProps {
   config: any;
@@ -81,7 +82,7 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
   // Filter out "Σ Values" dimension
   const dimensions = [...config.rows, ...config.columns]
     .map(dim => typeof dim === 'string' ? dim : dim.id)
-    .filter(dim => dim !== 'Σ Values');
+    .filter(dim => dim !== SIGMA_VALUES_ID);
 
   // Get available value fields with aggregation in label
   const valueFields = config.values.map(v => ({

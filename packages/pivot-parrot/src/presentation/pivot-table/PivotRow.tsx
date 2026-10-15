@@ -1,4 +1,5 @@
 import React from 'react';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 /**
  * Render data cells for a row
@@ -89,8 +90,8 @@ export function PivotRow({
   const isLeaf = node.values && !hasKids;
   const isGrand = node.groupLabel === 'Grand Total';
 
-  const valuesInRows = rowFields && rowFields.some(f => f === 'Σ Values');
-  const valuesIndex = rowFields ? rowFields.indexOf('Σ Values') : -1;
+  const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
+  const valuesIndex = rowFields ? rowFields.indexOf(SIGMA_VALUES_ID) : -1;
   const isSubtotalRow = node.subtotals && hasKids;
 
   const fieldName = rowFields && rowFields[depth] ? rowFields[depth] : null;

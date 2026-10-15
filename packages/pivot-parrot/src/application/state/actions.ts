@@ -4,7 +4,7 @@
  */
 
 import type { PivotTableConfig, Filter, ValueConfig, DerivedField } from '../../domain/models/types';
-import { FieldKind } from '../../domain/models/types';
+import { FieldKind, SIGMA_VALUES_ID } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
 import { getArrowType } from '../../domain/types/ArrowTypes';
 import {
@@ -21,7 +21,7 @@ import { getFieldById } from '../utils/getFieldById';
  */
 function getFieldKind(fieldName: string, config: PivotTableConfig, availableFields: FieldItem[]): FieldKind {
   // Special case
-  if (fieldName === 'Σ Values') return FieldKind.SIGMA_VALUES;
+  if (fieldName === SIGMA_VALUES_ID) return FieldKind.SIGMA_VALUES;
 
   // Check active aggregations (e.g., SUM_sales)
   for (const valueConfig of config.values || []) {

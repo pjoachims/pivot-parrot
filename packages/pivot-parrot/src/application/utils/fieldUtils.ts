@@ -4,7 +4,7 @@
  */
 
 import { generateUniqueId } from './nameGenerator';
-import { CustomMetric, CustomFilter, CustomGrouping } from '../../domain/models/types';
+import { CustomMetric, CustomFilter, CustomGrouping, SIGMA_VALUES_ID } from '../../domain/models/types';
 export { lookupField, getFieldSQL, fieldExists, getFieldLabel, createFieldLookup } from './lookupField';
 
 type CustomExpression = CustomMetric | CustomFilter | CustomGrouping;
@@ -27,7 +27,7 @@ export function isFieldUsed(fieldName, config) {
          config.columns.some(f => getFieldId(f) === fieldName) ||
          config.rows.some(f => getFieldId(f) === fieldName) ||
          config.values.some(v => getFieldId(v.field) === fieldName) ||
-         (fieldName === 'Σ Values' && (config.rows.some(f => getFieldId(f) === 'Σ Values') || config.columns.some(f => getFieldId(f) === 'Σ Values')));
+         (fieldName === SIGMA_VALUES_ID && (config.rows.some(f => getFieldId(f) === SIGMA_VALUES_ID) || config.columns.some(f => getFieldId(f) === SIGMA_VALUES_ID)));
 }
 
 /**
@@ -100,7 +100,7 @@ export function filterAvailableFields(availableFields, derivedFieldsMap, searchQ
   const allDerivedFields = Object.values(derivedFieldsMap).flat();
   const filtered = availableFields.filter(field => {
     const fieldId = typeof field === 'string' ? field : field.id;
-    return fieldId !== 'Σ Values' && !allDerivedFields.includes(fieldId);
+    return fieldId !== SIGMA_VALUES_ID && !allDerivedFields.includes(fieldId);
   });
 
   if (!searchQuery.trim()) {
@@ -327,18 +327,18 @@ export function deleteCustomMetric(config, metricId) {
  */
 export function autoManageValuesField(config: any) {
   const hasMultipleValues = config.values.length >= 2;
-  const hasValuesInRows = config.rows.some((f: any) => getFieldId(f) === 'Σ Values');
-  const hasValuesInCols = config.columns.some((f: any) => getFieldId(f) === 'Σ Values');
+  const hasValuesInRows = config.rows.some((f: any) => getFieldId(f) === SIGMA_VALUES_ID);
+  const hasValuesInCols = config.columns.some((f: any) => getFieldId(f) === SIGMA_VALUES_ID);
 
   let newConfig = { ...config };
 
   if (hasMultipleValues && !hasValuesInRows && !hasValuesInCols) {
     // Auto-inject to columns at the end
-    newConfig.columns = [...config.columns, 'Σ Values'];
+    newConfig.columns = [...config.columns, SIGMA_VALUES_ID];
   } else if (!hasMultipleValues && (hasValuesInRows || hasValuesInCols)) {
     // Auto-remove when only 1 or 0 value fields
-    newConfig.rows = config.rows.filter((f: any) => getFieldId(f) !== 'Σ Values');
-    newConfig.columns = config.columns.filter((f: any) => getFieldId(f) !== 'Σ Values');
+    newConfig.rows = config.rows.filter((f: any) => getFieldId(f) !== SIGMA_VALUES_ID);
+    newConfig.columns = config.columns.filter((f: any) => getFieldId(f) !== SIGMA_VALUES_ID);
   }
 
   return newConfig;

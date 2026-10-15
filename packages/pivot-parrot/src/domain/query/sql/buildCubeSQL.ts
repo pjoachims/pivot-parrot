@@ -2,6 +2,7 @@ import { resolveMetricReferences } from '../../field/metric-resolver';
 import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../field/derived-field-resolver-v2';
 import { resolveFieldExpr } from '../../field/resolveFieldExpr';
 import { AGGREGATION_SQL_NAMES } from './aggregations';
+import { SIGMA_VALUES_ID } from '../../models/types';
 
 /**
  * Build CUBE SQL query from pivot configuration
@@ -79,11 +80,11 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
 
   // Filter out 'Σ Values' placeholder - it's not an actual column
   const rowDimensions = (config.rows || [])
-    .filter(r => getFieldId(r) !== 'Σ Values')
+    .filter(r => getFieldId(r) !== SIGMA_VALUES_ID)
     .map(r => buildDimensionExpr(getFieldId(r)));
 
   const colDimensions = (config.columns || [])
-    .filter(c => getFieldId(c) !== 'Σ Values')
+    .filter(c => getFieldId(c) !== SIGMA_VALUES_ID)
     .map(c => buildDimensionExpr(getFieldId(c)));
 
   const allDimensions = [...rowDimensions, ...colDimensions];

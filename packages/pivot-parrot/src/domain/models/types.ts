@@ -32,6 +32,9 @@ export enum FieldKind {
   SIGMA_VALUES = 'sigma_values'        // The "Σ Values" placeholder for pivot layout
 }
 
+/** Id of the Σ Values placeholder in config.rows / config.columns: where the metrics sit in the layout. */
+export const SIGMA_VALUES_ID = 'Σ Values';
+
 export type FieldItem = PivotFieldItem;
 
 // Field reference can be string ID or full object

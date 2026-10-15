@@ -6,6 +6,7 @@ import { isUngrouped, isGrouped, buildCubeIndex } from '../../application/utils/
 import { valueDisplayName } from '../../domain/field/fieldDisplayName';
 import { resolveFormat } from '../../application/utils/formatters';
 import type { ValueFormat } from '../../domain/models/types';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 // ==================== Type Definitions ====================
 
@@ -487,7 +488,7 @@ export function buildChartData(
   // Get all pivot dimensions
   const allDimensions = [...(config.rows || []), ...(config.columns || [])]
     .map(normalizeField)
-    .filter(dim => dim !== 'Σ Values');
+    .filter(dim => dim !== SIGMA_VALUES_ID);
 
   // Build cubeIndex if not present (needed for treemap)
   let cubeIndex = (sqlRows as CubeRow[] & { _cubeIndex?: Map<string, CubeRow> })._cubeIndex;

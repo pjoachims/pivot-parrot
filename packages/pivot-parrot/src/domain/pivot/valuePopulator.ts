@@ -4,6 +4,7 @@
  */
 
 import { createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
+import { SIGMA_VALUES_ID } from '../models/types';
 
 /**
  * Populate values arrays for all nodes in the tree
@@ -60,8 +61,8 @@ export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, col
 
       // IMPORTANT: Use originalRowFields (with Σ Values) for slicing, not actualRowFields
       const originalFields = originalRowFields || rowFields;  // Fallback for backward compat
-      const beforeFields = originalFields.slice(0, valuesIndex).filter(f => f !== 'Σ Values');
-      const afterFields = originalFields.slice(valuesIndex + 1).filter(f => f !== 'Σ Values');
+      const beforeFields = originalFields.slice(0, valuesIndex).filter(f => f !== SIGMA_VALUES_ID);
+      const afterFields = originalFields.slice(valuesIndex + 1).filter(f => f !== SIGMA_VALUES_ID);
 
       const valuesArray = columnOutline.map(col => {
         // Use hash lookup: combine before + after paths (skipping Values position)
