@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildCubeSQL } from '../../sql/buildCubeSQL';
 import { SQLDialect } from '../../dialects/SQLDialect';
+import { DatabricksDialect } from '../../dialects/DatabricksDialect';
 
 describe('buildCubeSQL', () => {
   let dialect;
@@ -415,6 +416,20 @@ describe('buildCubeSQL', () => {
 
       expect(sql).toContain('WHERE');
       expect(sql).toContain("(region = 'North')");
+    });
+  });
+  describe('result column aliases', () => {
+    it('quotes grouping and aggregation aliases with the dialect quote character', () => {
+      const config = {
+        rows: ['Sales Region'],
+        columns: [],
+        values: [{ field: 'Net Sales', aggregation: 'SUM' }]
+      };
+
+      const sql = buildCubeSQL(config, '', { 'Net Sales': 'float64' }, 'data', new DatabricksDialect());
+
+      expect(sql).toContain('AS `_grouping_Sales Region`');
+      expect(sql).toContain('AS `sum_Net Sales`');
     });
   });
 });

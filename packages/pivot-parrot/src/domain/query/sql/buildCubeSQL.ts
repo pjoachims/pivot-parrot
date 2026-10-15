@@ -82,6 +82,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
       // Field not found - treat as regular column
       const quoted = quoteIdentifier(fieldId);
       return {
+        id: fieldId,
         expr: quoted,
         alias: quoted,
         forGroupBy: quoted
@@ -93,6 +94,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
       // Custom grouping - resolve {{}} references
       const resolvedExpr = resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
       return {
+        id: fieldId,
         expr: resolvedExpr,
         alias: quoteIdentifier(fieldId),
         forGroupBy: resolvedExpr
@@ -102,6 +104,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     if (fieldItem.kind === FieldKind.DERIVED_FIELD && fieldItem.formula) {
       // Derived field - use formula as SQL expression
       return {
+        id: fieldId,
         expr: fieldItem.formula,
         alias: quoteIdentifier(fieldId),
         forGroupBy: fieldItem.formula
@@ -111,6 +114,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     // Base field - use quoted identifier
     const quoted = quoteIdentifier(fieldId);
     return {
+      id: fieldId,
       expr: quoted,
       alias: quoted,
       forGroupBy: quoted
@@ -208,7 +212,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     if (numericAggs.includes(aggUpper) && !isNumericType) {
       // Fallback to COUNT
       const countExpr = dialect.getAggregation('count', fieldExpr);
-      return `${dialect.cast(countExpr, 'bigint')} AS count_${v.field}`;
+      return `${dialect.cast(countExpr, 'bigint')} AS ${quoteIdentifier(`count_${v.field}`)}`;
     }
 
     // Get aggregation name for dialect registry
@@ -227,7 +231,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
 
     // Generate aggregation expression using dialect
     const aggExpr = dialect.getAggregation(aggKey, fieldExpr);
-    return `${aggExpr} AS ${aggAlias}_${v.field}`;
+    return `${aggExpr} AS ${quoteIdentifier(`${aggAlias}_${v.field}`)}`;
   }).join(', ');
 
   // Generate SQL based on configuration
@@ -252,9 +256,9 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     if (useCube) {
       // Use CUBE to generate subtotals and grand totals
       // Build GROUPING columns using raw expressions
-      // e.g., GROUPING(YEAR(date)) AS _grouping_grouping_123, GROUPING("region") AS _grouping_region
+      // e.g., GROUPING(YEAR(date)) AS _grouping_grouping_123, GROUPING("region") AS "_grouping_region"
       const groupingCols = allDimensions.map(d =>
-        `CAST(GROUPING(${d.forGroupBy}) AS INTEGER) AS _grouping_${d.alias.replace(/"/g, '')}`
+        `CAST(GROUPING(${d.forGroupBy}) AS INTEGER) AS ${quoteIdentifier(`_grouping_${d.id}`)}`
       ).join(', ');
 
       sql = `SELECT ${dimensionSelects}, ${groupingCols}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY CUBE(${groupBy.join(', ')}) ${havingClause} ORDER BY ${orderBy}`;
