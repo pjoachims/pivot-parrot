@@ -9,7 +9,10 @@ import {
   getMetricFormat,
   detectAxisType,
   getColor,
-  getPlotlyFormat
+  getPlotlyFormat,
+  hoverValue,
+  metricAxisFormat,
+  plotlySeparators
 } from './chartUtils';
 import { BarLineTrace, PlotlyLayout } from './types';
 
@@ -312,7 +315,7 @@ const styles: Record<string, React.CSSProperties> = {
 // Data Transformation & Rendering
 // ============================================================================
 
-export function transformBarLineChart(chartData, chartConfig) {
+export function transformBarLineChart(chartData, chartConfig, locale = 'en-US') {
   const { rows, dtypes, config } = chartData;
   const { xAxis, groupBy, metrics, barMode = 'group' } = chartConfig;
 
@@ -339,7 +342,7 @@ export function transformBarLineChart(chartData, chartConfig) {
   metrics.forEach((metric) => {
     const cubeColumnName = sanitizeFieldName(metric.field, config);
     const metricLabel = getMetricLabel(metric.field, config);
-    const metricFormat = getMetricFormat(metric.field, config);
+    const metricFormat = getMetricFormat(metric.field, config, locale);
 
 
     Object.entries(groups).forEach(([groupName, rows]) => {
@@ -358,11 +361,11 @@ export function transformBarLineChart(chartData, chartConfig) {
         yaxis: metric.axis === 'Ax2' ? 'y2' : 'y',
         hovertemplate: barMode === 'stack100'
           ? (groupBy
-            ? `%{fullData.name}: %{customdata:${metricFormat}} (%{y:.1f}%)<extra></extra>`
-            : `${metricLabel}<br>%{x}<br>%{customdata:${metricFormat}} (%{y:.1f}%)<extra></extra>`)
+            ? `%{fullData.name}: ${hoverValue('customdata', metricFormat)} (%{y:.1f}%)<extra></extra>`
+            : `${metricLabel}<br>%{x}<br>${hoverValue('customdata', metricFormat)} (%{y:.1f}%)<extra></extra>`)
           : (groupBy
-            ? `%{fullData.name}: %{y:${metricFormat}}<extra></extra>`
-            : `${metricLabel}<br>%{x}<br>%{y:${metricFormat}}<extra></extra>`)
+            ? `%{fullData.name}: ${hoverValue('y', metricFormat)}<extra></extra>`
+            : `${metricLabel}<br>%{x}<br>${hoverValue('y', metricFormat)}<extra></extra>`)
       };
 
       // Add chart-type specific properties
@@ -403,6 +406,7 @@ export function transformBarLineChart(chartData, chartConfig) {
     },
     yaxis: {
       title: getAxisTitle(metrics, 'Ax1', config),
+      ...(barMode !== 'stack100' && axisFormat(metrics, 'Ax1', config, locale)),
       side: 'left',
       autorange: true,
       rangemode: 'normal'
@@ -435,13 +439,15 @@ export function transformBarLineChart(chartData, chartConfig) {
         hovertext: getMetricLabel(metrics[0].field, config)
       }
     }),
-    autosize: true
+    autosize: true,
+    separators: plotlySeparators(locale)
   };
 
   // Only add yaxis2 if needed
   if (hasAxis2(metrics)) {
     layout.yaxis2 = {
       title: getAxisTitle(metrics, 'Ax2', config),
+      ...(barMode !== 'stack100' && axisFormat(metrics, 'Ax2', config, locale)),
       overlaying: 'y',
       side: 'right',
       autorange: true,
@@ -456,6 +462,12 @@ export function transformBarLineChart(chartData, chartConfig) {
 // Helper: Check if any metric uses Ax2
 function hasAxis2(metrics) {
   return metrics.some(m => m.axis === 'Ax2');
+}
+
+// Helper: tick format of an axis, taken from its first metric
+function axisFormat(metrics, axisName, config, locale) {
+  const first = metrics.find(m => m.axis === axisName);
+  return first ? metricAxisFormat(getMetricFormat(first.field, config, locale)) : {};
 }
 
 // Helper: Get axis title from metrics

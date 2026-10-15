@@ -45,6 +45,7 @@ export default function SecondaryView({
         fields={fields}
         dialect={dialect}
         dtypes={dtypes}
+        locale={locale}
       />
     );
   }

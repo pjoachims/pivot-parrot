@@ -8,7 +8,10 @@ import {
   getMetricLabel,
   getColor,
   detectAxisType,
-  getPlotlyFormat
+  getPlotlyFormat,
+  getMetricFormat,
+  metricAxisFormat,
+  plotlySeparators
 } from './chartUtils';
 
 // ============================================================================
@@ -145,7 +148,7 @@ const styles: Record<string, React.CSSProperties> = {
 // Data Transformation & Rendering
 // ============================================================================
 
-export function transformScatterChart(chartData, chartConfig) {
+export function transformScatterChart(chartData, chartConfig, locale = 'en-US') {
   const { rows, dtypes, config } = chartData;
   const { pointLevel, xMetric, yMetric, colorBy, sizeBy } = chartConfig;
 
@@ -199,27 +202,32 @@ export function transformScatterChart(chartData, chartConfig) {
   const yAxisDtype = dtypes ? dtypes[yColumn] : null;
   const xPlotlyFormat = getPlotlyFormat(xAxisDtype);
   const yPlotlyFormat = getPlotlyFormat(yAxisDtype);
+  const xMetricAxis = metricAxisFormat(getMetricFormat(xMetric, config, locale));
+  const yMetricAxis = metricAxisFormat(getMetricFormat(yMetric, config, locale));
 
   const layout = {
     title: '',
     xaxis: {
       title: xLabel,
       type: xAxisType,
-      tickformat: xPlotlyFormat.tick,
-      hoverformat: xPlotlyFormat.hover,
+      ...xMetricAxis,
+      tickformat: xPlotlyFormat.tick ?? xMetricAxis.tickformat,
+      hoverformat: xPlotlyFormat.hover ?? xMetricAxis.tickformat,
       automargin: true
     },
     yaxis: {
       title: yLabel,
       type: yAxisType,
-      tickformat: yPlotlyFormat.tick,
-      hoverformat: yPlotlyFormat.hover
+      ...yMetricAxis,
+      tickformat: yPlotlyFormat.tick ?? yMetricAxis.tickformat,
+      hoverformat: yPlotlyFormat.hover ?? yMetricAxis.tickformat
     },
     showlegend: colorBy ? true : false,
     legend: { x: 1.1, y: 1 },
     margin: { l: 60, r: 60, t: 40, b: 60 },
     hovermode: 'closest',
-    autosize: true
+    autosize: true,
+    separators: plotlySeparators(locale)
   };
 
   return { traces, layout };

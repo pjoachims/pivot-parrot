@@ -381,7 +381,7 @@ describe('BarLineChart', () => {
       expect(result.traces).toHaveLength(1);
 
       // Should use currency format in hover template
-      expect(result.traces[0].hovertemplate).toContain('$,.2f');
+      expect(result.traces[0].hovertemplate).toContain('$%{y:,.2f}');
     });
 
     it('should apply percentage formatting to metrics', () => {

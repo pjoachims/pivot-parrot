@@ -295,7 +295,7 @@ describe('TreemapChart', () => {
       const trace = result.traces[0];
 
       // Should use currency format in hover template
-      expect(trace.hovertemplate).toContain('$,.2f');
+      expect(trace.hovertemplate).toContain('$%{value:,.2f}');
     });
 
     it('should handle percentage formatting', () => {

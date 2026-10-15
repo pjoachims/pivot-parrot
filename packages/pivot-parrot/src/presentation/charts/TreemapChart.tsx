@@ -5,7 +5,9 @@ import {
   sanitizeFieldName,
   getMetricLabel,
   getMetricFormat,
-  formatValueForDisplay
+  formatValueForDisplay,
+  hoverValue,
+  plotlySeparators
 } from './chartUtils';
 import { createCellHash, lookupCubeValue, safeStringify } from '../../application/utils/cubeIndex';
 import { TreemapTrace } from './types';
@@ -340,14 +342,14 @@ export function buildTreemapNodes(rows, rawRows, cubeIndex, levels, allDimension
   return nodes;
 }
 
-export function transformTreemapChart(chartData, chartConfig) {
+export function transformTreemapChart(chartData, chartConfig, locale = 'en-US') {
   const { rows, rawRows, cubeIndex, dimensions: levels, allDimensions, dtypes, config } = chartData;
   const { metric, colorMetric, colorScheme = 'Viridis' } = chartConfig;
 
   // Get metric column names, labels, and formats
   const metricColumn = sanitizeFieldName(metric, config);
   const metricLabel = getMetricLabel(metric, config);
-  const metricFormat = getMetricFormat(metric, config);
+  const metricFormat = getMetricFormat(metric, config, locale);
 
   // Get color metric (if specified)
   const useColorMetric = !!colorMetric;
@@ -356,7 +358,7 @@ export function transformTreemapChart(chartData, chartConfig) {
   if (useColorMetric) {
     colorMetricColumn = sanitizeFieldName(colorMetric, config);
     colorMetricLabel = getMetricLabel(colorMetric, config);
-    colorMetricFormat = getMetricFormat(colorMetric, config);
+    colorMetricFormat = getMetricFormat(colorMetric, config, locale);
   }
 
   // Build nodes using extracted function (testable!)
@@ -422,8 +424,8 @@ export function transformTreemapChart(chartData, chartConfig) {
       }
     },
     hovertemplate: '<b>%{currentPath}</b><br>' +
-      metricLabel + ': %{value:' + metricFormat + '}' +
-      (useColorMetric && colorMetric !== metric ? '<br>' + colorMetricLabel + ': %{color:' + colorMetricFormat + '}' : '') +
+      metricLabel + ': ' + hoverValue('value', metricFormat) +
+      (useColorMetric && colorMetric !== metric ? '<br>' + colorMetricLabel + ': ' + hoverValue('color', colorMetricFormat) : '') +
       '<extra></extra>'
   };
 
@@ -461,6 +463,7 @@ export function transformTreemapChart(chartData, chartConfig) {
     },
     margin: { l: 10, r: 10, t: 50, b: 30 },
     autosize: true,
+    separators: plotlySeparators(locale),
     font: {
       family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       size: 12,
