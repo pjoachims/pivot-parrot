@@ -62,6 +62,34 @@ function matchesValueConfig(fieldName: string, valueConfig: ValueConfig): boolea
   return getAggregationId(valueConfig) === fieldName;
 }
 
+function isNumericType(typeName: string | number | undefined): boolean {
+  return typeof typeName === 'string' && Boolean(getArrowType(typeName)?.isNumeric);
+}
+
+export type CheckboxZone = 'rows' | 'values' | 'filters';
+
+const CHECKBOX_ZONE_BY_KIND: Partial<Record<FieldKind, CheckboxZone>> = {
+  [FieldKind.AGGREGATION]: 'values',
+  [FieldKind.CUSTOM_METRIC]: 'values',
+  [FieldKind.CUSTOM_FILTER]: 'filters'
+};
+
+/**
+ * Zone a field lands in when its checkbox is ticked (Excel-like): measures and
+ * numeric base fields go to Values, custom filters to Filters, everything else to Rows.
+ */
+export function checkboxTargetZone(
+  fieldName: string,
+  config: PivotTableConfig,
+  availableFields: FieldItem[],
+  detectedTypes: Record<string, string | number>
+): CheckboxZone {
+  const kind = getFieldKind(fieldName, config, availableFields);
+  const zone = CHECKBOX_ZONE_BY_KIND[kind];
+  if (zone) return zone;
+  return kind === FieldKind.BASE_FIELD && isNumericType(detectedTypes[fieldName]) ? 'values' : 'rows';
+}
+
 export function buildHandleDrop(
   config: PivotTableConfig,
   availableFields: FieldItem[],
@@ -126,12 +154,7 @@ export function buildHandleDrop(
       } else if (kind === FieldKind.AGGREGATION && draggedValueConfig) {
         targetArray.splice(insertAt, 0, { ...draggedValueConfig });
       } else {
-        // Regular fields get default aggregation based on type
-        const fieldTypeName = detectedTypes[fieldName]; // e.g., 'int64', 'decimal<35,19>'
-        const fieldTypeInfo = typeof fieldTypeName === 'string'
-          ? getArrowType(fieldTypeName)
-          : null; // Handles parameterized types
-        const defaultAgg = fieldTypeInfo?.isNumeric ? 'Sum' : 'Count';
+        const defaultAgg = isNumericType(detectedTypes[fieldName]) ? 'Sum' : 'Count';
         targetArray.splice(insertAt, 0, { field: fieldName, aggregation: defaultAgg });
       }
       newConfig.values = targetArray;

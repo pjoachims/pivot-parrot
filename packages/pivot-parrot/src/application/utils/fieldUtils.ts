@@ -5,7 +5,6 @@
 
 import { generateUniqueId } from './nameGenerator';
 import { CustomMetric, CustomFilter, CustomGrouping } from '../../domain/models/types';
-import { getArrowType } from '../../domain/types/ArrowTypes';
 export { lookupField, getFieldSQL, fieldExists, getFieldLabel, createFieldLookup } from './lookupField';
 
 type CustomExpression = CustomMetric | CustomFilter | CustomGrouping;
@@ -315,55 +314,6 @@ export function deleteCustomMetric(config, metricId) {
     customMetrics: (config.customMetrics || []).filter(m => m.id !== metricId),
     values: config.values.filter(v => v.field !== metricId)
   };
-}
-
-/**
- * Handle field checkbox toggle (add/remove from zones)
- */
-export function toggleFieldUsage(fieldName, checked, config, detectedTypes) {
-  let newConfig = { ...config };
-  if (checked) {
-    // Add to Values zone with smart default aggregation
-    if (!config.values.some(v => getFieldId(v.field) === fieldName)) {
-      const fieldTypeName = detectedTypes[fieldName]; // e.g., 'int64', 'decimal<35,19>'
-      const fieldTypeInfo = getArrowType(fieldTypeName); // Handles parameterized types like decimal<35,19>
-      const defaultAgg = fieldTypeInfo?.isNumeric ? 'Sum' : 'Count';
-      newConfig.values = [...config.values, { field: fieldName, aggregation: defaultAgg }];
-    }
-  } else {
-    // Remove from all zones
-    newConfig.filters = config.filters.filter(f => getFieldId(f) !== fieldName);
-    newConfig.columns = config.columns.filter(f => getFieldId(f) !== fieldName);
-    newConfig.rows = config.rows.filter(f => getFieldId(f) !== fieldName);
-    newConfig.values = config.values.filter(v => getFieldId(v.field) !== fieldName);
-  }
-  return newConfig;
-}
-
-/**
- * Handle custom metric checkbox toggle (add/remove from Values only)
- */
-export function toggleCustomMetricUsage(metricId, checked, config) {
-  if (checked) {
-    // Add to Values zone (store only ID reference)
-    return {
-      ...config,
-      values: [
-        ...config.values,
-        {
-          field: metricId,
-          aggregation: 'custom',
-          isCustom: true
-        }
-      ]
-    };
-  } else {
-    // Remove from Values zone (but keep in customMetrics)
-    return {
-      ...config,
-      values: config.values.filter(v => getFieldId(v.field) !== metricId)
-    };
-  }
 }
 
 /**

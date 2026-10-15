@@ -3,6 +3,7 @@ import { usePivotStore } from '../../../../application/state/store';
 import { FieldItem } from '../../../../domain/field/FieldItem';
 import { isFieldUsed, isCustomMetricInUse } from '../../../../application/utils/fieldUtils';
 import { clearResolverCache } from '../../../../domain/field/derived-field-resolver-v2';
+import { checkboxTargetZone } from '../../../../application/state/actions';
 
 /**
  * useFieldsListLogic - Business logic hook for FieldsList component
@@ -48,18 +49,17 @@ export function useFieldsListLogic() {
   // Handle field checkbox change
   const handleFieldCheckboxChange = useCallback((fieldId: string, checked: boolean) => {
     if (checked) {
-      // Use existing handleDrop - it already has the defaultAgg logic
-      handleDrop(fieldId, 'available', 'values', null);
+      const zone = checkboxTargetZone(fieldId, config, availableFields, detectedTypes);
+      handleDrop(fieldId, 'available', zone, (config[zone] || []).length);
     } else {
-      // Use new action
       removeFieldFromAllZones(fieldId);
     }
-  }, [handleDrop, removeFieldFromAllZones]);
+  }, [config, availableFields, detectedTypes, handleDrop, removeFieldFromAllZones]);
 
   // Handle custom metric checkbox change
   const handleCustomMetricCheckboxChange = useCallback((metricId: string, checked: boolean) => {
     if (checked) {
-      handleDrop(metricId, 'available', 'values', null);
+      handleDrop(metricId, 'available', 'values', config.values.length);
     } else {
       // Remove only from values, keep in customMetrics
       const newConfig = {
