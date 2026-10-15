@@ -1,7 +1,6 @@
 import { resolveMetricReferences } from '../../field/metric-resolver';
 import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../field/derived-field-resolver-v2';
-import { getFieldById } from '../../field/getFieldById';
-import { FieldKind } from '../../models/types';
+import { resolveFieldExpr } from '../../field/resolveFieldExpr';
 import { AGGREGATION_SQL_NAMES } from './aggregations';
 
 /**
@@ -73,54 +72,9 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
   // Use dialect for identifier quoting
   const quoteIdentifier = (id) => dialect.quoteIdentifier(id);
 
-  const customGroupings = config.customGroupings || [];
-
-  // Build dimension expressions for SELECT and GROUP BY using getFieldById
   const buildDimensionExpr = (fieldId) => {
-    // Get field metadata
-    const fieldItem = getFieldById(fieldId, availableFields, config);
-
-    if (!fieldItem) {
-      // Field not found - treat as regular column
-      const quoted = quoteIdentifier(fieldId);
-      return {
-        id: fieldId,
-        expr: quoted,
-        alias: quoted,
-        forGroupBy: quoted
-      };
-    }
-
-    // Handle different field kinds
-    if (fieldItem.kind === FieldKind.CUSTOM_GROUPING && fieldItem.formula) {
-      // Custom grouping - resolve {{}} references
-      const resolvedExpr = resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
-      return {
-        id: fieldId,
-        expr: resolvedExpr,
-        alias: quoteIdentifier(fieldId),
-        forGroupBy: resolvedExpr
-      };
-    }
-
-    if (fieldItem.kind === FieldKind.DERIVED_FIELD && fieldItem.formula) {
-      // Derived field - use formula as SQL expression
-      return {
-        id: fieldId,
-        expr: fieldItem.formula,
-        alias: quoteIdentifier(fieldId),
-        forGroupBy: fieldItem.formula
-      };
-    }
-
-    // Base field - use quoted identifier
-    const quoted = quoteIdentifier(fieldId);
-    return {
-      id: fieldId,
-      expr: quoted,
-      alias: quoted,
-      forGroupBy: quoted
-    };
+    const expr = resolveFieldExpr(fieldId, availableFields, config, dialect);
+    return { id: fieldId, expr, alias: quoteIdentifier(fieldId), forGroupBy: expr };
   };
 
   // Filter out 'Σ Values' placeholder - it's not an actual column
@@ -143,29 +97,6 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
 
   const aggNameMap = AGGREGATION_SQL_NAMES;
 
-  // Helper: resolve field to its SQL expression (for custom groupings, derived fields, etc.)
-  const resolveFieldExpr = (fieldId) => {
-    const fieldItem = getFieldById(fieldId, availableFields, config);
-
-    if (!fieldItem) {
-      // Field not found - treat as regular column
-      return quoteIdentifier(fieldId);
-    }
-
-    // Custom grouping - resolve {{}} references and return the expression
-    if (fieldItem.kind === FieldKind.CUSTOM_GROUPING && fieldItem.formula) {
-      return resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
-    }
-
-    // Derived field - use formula as SQL expression
-    if (fieldItem.kind === FieldKind.DERIVED_FIELD && fieldItem.formula) {
-      return resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
-    }
-
-    // Base field - use quoted identifier
-    return quoteIdentifier(fieldId);
-  };
-
   // Build aggregation expressions
   // Combine visible values and hidden values for SQL generation
   const allValues = [...(config.values || []), ...(config.hiddenValues || [])];
@@ -184,7 +115,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     const aggUpper = v.aggregation.toUpperCase().trim();
     const aggAlias = v.aggregation.toLowerCase().replace(/\s+/g, '_'); // Lowercase for consistency
     // Resolve field to its expression (handles custom groupings, derived fields)
-    const fieldExpr = resolveFieldExpr(v.field);
+    const fieldExpr = resolveFieldExpr(v.field, availableFields, config, dialect);
 
     // Validate: numeric aggregations (SUM, AVG) work on numeric and boolean fields
     const numericAggs = ['SUM', 'AVG'];

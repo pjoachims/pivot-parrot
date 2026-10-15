@@ -8,9 +8,8 @@ import Popover from '../shared/Popover';
 import SnapshotNameDialog from '../snapshots/SnapshotNameDialog';
 import { filterCustomMetrics } from '../../../application/utils/fieldUtils';
 import { buildWhereClauses } from '../../../domain/query/sql/sql-builder';
-import { FieldKind } from '../../../domain/models/types';
 import { fieldDisplayName } from '../../../domain/field/fieldDisplayName';
-import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../../domain/field/derived-field-resolver-v2';
+import { resolveFieldExpr } from '../../../domain/field/resolveFieldExpr';
 
 /**
  * DialogsManager Component
@@ -144,20 +143,7 @@ export function DialogsManager({
                   // Use field.id if available (FieldItem), otherwise field.name
                   const fieldId = filterDialog.field.id || filterDialog.field.name;
 
-                  // Custom groupings and derived fields are expressions, not columns
-                  let expression = null;
-                  const { kind, formula } = filterDialog.field;
-                  if ((kind === FieldKind.CUSTOM_GROUPING || kind === FieldKind.DERIVED_FIELD) && formula) {
-                    const referenceLookup = buildReferenceLookup({
-                      availableFields,
-                      customGroupings: config.customGroupings || [],
-                      customMetrics: config.customMetrics || [],
-                      values: config.values || [],
-                      hiddenValues: config.hiddenValues || [],
-                      dialect
-                    });
-                    expression = resolveDerivedFieldsInExpressionV2(formula, referenceLookup);
-                  }
+                  const expression = resolveFieldExpr(fieldId, availableFields, config, dialect);
 
                   return await dataEngine.getUniqueValues(
                     fieldId,

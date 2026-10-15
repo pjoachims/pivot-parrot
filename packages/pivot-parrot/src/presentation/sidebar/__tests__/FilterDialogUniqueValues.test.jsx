@@ -39,9 +39,9 @@ async function makeEngine() {
   return new NodeDuckDBEngine(conn);
 }
 
-function openFilterDialog(engine, field) {
+function openFilterDialog(engine, field, availableFields = [field]) {
   const store = createPivotStore();
-  store.setState({ filterDialog: { field, existingFilter: null, anchorEl: document.createElement('div') } });
+  store.setState({ availableFields, filterDialog: { field, existingFilter: null, anchorEl: document.createElement('div') } });
   render(
     <PivotStoreContext.Provider value={{ store, instanceKey: 'test' }}>
       <DialogsManager dataEngine={engine} snapshots={[]} />
@@ -83,5 +83,13 @@ describe('filter dialog unique values', () => {
     await waitFor(() => expect(screen.getByText('A')).toBeInTheDocument());
     expect(screen.getByText('B')).toBeInTheDocument();
     expect(screen.queryByText(/first 1000 values/i)).not.toBeInTheDocument();
+  });
+
+  it('resolves {{}} references in a derived field formula', async () => {
+    const upper = { id: 'region_upper', name: 'region_upper', dtype: 'string', kind: FieldKind.DERIVED_FIELD, formula: 'upper(region)' };
+    const tagged = { id: 'region_tag', name: 'region_tag', dtype: 'string', kind: FieldKind.DERIVED_FIELD, formula: "{{region_upper}} || '!'" };
+    openFilterDialog(engine, tagged, [upper, tagged]);
+    await waitFor(() => expect(screen.getByText('A!')).toBeInTheDocument());
+    expect(screen.getByText('B!')).toBeInTheDocument();
   });
 });
