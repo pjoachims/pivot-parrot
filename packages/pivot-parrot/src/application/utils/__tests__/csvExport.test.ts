@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildPivotDisplayData } from '../../../domain/pivot/index';
 import { buildPivotCSV, buildDataCSV, exportPivotCSV } from '../export';
 import { dataToCSV, toCSV } from '../../../domain/query/utils/csv';
+import { DuckDBDialect } from '../../../domain/query/dialects/DuckDBDialect';
 
 const config = {
   values: [
@@ -97,6 +98,37 @@ describe('buildPivotCSV with Σ Values in rows', () => {
 describe('buildDataCSV', () => {
   it('drops _grouping_ columns and labels rolled-up members, leaving genuine NULLs empty', () => {
     expect(buildDataCSV(cubeRows, config, 'de-DE')).toBe('Märkte;Umsatz €;Quote\nKöln;1234,5;12,34%\n;99;50%\nTotal;1333,5;20%');
+  });
+});
+
+/** An Arrow Decimal128 cell as Arrow JS hands it over: 128-bit two's complement, little endian. */
+function decimal128(unscaled: bigint): Uint32Array {
+  let v = unscaled < 0n ? unscaled + (1n << 128n) : unscaled;
+  const out = new Uint32Array(4);
+  for (let i = 0; i < 4; i++) { out[i] = Number(v & 0xffffffffn); v >>= 32n; }
+  return out;
+}
+
+describe('DECIMAL cells from Arrow', () => {
+  const dialect = new DuckDBDialect();
+  const dtypes = { Preis: 'decimal<10,2>', m1: 'decimal<38,4>', m2: 'decimal<38,4>' };
+  const arrowRows = [
+    { Preis: decimal128(1050n), m1: decimal128(12345000n), m2: decimal128(1234n), _grouping_Preis: 0 },
+    { Preis: null, m1: decimal128(-500n), m2: decimal128(5000n), _grouping_Preis: 1 }
+  ];
+
+  it('buildDataCSV decodes them, with the locale decimal and percents', () => {
+    expect(buildDataCSV(arrowRows, config, 'de-DE', dtypes, dialect)).toBe('Preis;Umsatz €;Quote\n10,5;1234,5;12,34%\nTotal;-0,05;50%');
+  });
+
+  it('buildPivotCSV decodes the cells', () => {
+    const rows = arrowRows.map(r => ({ ...r, Preis: r.Preis && 'teuer' }));
+    const d = buildPivotDisplayData(rows, ['Preis'], ['Σ Values'], config.values, null, dtypes);
+    expect(buildPivotCSV(d, d._columnOutline, ['Preis'], true, true, config, 'de-DE', dtypes, dialect).split('\n')).toEqual([
+      'Row Labels;Umsatz €;Quote',
+      'teuer;1234,5;12,34%',
+      'Grand Total;-0,05;50%'
+    ]);
   });
 });
 

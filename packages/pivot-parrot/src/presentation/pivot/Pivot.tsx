@@ -151,7 +151,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Custom hooks
   const splitPane = useSplitPane(activeView, secondaryDisplayMode);
-  const snapshots = useSnapshots();
+  const snapshots = useSnapshots(dataEngine?.getDialect() ?? null);
   // Pivot calculation - executes queries
   const calculation = usePivotCalculation({
     executionConfig,

@@ -279,6 +279,8 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       cubeResults={cubeResults}
       config={config}
       locale={locale}
+      dtypes={dtypes}
+      dialect={dialect}
       onDrilldown={onDrilldown}
       onOpenSQL={onOpenSQL}
     />

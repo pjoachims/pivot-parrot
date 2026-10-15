@@ -6,6 +6,7 @@ import { profiler } from '../../domain/query/utils/profiler';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
 import { findValueFormat } from './formatters';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 
 // Escape a string for safe use inside a RegExp
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -39,11 +40,26 @@ export const downloadCSV = (csv: string, filename: string) => {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+type Dtypes = Record<string, string>;
+
+/**
+ * A numeric result value as a number. Arrow JS hands DECIMAL over as a
+ * Uint32Array (and some engines as a string), which the dialect decodes.
+ */
+const decodeNumber = (value, typeName: string | undefined, dialect: SQLDialect | null) => {
+  if (value == null || typeof value === 'number' || typeof value === 'bigint' || !typeName || !dialect) return value;
+  if (!dialect.parseTypeName(typeName).type?.isNumeric) return value;
+  const n = Number(dialect.toDisplay(value, typeName));
+  return Number.isNaN(n) ? value : n;
+};
+
 /** A metric value as a CSV cell: percentages are written as percents, not fractions. */
-const metricCell = (config, value, metricKey): CsvCell =>
-  typeof value === 'number' && findValueFormat(config, metricKey)?.type === 'percentage'
+const metricCell = (config, raw, metricKey, dtypes: Dtypes, dialect: SQLDialect | null): CsvCell => {
+  const value = decodeNumber(raw, dtypes[metricKey], dialect);
+  return typeof value === 'number' && findValueFormat(config, metricKey)?.type === 'percentage'
     ? { percent: value }
     : value;
+};
 
 const GROUPING_PREFIX = '_grouping_';
 
@@ -52,7 +68,7 @@ const GROUPING_PREFIX = '_grouping_';
  * dropped; a dimension rolled up by the CUBE (its grouping flag is 1) is written
  * as "Total" so it can't be mistaken for a NULL member, which stays empty.
  */
-export const buildDataCSV = (cubeRows, config = null, locale?: string): string => {
+export const buildDataCSV = (cubeRows, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null): string => {
   if (!cubeRows?.length) return '';
   const headers = Object.keys(cubeRows[0]).filter(h => !h.startsWith(GROUPING_PREFIX));
 
@@ -68,7 +84,7 @@ export const buildDataCSV = (cubeRows, config = null, locale?: string): string =
   });
 
   const rows = cubeRows.map(row => headers.map(h =>
-    Number(row[GROUPING_PREFIX + h]) === 1 ? 'Total' : metricCell(config, row[h], h)
+    Number(row[GROUPING_PREFIX + h]) === 1 ? 'Total' : metricCell(config, row[h], h, dtypes, dialect)
   ));
   return toCSV([friendlyHeaders, ...rows], locale);
 };
@@ -76,9 +92,9 @@ export const buildDataCSV = (cubeRows, config = null, locale?: string): string =
 /**
  * Export raw SQL data to CSV with friendly column names
  */
-export const exportDataCSV = (displayData, config = null, locale?: string) => {
+export const exportDataCSV = (displayData, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('exportDataCSV', () => {
-  const csv = buildDataCSV(displayData?.cubeResults, config, locale);
+  const csv = buildDataCSV(displayData?.cubeResults, config, locale, dtypes, dialect);
   if (!csv) {
     alert('No data to export');
     return;
@@ -96,9 +112,11 @@ export const exportDataCSV = (displayData, config = null, locale?: string) => {
  * @param {boolean} showGrandTotal - Whether to show grand total
  * @param {Object} config - Pivot config for mapping custom metric names
  * @param {string} locale - Decides delimiter and decimal mark (default: en, comma and dot)
+ * @param {Object} dtypes - Result column → engine type name, to decode raw cells
+ * @param {Object} dialect - SQL dialect that decodes them
  * @returns {string} CSV string
  */
-export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string) => {
+export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('buildPivotCSV', () => {
   if (!data || !data.rowGroups) {
     return '';
@@ -199,7 +217,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     }
 
     const rowMetric = valuesIndex >= 0 ? row.path?.[valuesIndex] : null;
-    lines.push([label, ...(leafCols || []).map((leaf, idx) => metricCell(config, cellValues?.[idx], rowMetric || leaf.metric))]);
+    lines.push([label, ...(leafCols || []).map((leaf, idx) => metricCell(config, cellValues?.[idx], rowMetric || leaf.metric, dtypes, dialect))]);
 
     // Recurse for children
     if (hasKids && row.children) {
@@ -214,10 +232,10 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     if (valuesInRows) {
       // One grand-total row per metric: data.grandTotal holds {metric, metricLabel, values}
       data.grandTotal.forEach(gt => {
-        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map((leaf, idx) => metricCell(config, gt.values?.[idx], gt.metric))]);
+        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map((leaf, idx) => metricCell(config, gt.values?.[idx], gt.metric, dtypes, dialect))]);
       });
     } else {
-      lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric))]);
+      lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric, dtypes, dialect))]);
     }
   }
 
@@ -234,10 +252,12 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
  * @param {boolean} showGrandTotal - Whether to show grand total
  * @param {Object} config - Pivot config for mapping custom metric names
  * @param {string} locale - Decides delimiter and decimal mark
+ * @param {Object} dtypes - Result column → engine type name, to decode raw cells
+ * @param {Object} dialect - SQL dialect that decodes them
  */
-export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string) => {
+export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('exportPivotCSV', () => {
-  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, locale);
+  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, locale, dtypes, dialect);
 
   if (!csv) {
     alert('No pivot data to export');

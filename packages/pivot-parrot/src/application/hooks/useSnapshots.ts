@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { buildDataCSV, downloadCSV } from '../utils/export';
 import { usePivotLocale } from '../state/store';
 import type { PivotTableConfig } from '../../domain/models/types';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import type { Snapshot, CubeRow, DimensionFilters } from '../../domain/models/types';
 
 // Type aliases for better semantic meaning (kept for backwards compatibility)
@@ -11,7 +12,7 @@ type Dtypes = Record<string, string>;
 /**
  * Custom hook to manage pivot snapshots (session storage only)
  */
-export function useSnapshots() {
+export function useSnapshots(dialect: SQLDialect | null = null) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const locale = usePivotLocale();
 
@@ -66,7 +67,7 @@ export function useSnapshots() {
     }
 
     snapshots.forEach((snapshot) => {
-      const csv = buildDataCSV(snapshot.cubeResults, snapshot.config, locale);
+      const csv = buildDataCSV(snapshot.cubeResults, snapshot.config, locale, snapshot.dtypes, dialect);
       downloadCSV(csv, `${(snapshot.name || snapshot.id).replace(/\s+/g, '_')}.csv`);
     });
   }

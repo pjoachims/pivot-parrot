@@ -39,6 +39,8 @@ export default function PivotDisplayHeader({
   cubeResults,
   config,
   locale = 'en-US',
+  dtypes = {},
+  dialect = null,
   onOpenSQL,
   onDrilldown
 }) {
@@ -124,7 +126,7 @@ export default function PivotDisplayHeader({
 
   const handleExportData = () => {
     if (cubeResults && cubeResults.length > 0) {
-      exportDataCSV({ cubeResults }, config, locale);
+      exportDataCSV({ cubeResults }, config, locale, dtypes, dialect);
       setShowExportMenu(false);
       setExportError('');
     } else {
@@ -136,7 +138,7 @@ export default function PivotDisplayHeader({
     if (data && config) {
       const rowFieldNames = config.rows.map(f => typeof f === 'string' ? f : f.id);
       const leafCols = computeLeafColumns(data);
-      exportPivotCSV(data, leafCols, rowFieldNames, true, config.showGrandTotal !== false, config, locale);
+      exportPivotCSV(data, leafCols, rowFieldNames, true, config.showGrandTotal !== false, config, locale, dtypes, dialect);
       setShowExportMenu(false);
     }
   };
