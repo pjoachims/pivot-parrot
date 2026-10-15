@@ -2,7 +2,8 @@ import React from 'react';
 
 /**
  * The one inline icon set: 24-unit grid, 2-unit round stroke, drawn at
- * --icon-size (14px) by the .pp-icon class. Paths follow Lucide (ISC).
+ * --icon-size by the .pp-icon class; the 14px attributes only hold the size
+ * for a host that renders without the stylesheet. Paths follow Lucide (ISC).
  */
 const PATHS = {
   x: ['M18 6 6 18', 'm6 6 12 12'],
@@ -79,6 +80,8 @@ export function Icon({ name, className, style }: IconProps) {
     <svg
       className={className ? `pp-icon ${className}` : 'pp-icon'}
       style={style}
+      width={14}
+      height={14}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
