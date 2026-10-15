@@ -162,8 +162,7 @@ export function usePivotCalculation({
 
       const dialect = engine.getDialect();
 
-      // Build SQL using domain function (first pass to check for HAVING filters)
-      const { sql, hasHavingFilters, enrichedConfig } = buildPivotSQL({
+      const { sql, enrichedConfig } = buildPivotSQL({
         config: configToUse,
         dialect,
         availableFields,

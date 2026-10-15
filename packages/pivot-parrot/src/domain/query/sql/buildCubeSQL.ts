@@ -58,9 +58,10 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
   }));
 
   // Build WHERE and HAVING clauses from filter objects
-  const whereClause = resolvedWhereFilters.length > 0
-    ? 'WHERE ' + dialect.buildWhereClause(resolvedWhereFilters)
+  const whereCondition = resolvedWhereFilters.length > 0
+    ? dialect.buildWhereClause(resolvedWhereFilters)
     : '';
+  const whereClause = whereCondition ? `WHERE ${whereCondition}` : '';
 
   const havingClause = resolvedHavingFilters.length > 0
     ? 'HAVING ' + dialect.buildWhereClause(resolvedHavingFilters)
@@ -238,7 +239,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     // e.g., "grouping_123" NULLS LAST, "region" NULLS LAST
     const orderBy = allDimensions.map(d => `${d.alias} NULLS LAST`).join(', ');
 
-    // Use CUBE unless explicitly disabled (typically when HAVING filters would make subtotals confusing)
+    // Use CUBE unless explicitly disabled
     const useCube = !disableSubtotals;
 
     if (useCube) {
@@ -249,7 +250,21 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
         `CAST(GROUPING(${d.forGroupBy}) AS INTEGER) AS ${quoteIdentifier(`_grouping_${d.id}`)}`
       ).join(', ');
 
-      sql = `SELECT ${dimensionSelects}, ${groupingCols}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY CUBE(${groupBy.join(', ')}) ${havingClause} ORDER BY ${orderBy}`;
+      // HAVING picks leaf groups (an Excel value filter): subtotals and totals
+      // must aggregate only the surviving leaves, so the CUBE runs over the
+      // base rows of those leaves. The leaf query keeps the aggregate aliases
+      // so a HAVING on an alias still resolves; only its keys leave it, so the
+      // correlated dimension expressions below can bind to the outer row.
+      let cubeWhereClause = whereClause;
+      if (havingClause) {
+        const keys = allDimensions.map((d, i) => `_pp_k${i}`);
+        const leafGroups = `SELECT ${allDimensions.map((d, i) => `${d.forGroupBy} AS ${keys[i]}`).join(', ')}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY ${groupBy.join(', ')} ${havingClause}`;
+        const sameLeaf = allDimensions.map((d, i) => `_pp_leaves.${keys[i]} IS NOT DISTINCT FROM ${d.forGroupBy}`).join(' AND ');
+        const survives = `EXISTS (SELECT 1 FROM (SELECT ${keys.join(', ')} FROM (${leafGroups}) _pp_groups) _pp_leaves WHERE ${sameLeaf})`;
+        cubeWhereClause = whereCondition ? `WHERE (${whereCondition}) AND ${survives}` : `WHERE ${survives}`;
+      }
+
+      sql = `SELECT ${dimensionSelects}, ${groupingCols}, ${aggs} FROM ${tableName} ${cubeWhereClause} GROUP BY CUBE(${groupBy.join(', ')}) ORDER BY ${orderBy}`;
     } else {
       // Regular GROUP BY without subtotals
       sql = `SELECT ${dimensionSelects}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY ${groupBy.join(', ')} ${havingClause} ORDER BY ${orderBy}`;
