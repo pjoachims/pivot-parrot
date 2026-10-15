@@ -142,45 +142,22 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
       const row = level === 0 ? ['Row Labels'] : [''];
 
       leafCols.forEach(leaf => {
-        // Use the existing path array from the leaf
+        // A leaf's path holds its column members; with Σ Values in columns a
+        // regular leaf's path ends in its metric. Subtotal and grand-total
+        // leaves carry only their members and name the metric in leaf.metric.
         const path = leaf.path || [];
 
-        // For regular columns, path contains: [colField1Value, colField2Value, ..., metricName]
-        // (no metricName with Σ Values in rows)
-        // For subtotals, path contains: [...colFieldValues, "_SUBTOTAL_metric"]
-        // For grand total, path is: ["_GRAND_TOTAL_metric"]
-
-        if (leaf.isGrandTotal) {
-          // Grand Total column
-          if (level === 0) {
-            row.push('Grand Total');
-          } else if (level === metricLevel) {
-            row.push(getMetricName(leaf.value) || '');
-          } else {
-            row.push('');
-          }
+        if (level === metricLevel && (leaf.isSubtotal || leaf.isGrandTotal)) {
+          row.push(getMetricName(leaf.metric) || '');
+        } else if (leaf.isGrandTotal) {
+          row.push(level === 0 ? 'Grand Total' : '');
         } else if (leaf.isSubtotal) {
-          // Subtotal column - show parent values, then "Subtotal", then metric
-          const pathWithoutSubtotal = path.slice(0, -1); // Remove _SUBTOTAL_xxx
-          const subtotalDepth = pathWithoutSubtotal.length;
-
-          if (level < subtotalDepth) {
-            const pathVal = pathWithoutSubtotal[level];
-            row.push(pathVal || '');
-          } else if (level === subtotalDepth) {
-            row.push('Subtotal');
-          } else if (level === metricLevel) {
-            row.push(getMetricName(leaf.value) || '');
-          } else {
-            row.push('');
-          }
+          row.push(level < path.length ? path[level] : level === path.length ? 'Subtotal' : '');
+        } else if (level < path.length) {
+          const value = path[level];
+          row.push(!valuesInRows && level === path.length - 1 ? getMetricName(leaf.metric ?? value) : value);
         } else {
-          if (level < path.length) {
-            const value = path[level];
-            row.push(!valuesInRows && level === path.length - 1 ? getMetricName(value) : value);
-          } else {
-            row.push('');
-          }
+          row.push('');
         }
       });
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildPivotDisplayData } from '../../../domain/pivot/index';
 import { buildPivotCSV, buildDataCSV, exportPivotCSV } from '../export';
+import { computeLeafColumns } from '../columnHelpers';
 import { dataToCSV, toCSV } from '../../../domain/query/utils/csv';
 import { DuckDBDialect } from '../../../domain/query/dialects/DuckDBDialect';
 
@@ -91,6 +92,36 @@ describe('buildPivotCSV with Σ Values in rows', () => {
       '    Köln;10%;10%',
       'Grand Total - Umsatz €;10;10',
       'Grand Total - Quote;10%;10%'
+    ]);
+  });
+});
+
+describe('buildPivotCSV column headers with subtotals', () => {
+  // Markt x (Jahr, Monat) with the Jahr subtotal, as the CUBE returns it
+  const rows: any[] = [];
+  for (const Markt of ['Köln', null]) for (const Jahr of [2024, null]) for (const Monat of [1, 2, null]) {
+    if (Jahr === null && Monat !== null) continue;
+    rows.push({ Markt, Jahr, Monat, sum_a: 1, sum_b: 2, _grouping_Markt: Markt === null ? 1 : 0, _grouping_Jahr: Jahr === null ? 1 : 0, _grouping_Monat: Monat === null ? 1 : 0 });
+  }
+  const values = [{ field: 'a', aggregation: 'sum' }, { field: 'b', aggregation: 'sum' }];
+  const header = (rowFields: string[], colFields: string[], levels: number) => {
+    const d = buildPivotDisplayData(rows, rowFields, colFields, values);
+    return buildPivotCSV(d, computeLeafColumns(d), rowFields, true, true, { values }).split('\n').slice(0, levels);
+  };
+
+  it('Σ Values in columns: subtotal under its member, metric names on the last level', () => {
+    expect(header(['Markt'], ['Jahr', 'Monat', 'Σ Values'], 3)).toEqual([
+      'Row Labels,2024,2024,2024,2024,2024,2024,Grand Total,Grand Total',
+      ',1,1,2,2,Subtotal,Subtotal,,',
+      ',sum_a,sum_b,sum_a,sum_b,sum_a,sum_b,sum_a,sum_b'
+    ]);
+  });
+
+  it('Σ Values in rows: subtotal under its member, no metric level', () => {
+    expect(header(['Markt', 'Σ Values'], ['Jahr', 'Monat'], 3)).toEqual([
+      'Row Labels,2024,2024,2024,Grand Total',
+      ',1,2,Subtotal,',
+      'Köln,,,,'
     ]);
   });
 });
