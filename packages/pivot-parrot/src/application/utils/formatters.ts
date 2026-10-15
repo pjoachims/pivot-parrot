@@ -6,6 +6,58 @@
  * Dialect provides display transforms via toDisplay(v, typeName).
  */
 
+import type { ValueFormat } from '../../domain/models/types';
+import { toMetricKey } from '../../domain/pivot/utils';
+
+export interface ResolvedFormat {
+  type: 'number' | 'currency' | 'percentage';
+  decimals: number;
+  grouping: boolean;
+  currency: string;
+}
+
+/** The defaults of a ValueFormat, in one place for every surface that shows a value. */
+export function resolveFormat(format: ValueFormat = {}): ResolvedFormat {
+  const type = format.type === 'currency' || format.type === 'percentage' ? format.type : 'number';
+  const parsed = parseInt(String(format.decimals ?? 2), 10);
+  return {
+    type,
+    decimals: Number.isNaN(parsed) ? 2 : parsed,
+    grouping: format.useThousandSeparator ?? (type === 'currency'),
+    currency: format.currency || 'USD'
+  };
+}
+
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+function numberFormatFor(format: ValueFormat, locale: string): Intl.NumberFormat {
+  const { type, decimals, grouping, currency } = resolveFormat(format);
+  const cacheKey = `${locale}|${type}|${decimals}|${grouping}|${currency}`;
+  let nf = numberFormats.get(cacheKey);
+  if (!nf) {
+    nf = new Intl.NumberFormat(locale, {
+      style: type === 'percentage' ? 'percent' : type === 'currency' ? 'currency' : 'decimal',
+      ...(type === 'currency' && { currency }),
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+      useGrouping: grouping
+    });
+    numberFormats.set(cacheKey, nf);
+  }
+  return nf;
+}
+
+/** Format a number for display. Percentages take a fraction (0.123 → 12.3%). */
+export function formatNumber(value: number, format: ValueFormat, locale = 'en-US'): string {
+  return numberFormatFor(format, locale).format(value);
+}
+
+/** The format configured for a result column key (as produced by toMetricKey). */
+export function findValueFormat(config, valueKey: string): ValueFormat | undefined {
+  const valueField = (config?.values || []).find(v => toMetricKey(v) === valueKey);
+  return valueField?.format ?? config?.customMetrics?.find(m => m.id === valueKey)?.format;
+}
+
 /**
  * Format a value based on its format type
  * @param {*} n - The raw cell value
@@ -28,13 +80,7 @@ export const createFormatValue = (config, locale = 'en-US', dtypes = {}, dialect
   }
 
   // Find format config
-  const valueField = (config.values || []).find(v =>
-    v.isCustom ? v.field === valueKey : `${v.aggregation}_${v.field}` === valueKey
-  );
-  let format = valueField?.format;
-  if (!format && config.customMetrics) {
-    format = config.customMetrics.find(m => m.id === valueKey)?.format;
-  }
+  let format = findValueFormat(config, valueKey);
   if (!format) {
     // Set default format based on Arrow type category
     // For parameterized types like "decimal<35,19>", extract base type for lookup
@@ -52,9 +98,6 @@ export const createFormatValue = (config, locale = 'en-US', dtypes = {}, dialect
       return String(n);
     }
   }
-
-  const decimals = format.decimals ?? 2;
-  const useThousandSeparator = format.useThousandSeparator ?? (format.type === 'currency');
 
   // Handle BigInt that wasn't converted by toDisplay (fallback safety)
   if (typeof n === 'bigint') {
@@ -83,25 +126,7 @@ export const createFormatValue = (config, locale = 'en-US', dtypes = {}, dialect
     return n;
   }
 
-  switch (format.type) {
-    case 'percentage':
-      const pctValue = num * 100;
-      return (useThousandSeparator
-        ? pctValue.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-        : pctValue.toFixed(decimals)) + '%';
-    case 'currency':
-      return num.toLocaleString(locale, {
-        style: 'currency',
-        currency: format.currency || 'USD',
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-        useGrouping: useThousandSeparator
-      });
-    default:
-      return useThousandSeparator
-        ? num.toLocaleString(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-        : num.toFixed(decimals);
-  }
+  return formatNumber(num, format, locale);
 };
 
 /**
