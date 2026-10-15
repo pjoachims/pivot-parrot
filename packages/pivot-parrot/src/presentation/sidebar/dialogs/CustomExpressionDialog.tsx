@@ -197,7 +197,7 @@ export default function CustomExpressionDialog({
                   setError('');
                 }}
                 placeholder={typeConfig.placeholder}
-                className="pp-textarea"
+                className="pp-textarea pp-textarea--code"
                 rows={4}
                 spellCheck={false}
               />
