@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createFormatValue } from '../formatters';
+import { createFormatValue, formatNumber } from '../formatters';
 
 const NBSP = ' ';
 
@@ -51,5 +51,20 @@ describe('createFormatValue', () => {
     };
     const f = createFormatValue(config, 'de-DE');
     expect(f(1234.5, 'sum_revenue')).toBe(`1.234,50${NBSP}€`);
+  });
+});
+
+describe('formatNumber', () => {
+  it('prints a negative that rounds to zero without a minus sign', () => {
+    expect(formatNumber(-0.0004, { type: 'percentage', decimals: 1 }, 'de-DE')).toBe(`0,0${NBSP}%`);
+    expect(formatNumber(-0.001, { type: 'number', decimals: 2 }, 'de-DE')).toBe('0,00');
+    expect(formatNumber(-0.004, { type: 'currency', currency: 'EUR', decimals: 2 }, 'de-DE')).toBe(`0,00${NBSP}€`);
+    expect(formatNumber(-0, { type: 'number', decimals: 0 }, 'en-US')).toBe('0');
+  });
+
+  it('keeps the minus sign on genuine negatives', () => {
+    expect(formatNumber(-0.047, { type: 'percentage', decimals: 1 }, 'de-DE')).toBe(`-4,7${NBSP}%`);
+    expect(formatNumber(-0.005, { type: 'number', decimals: 2 }, 'en-US')).toBe('-0.01');
+    expect(formatNumber(0, { type: 'number', decimals: 2 }, 'en-US')).toBe('0.00');
   });
 });

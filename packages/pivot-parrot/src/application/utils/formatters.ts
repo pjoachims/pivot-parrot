@@ -49,7 +49,11 @@ function numberFormatFor(format: ValueFormat, locale: string): Intl.NumberFormat
 
 /** Format a number for display. Percentages take a fraction (0.123 → 12.3%). */
 export function formatNumber(value: number, format: ValueFormat, locale = 'en-US'): string {
-  return numberFormatFor(format, locale).format(value);
+  const nf = numberFormatFor(format, locale);
+  // A negative that rounds to zero would print "-0,0 %". signDisplay: 'negative'
+  // says the same, but is newer than the ES2020 target and throws where unsupported.
+  if (value <= 0 && nf.format(-value) === nf.format(0)) return nf.format(0);
+  return nf.format(value);
 }
 
 /** The format configured for a result column key (as produced by toMetricKey). */
