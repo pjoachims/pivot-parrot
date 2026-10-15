@@ -132,17 +132,6 @@ export function useDrilldown(
     downloadCSV(toCSV([headers, ...rows], locale), 'drilldown_data.csv');
   }
 
-  function restoreDrilldown(data: any[], filters: DimensionFilters, sql: string, dtypes?: Record<string, string>): void {
-    // Restore drilldown state from snapshot (no query execution). Snapshots
-    // always hold a materialized rows array (they're serializable), so adapt
-    // it into the same columnar shape the live query path produces.
-    setDrilldownData(adaptQueryResult({ data, dtypes }));
-    setDrilldownFilters(filters);
-    setDrilldownSQL(sql);
-    setDrilldownDtypes(dtypes || null);
-    setDrilldownLoading(false);
-  }
-
   return {
     drilldownData,
     drilldownFilters,
@@ -152,7 +141,6 @@ export function useDrilldown(
     executeDrilldown,
     cancelDrilldown,
     exportDrilldownCSV,
-    restoreDrilldown,
     clearDrilldown
   };
 }

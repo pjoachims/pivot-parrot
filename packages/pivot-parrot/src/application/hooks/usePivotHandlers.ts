@@ -1,17 +1,20 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import JSZip from 'jszip';
-import { usePivotStore } from '../state/store';
+import { usePivotStore, type ChartConfig } from '../state/store';
+import type { useSnapshots } from './useSnapshots';
 import { computeLeafColumns } from '../utils/columnHelpers';
 import { buildPivotCSV } from '../../application/utils/export';
-import { toRows } from '../utils/columnarResult';
 import { dataToCSV } from '../../domain/query/utils/csv';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
+import { FieldKind } from '../../domain/models/types';
+import type { DimensionFilters, PivotView } from '../../domain/models/types';
+import { fromPlainJSON } from '../../domain/snapshot/json';
 
 interface UsePivotHandlersProps {
   calculation: any;
   displayData: any;
   dialect?: SQLDialect | null;
-  snapshots: any;
+  snapshots: ReturnType<typeof useSnapshots>;
   drilldown: any;
   sqlPlayground: any;
   splitPane: any;
@@ -48,79 +51,60 @@ export function usePivotHandlers({
   const setChartConfig = usePivotStore((s) => s.setChartConfig);
   const sortConfig = usePivotStore((s) => s.sortConfig);
   const setSort = usePivotStore((s) => s.setSort);
+  const setAvailableFields = usePivotStore((s) => s.setAvailableFields);
 
   // ==================== SNAPSHOT HANDLERS ====================
-  const handleCreateSnapshot = useCallback((customName?: string) => {
-    if (!executionConfig || !calculation.cubeResults) {
+  const handleCreateSnapshot = useCallback((name?: string) => {
+    if (!executionConfig) {
       return;
     }
-
-    const viewState = {
+    const view: PivotView = {
+      v: 1,
+      config: executionConfig,
+      derivedFields: availableFields.filter(f => f.kind === FieldKind.DERIVED_FIELD),
+      sortConfig,
       activeView,
       secondaryDisplayMode,
-      chartConfig,
-      sortConfig,
+      chartConfig: chartConfig ?? null,
       splitPosition: splitPane.splitPosition,
-      // Snapshots are serializable, so materialize the columnar drilldown
-      // result into a plain rows array here (snapshot creation is an
-      // explicit, infrequent user action - not the hot render path).
-      drilldownState: drilldown.drilldownData ? {
-        data: toRows(drilldown.drilldownData),
-        filters: drilldown.drilldownFilters,
-        sql: drilldown.drilldownSQL
-      } : undefined,
-      sqlQuery: sqlPlayground.sqlQuery
+      drilldownFilters: drilldown.drilldownFilters ?? null
     };
+    void snapshots.createSnapshot(name || `Snapshot ${snapshots.snapshots.length + 1}`, view);
+  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, snapshots]);
 
-    snapshots.createSnapshot(
-      executionConfig,
-      calculation.cubeResults,
-      calculation.dtypes,
-      viewState,
-      customName
-    );
-  }, [executionConfig, calculation.cubeResults, calculation.dtypes, activeView, secondaryDisplayMode, chartConfig, sortConfig, splitPane, drilldown, sqlPlayground, snapshots]);
+  // The drilldown must query with the restored view's fields and groupings,
+  // which reach useDrilldown only on the render after the restore.
+  const [pendingDrilldown, setPendingDrilldown] = useState<DimensionFilters | null>(null);
+  useEffect(() => {
+    if (!pendingDrilldown) return;
+    setPendingDrilldown(null);
+    drilldown.executeDrilldown(pendingDrilldown).catch((err: any) => calculation.setError(err.message));
+  }, [pendingDrilldown]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadSnapshot = useCallback((snapshotId: string) => {
-    const snapshot = snapshots.loadSnapshot(snapshotId);
-    if (snapshot) {
-      setConfig(snapshot.config);
-      commitConfig();
-      calculation.restoreFromCache(snapshot.config, snapshot.cubeResults, snapshot.dtypes);
-      setActiveView(snapshot.activeView);
-      setSecondaryDisplayMode(snapshot.secondaryDisplayMode);
+    const saved = snapshots.snapshots.find(s => s.id === snapshotId);
+    if (!saved) return;
+    // A fresh copy every time, so the committed config is a new object and re-queries.
+    const view = fromPlainJSON<PivotView>(saved.view);
 
-      setChartConfig(snapshot.chartConfig ?? null);
-      // Snapshots taken before sorting was stored were shown in query order.
-      setSort(snapshot.sortConfig ?? { valueKey: null, direction: 'desc' });
+    const knownIds = new Set(availableFields.map(f => f.id));
+    const missing = view.derivedFields.filter(f => !knownIds.has(f.id));
+    if (missing.length > 0) setAvailableFields([...availableFields, ...missing]);
 
-      if (snapshot.drilldownState) {
-        drilldown.restoreDrilldown(
-          snapshot.drilldownState.data,
-          snapshot.drilldownState.filters,
-          snapshot.drilldownState.sql,
-          snapshot.dtypes
-        );
-      } else {
-        drilldown.clearDrilldown();
-      }
+    setConfig(view.config);
+    commitConfig();
+    setActiveView(view.activeView);
+    setSecondaryDisplayMode(view.secondaryDisplayMode);
+    setChartConfig(view.chartConfig as ChartConfig | null);
+    setSort(view.sortConfig);
+    splitPane.setSplitPosition(view.splitPosition);
 
-      if (snapshot.sqlQuery) {
-        sqlPlayground.setSQLQuery(snapshot.sqlQuery);
-      }
-
-      if (snapshot.splitPosition !== undefined) {
-        splitPane.setSplitPosition(snapshot.splitPosition);
-      }
-    }
-  }, [snapshots, setConfig, commitConfig, calculation, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, sqlPlayground, splitPane]);
+    drilldown.clearDrilldown();
+    setPendingDrilldown(view.drilldownFilters);
+  }, [snapshots, availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane]);
 
   const handleDeleteSnapshot = useCallback((snapshotId: string) => {
-    snapshots.deleteSnapshot(snapshotId);
-  }, [snapshots]);
-
-  const handleDownloadAllSnapshots = useCallback(async () => {
-    snapshots.downloadAllSnapshots();
+    void snapshots.deleteSnapshot(snapshotId);
   }, [snapshots]);
 
   // ==================== DRILLDOWN HANDLER ====================
@@ -222,7 +206,6 @@ export function usePivotHandlers({
     handleCreateSnapshot,
     handleLoadSnapshot,
     handleDeleteSnapshot,
-    handleDownloadAllSnapshots,
     handleDrilldown,
     handleSecondaryDisplayModeChange,
     handleOpenSQL,

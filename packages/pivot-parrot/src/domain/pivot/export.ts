@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { Snapshot, PivotTableConfig } from '../models/types';
+import type { SavedView, PivotTableConfig } from '../models/types';
 import type { FieldItem } from '../field/FieldItem';
 import { serializeSnapshot, deserializeSnapshot } from '../snapshot/serialize';
 
@@ -19,7 +19,7 @@ export interface PivotExport {
 export async function exportPivot(
   config: PivotTableConfig,
   derivedFields: FieldItem[],
-  snapshots: Snapshot[]
+  snapshots: SavedView[]
 ): Promise<Blob> {
   const zip = new JSZip();
 
@@ -49,7 +49,7 @@ export async function exportPivot(
 export async function importPivot(blob: Blob): Promise<{
   config: PivotTableConfig;
   derivedFields: FieldItem[];
-  snapshots: Snapshot[];
+  snapshots: SavedView[];
 }> {
   const zip = await JSZip.loadAsync(blob);
 
@@ -61,7 +61,7 @@ export async function importPivot(blob: Blob): Promise<{
   const manifest: PivotExport = JSON.parse(manifestStr);
 
   // Read snapshots
-  const snapshots: Snapshot[] = [];
+  const snapshots: SavedView[] = [];
   const snapshotsFolder = zip.folder('snapshots');
   if (snapshotsFolder) {
     const snapshotFiles = snapshotsFolder.filter((_, file) => file.name.endsWith('.zip'));

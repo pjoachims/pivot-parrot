@@ -241,13 +241,6 @@ export function usePivotCalculation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executionConfig, dataVersion]); // Intentionally omit calculatePivot to prevent infinite loop
 
-  // Restore from cached snapshot data (no SQL execution)
-  const restoreFromCache = useCallback((restoredConfig, cachedCubeResults, cachedDtypes = {}) => {
-    logger.debug('Restoring from snapshot', { rowCount: cachedCubeResults.length });
-    setResultWithIndex(restoredConfig, cachedCubeResults, cachedDtypes);
-    onExecutionComplete?.(restoredConfig, cachedCubeResults);
-  }, [setResultWithIndex, onExecutionComplete]);
-
   const cubeResults = queryResult?.cubeResults || null;
 
   return {
@@ -259,7 +252,6 @@ export function usePivotCalculation({
     calculationStartTime,
     error,
     calculatePivot,
-    setError,
-    restoreFromCache
+    setError
   };
 }

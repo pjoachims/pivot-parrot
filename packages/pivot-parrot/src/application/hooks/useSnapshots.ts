@@ -1,87 +1,74 @@
-import { useState } from 'react';
-import { buildDataCSV, downloadCSV } from '../utils/export';
-import { usePivotLocale } from '../state/store';
-import type { PivotTableConfig } from '../../domain/models/types';
-import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
-import type { Snapshot, CubeRow, DimensionFilters } from '../../domain/models/types';
-
-// Type aliases for better semantic meaning (kept for backwards compatibility)
-type CubeResults = CubeRow[];
-type Dtypes = Record<string, string>;
+import { useEffect, useRef, useState } from 'react';
+import type { PivotView, SavedView, SnapshotStore } from '../../domain/models/types';
+import { createMemorySnapshotStore } from '../../domain/snapshot/memoryStore';
+import { toPlainJSON } from '../../domain/snapshot/json';
 
 /**
- * Custom hook to manage pivot snapshots (session storage only)
+ * The saved views of one pivot, kept in `store` (the host's) or in memory.
+ * A failing store call leaves the list as it was and sets `error`; it never throws.
  */
-export function useSnapshots(dialect: SQLDialect | null = null) {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const locale = usePivotLocale();
+export function useSnapshots(store?: SnapshotStore | null) {
+  const [memoryStore] = useState(createMemorySnapshotStore);
+  // Hosts often pass the store inline, a new object every render: read the latest
+  // one when called instead of re-listing whenever its identity changes.
+  const storeRef = useRef<SnapshotStore>(store ?? memoryStore);
+  storeRef.current = store ?? memoryStore;
 
-  function createSnapshot(
-    executionConfig: PivotTableConfig,
-    cubeResults: CubeResults,
-    dtypes: Dtypes,
-    viewState: {
-      activeView: 'chart' | 'drilldown' | 'sql' | null;
-      secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
-      chartConfig?: unknown;
-      sortConfig?: Snapshot['sortConfig'];
-      drilldownState?: { data: CubeRow[]; filters: DimensionFilters; sql: string };
-      sqlQuery?: string;
-      splitPosition?: number;
-    },
-    customName?: string
-  ): Snapshot {
-    const timestamp = new Date().toISOString();
-    const snapshot: Snapshot = {
-      id: `snapshot_${Date.now()}`,
-      name: customName || `Snapshot ${snapshots.length + 1}`,
-      config: executionConfig,
-      timestamp,
-      cubeResults,
-      dtypes,
-      activeView: viewState.activeView,
-      secondaryDisplayMode: viewState.secondaryDisplayMode,
-      chartConfig: viewState.chartConfig,
-      sortConfig: viewState.sortConfig,
-      drilldownState: viewState.drilldownState,
-      sqlQuery: viewState.sqlQuery,
-      splitPosition: viewState.splitPosition
-    };
+  const [snapshots, setSnapshots] = useState<SavedView[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-    setSnapshots(prev => [...prev, snapshot]);
-    return snapshot;
-  }
+  const message = (err: any) => err?.message ?? String(err);
 
-  function loadSnapshot(snapshotId: string): Snapshot | null {
-    const snapshot = snapshots.find(s => s.id === snapshotId);
-    return snapshot || null;
-  }
-
-  function deleteSnapshot(snapshotId: string): void {
-    setSnapshots(prev => prev.filter(s => s.id !== snapshotId));
-  }
-
-  function downloadAllSnapshots(): void {
-    if (snapshots.length === 0) {
-      return;
+  async function attempt<T>(action: string, call: () => Promise<T>): Promise<T | undefined> {
+    try {
+      const result = await call();
+      setError(null);
+      return result;
+    } catch (err: any) {
+      setError(`Could not ${action}: ${message(err)}`);
+      return undefined;
     }
-
-    snapshots.forEach((snapshot) => {
-      const csv = buildDataCSV(snapshot.cubeResults, snapshot.config, locale, snapshot.dtypes, dialect);
-      downloadCSV(csv, `${(snapshot.name || snapshot.id).replace(/\s+/g, '_')}.csv`);
-    });
   }
 
-  function importSnapshots(newSnapshots: Snapshot[]): void {
-    setSnapshots(prev => [...prev, ...newSnapshots]);
+  async function save(name: string, view: PivotView): Promise<void> {
+    const saved = await storeRef.current.save({ name, view: toPlainJSON(view) });
+    setSnapshots(prev => [...prev.filter(s => s.id !== saved.id), saved]);
+  }
+
+  useEffect(() => {
+    void attempt('load snapshots', () => storeRef.current.list()).then(list => {
+      // A snapshot saved while the list was loading is not in it yet.
+      if (list) setSnapshots(prev => [...list, ...prev.filter(s => !list.some(l => l.id === s.id))]);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function createSnapshot(name: string, view: PivotView): Promise<void> {
+    await attempt('save snapshot', () => save(name, view));
+  }
+
+  async function deleteSnapshot(id: string): Promise<void> {
+    const done = await attempt('delete snapshot', async () => { await storeRef.current.remove(id); return true; });
+    if (done) setSnapshots(prev => prev.filter(s => s.id !== id));
+  }
+
+  /** Imported views get new ids from the store, so importing twice keeps both copies. */
+  async function importSnapshots(views: SavedView[]): Promise<void> {
+    const failures: string[] = [];
+    for (const { name, view } of views) {
+      try {
+        await save(name, view);
+      } catch (err: any) {
+        failures.push(`${name}: ${message(err)}`);
+      }
+    }
+    setError(failures.length > 0 ? `Could not import ${failures.length} of ${views.length} snapshots: ${failures.join('; ')}` : null);
   }
 
   return {
     snapshots,
+    error,
     createSnapshot,
-    loadSnapshot,
     deleteSnapshot,
-    downloadAllSnapshots,
     importSnapshots
   };
 }
