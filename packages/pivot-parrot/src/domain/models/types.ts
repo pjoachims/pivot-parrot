@@ -321,4 +321,7 @@ export interface SnapshotStore {
   list(): Promise<SavedView[]>;
   save(view: NewSavedView): Promise<SavedView>;
   remove(id: string): Promise<void>;
+  /** Optional: call `onChange` when views change outside this pivot (the host's own
+   *  views UI), and the panel lists them again. Returns the unsubscribe. */
+  subscribe?(onChange: () => void): () => void;
 }

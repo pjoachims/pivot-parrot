@@ -135,6 +135,40 @@ it('the panel lists the stored snapshots on mount, once', async () => {
   expect(snapshotStore.list).toHaveBeenCalledTimes(1);
 });
 
+it('a store that announces changes is listed again, so a view saved outside the panel shows up', async () => {
+  const base = fakeStore([savedQ2]);
+  const listeners = new Set<() => void>();
+  const unsubscribed = vi.fn();
+  const snapshotStore: SnapshotStore = {
+    ...base,
+    subscribe: (onChange: () => void) => {
+      listeners.add(onChange);
+      return () => { listeners.delete(onChange); unsubscribed(); };
+    },
+  };
+  const key = 'snapshot-panel-subscribe';
+  const store = createPivotStore(key);
+  store.setState({ showSnapshots: true });
+  function Panel() {
+    const snapshots = useSnapshots(snapshotStore);
+    return <SnapshotsPanel snapshots={snapshots.snapshots} error={snapshots.error} onCreateSnapshot={() => {}} />;
+  }
+  const { unmount } = render(<PivotStoreContext.Provider value={{ store, instanceKey: key }}><Panel /></PivotStoreContext.Provider>);
+  expect(await screen.findByText('Saved Q2')).toBeTruthy();
+
+  await base.save({ name: 'From the top bar', view: savedQ2.view });
+  act(() => listeners.forEach(l => l()));
+  expect(await screen.findByText('From the top bar')).toBeTruthy();
+  expect(base.list).toHaveBeenCalledTimes(2);
+
+  await base.remove(savedQ2.id);
+  act(() => listeners.forEach(l => l()));
+  await waitFor(() => expect(screen.queryByText('Saved Q2')).toBeNull());
+
+  unmount();
+  expect(unsubscribed).toHaveBeenCalledTimes(1);
+});
+
 it('restoring a snapshot applies its config and sort, re-queries, and reopens its drilldown', async () => {
   const { store, hook, backend, drilldownEngine } = setup(fakeStore([savedQ2]));
   await showPivot(store, backend);

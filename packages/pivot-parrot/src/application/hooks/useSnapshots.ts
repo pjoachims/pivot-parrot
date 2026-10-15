@@ -40,6 +40,10 @@ export function useSnapshots(store?: SnapshotStore | null) {
       // A snapshot saved while the list was loading is not in it yet.
       if (list) setSnapshots(prev => [...list, ...prev.filter(s => !list.some(l => l.id === s.id))]);
     });
+    // After a change the host announces, its list is the truth (views deleted elsewhere go).
+    return storeRef.current.subscribe?.(() => {
+      void attempt('load snapshots', () => storeRef.current.list()).then(list => { if (list) setSnapshots(list); });
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function createSnapshot(name: string, view: PivotView): Promise<void> {
