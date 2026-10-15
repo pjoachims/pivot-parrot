@@ -51,7 +51,7 @@ export function FilterDialog({
   const [selectedValues, setSelectedValues] = useState(existingFilter?.selectedValues || []);
   const [loadingValues, setLoadingValues] = useState(false);
   const [betweenStart, setBetweenStart] = useState(existingFilter?.betweenStart || '');
-  const [fetchedValues, setFetchedValues] = useState(null); // Local state for fetched values
+  const [fetched, setFetched] = useState(null); // This dialog's own fetch, {values, truncated}
   const [betweenEnd, setBetweenEnd] = useState(existingFilter?.betweenEnd || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [abortController, setAbortController] = useState(null);
@@ -59,15 +59,15 @@ export function FilterDialog({
   const [customValue, setCustomValue] = useState('');
   const [showFilterSelection, setShowFilterSelection] = useState(false);
   const [fetchError, setFetchError] = useState('');
-  const [fetchTruncated, setFetchTruncated] = useState(false);
   const [selectedFiltersForFetch, setSelectedFiltersForFetch] = useState(() => {
     const otherFilters = activeFilters.filter(f => f.field !== fieldId);
     return otherFilters.map(f => f.field);
   });
 
   // Get unique values from cache or local fetched values
-  const uniqueValues = fetchedValues || uniqueValuesCache[fieldId] || [];
-  const hasCache = !!fetchedValues || !!uniqueValuesCache[fieldId];
+  const shown = fetched || uniqueValuesCache[fieldId];
+  const uniqueValues = shown?.values || [];
+  const hasCache = !!shown;
 
   // Get applicable filters
   const applicableFilters = activeFilters.filter(f => f.field !== fieldId);
@@ -106,14 +106,13 @@ export function FilterDialog({
         return;
       }
 
-      const sortedValues = values.sort();
+      const unique = { values: values.sort(), truncated };
 
       // Update local state immediately for UI display
-      setFetchedValues(sortedValues);
-      setFetchTruncated(truncated);
+      setFetched(unique);
 
       // Also update store cache for future use
-      cacheUniqueValues(fieldId, sortedValues);
+      cacheUniqueValues(fieldId, unique);
 
       setLoadingValues(false);
       setShowFilterSelection(false);
@@ -597,7 +596,7 @@ export function FilterDialog({
               placeholder="Search..."
               style={styles.searchInput}
             />
-            {fetchTruncated && (
+            {shown?.truncated && (
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '4px 0' }}>
                 Only the first {uniqueValues.length} values were fetched, and search looks only at these.
                 Add a missing value above, or narrow the fetch with other filters.

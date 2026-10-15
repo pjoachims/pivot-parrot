@@ -19,6 +19,12 @@ import {
 import { autoManageValuesField } from '../../application/utils/fieldUtils';
 import { getFieldById } from '../../application/utils/getFieldById';
 
+/** A field's fetched unique values; truncated when the fetch hit its cap. */
+export interface UniqueValues {
+  values: (string | number | boolean | null)[];
+  truncated: boolean;
+}
+
 export interface SortConfig {
   valueKey: string | null;
   direction: 'asc' | 'desc';
@@ -44,7 +50,7 @@ interface PivotStore {
   initComplete: boolean;
   availableFields: FieldItem[];
   detectedTypes: Record<string, string | number>;
-  uniqueValuesCache: Record<string, (string | number | boolean | null)[]>;
+  uniqueValuesCache: Record<string, UniqueValues>;
   dialect: any | null;
 
   // ==================== Display State ====================
@@ -135,7 +141,7 @@ interface PivotStore {
   setAvailableFields: (fields: FieldItem[]) => void;
   setDetectedTypes: (types: Record<string, string | number>) => void;
   setDialect: (dialect: any) => void;
-  cacheUniqueValues: (field: string, values: (string | number | boolean | null)[]) => void;
+  cacheUniqueValues: (field: string, unique: UniqueValues) => void;
   clearUniqueValuesCache: () => void;
 
   // ==================== Display Actions ====================
@@ -366,12 +372,12 @@ export function createPivotStore(instanceKey: string = 'default') {
       setDialect: (dialect) =>
         set({ dialect }, false, 'setDialect'),
 
-      cacheUniqueValues: (field, values) =>
+      cacheUniqueValues: (field, unique) =>
         set(
           (state) => ({
             uniqueValuesCache: {
               ...state.uniqueValuesCache,
-              [field]: values
+              [field]: unique
             }
           }),
           false,

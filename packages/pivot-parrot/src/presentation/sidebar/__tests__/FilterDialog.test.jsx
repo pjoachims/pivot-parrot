@@ -86,10 +86,10 @@ describe('FilterDialog', () => {
       expect(screen.getByText(/Office Supplies/)).toBeInTheDocument();
 
       // Verify cache was updated via store action
-      expect(mockCacheUniqueValues).toHaveBeenCalledWith(
-        'category',
-        expect.arrayContaining(['Furniture', 'Technology', 'Office Supplies'])
-      );
+      expect(mockCacheUniqueValues).toHaveBeenCalledWith('category', {
+        values: expect.arrayContaining(['Furniture', 'Technology', 'Office Supplies']),
+        truncated: false
+      });
     });
 
     it('should show loading state while fetching', async () => {
@@ -165,7 +165,7 @@ describe('FilterDialog', () => {
     it('should use cached values when available', () => {
       // Provide cached values via mock store
       mockUniqueValuesCache = {
-        category: ['Cached1', 'Cached2', 'Cached3']
+        category: { values: ['Cached1', 'Cached2', 'Cached3'], truncated: false }
       };
 
       render(<FilterDialog {...defaultProps} />);

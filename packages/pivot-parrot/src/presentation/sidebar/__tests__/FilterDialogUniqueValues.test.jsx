@@ -39,16 +39,21 @@ async function makeEngine() {
   return new NodeDuckDBEngine(conn);
 }
 
-function openFilterDialog(engine, field, availableFields = [field]) {
-  const store = createPivotStore();
+function showFilterDialog(engine, field, availableFields = [field], store = createPivotStore()) {
   store.setState({ availableFields, filterDialog: { field, existingFilter: null, anchorEl: document.createElement('div') } });
-  render(
+  const view = render(
     <PivotStoreContext.Provider value={{ store, instanceKey: 'test' }}>
       <DialogsManager dataEngine={engine} snapshots={[]} />
     </PivotStoreContext.Provider>
   );
   fireEvent.click(screen.getByText(/One Of/i));
+  return { store, view };
+}
+
+function openFilterDialog(engine, field, availableFields = [field]) {
+  const opened = showFilterDialog(engine, field, availableFields);
   fireEvent.click(screen.getByText(/Fetch Unique Values/i));
+  return opened;
 }
 
 describe('filter dialog unique values', () => {
@@ -65,6 +70,17 @@ describe('filter dialog unique values', () => {
 
     openFilterDialog(engine, { id: 'order_id', name: 'order_id', dtype: 'string', kind: FieldKind.BASE_FIELD });
     expect(await screen.findByText(/first 1000 values/i)).toBeInTheDocument();
+  });
+
+  it('still says the list is cut when reopened from the cache', async () => {
+    const orderId = { id: 'order_id', name: 'order_id', dtype: 'string', kind: FieldKind.BASE_FIELD };
+    const { store, view } = openFilterDialog(engine, orderId);
+    expect(await screen.findByText(/first 1000 values/i)).toBeInTheDocument();
+    view.unmount();
+
+    showFilterDialog(engine, orderId, [orderId], store);
+    expect(screen.queryByText(/Fetch Unique Values/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/first 1000 values/i)).toBeInTheDocument();
   });
 
   it('is not truncated when every value fits', async () => {

@@ -78,7 +78,6 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   const dataLoading = usePivotStore((s) => s.dataLoading);
   const initComplete = usePivotStore((s) => s.initComplete);
-  const uniqueValuesCache = usePivotStore((s) => s.uniqueValuesCache);
   const sidebarCollapsed = usePivotStore((s) => s.sidebarCollapsed);
   const activeView = usePivotStore((s) => s.activeView);
   const secondaryDisplayMode = usePivotStore((s) => s.secondaryDisplayMode);
@@ -99,7 +98,6 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   const setDialect = usePivotStore((s) => s.setDialect);
   const setInitComplete = usePivotStore((s) => s.setInitComplete);
   const setDataLoading = usePivotStore((s) => s.setDataLoading);
-  const setUniqueValuesCache = usePivotStore((s) => s.cacheUniqueValues);
   const setSidebarCollapsed = usePivotStore((s) => s.setSidebarCollapsed);
   const setActiveView = usePivotStore((s) => s.setActiveView);
   const setSecondaryDisplayMode = usePivotStore((s) => s.setSecondaryDisplayMode);
