@@ -140,6 +140,10 @@ const open = (view: PivotView) => pivot.current?.loadView(view);
 <Pivot ref={pivot} config={{ mode: 'local', duckdb, data: arrowBytes, settings: { showSnapshots: false } }} />
 ```
 
+### Relative date filters
+
+A date or timestamp field can be filtered relative to today: Today, Yesterday, Last 7 days, This week, Previous month, or any Last/Previous N days, weeks, months, quarters or years. Weeks start on Monday. "Last" periods include the current one, "Previous" periods are complete ones. The filter is stored as `{ type: 'relative_date', relative: { mode, n, unit } }`, never as dates, and the engine resolves it against its own `current_date` on every query, so a saved view filtered to "Last 7 days" shows the seven days up to the day you open it. In remote mode that is the server's today.
+
 The [live demo](https://pjoachims.github.io/pivot-parrot/) is this component wrapped in a small shell ([`demo-app/`](demo-app)), deployed to GitHub Pages on every push to `main`.
 
 ## Features
