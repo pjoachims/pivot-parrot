@@ -523,7 +523,6 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
         dataEngine={dataEngine}
         locale={cfg.locale}
         enableSQLPlayground={cfg.enableSQLPlayground}
-        isRemoteConnection={isRemoteConnection}
         handlers={handlers}
       />
     </div>

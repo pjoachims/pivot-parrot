@@ -165,6 +165,7 @@ export interface ExtendedPivotTableConfig {
 export interface PivotUISettings {
   autoUpdate?: boolean;
   autoExecute?: boolean;
+  /** The SQL Playground (toolbar "SQL"). Default: true in local mode, false in remote mode, where its queries go to the host's executeQuery. */
   enableSQLPlayground?: boolean;
   /** The built-in Snapshots panel (default true). A host with its own saved-views UI hides it and uses the ref's getView/loadView. */
   showSnapshots?: boolean;

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Icon } from '../shared/Icon';
-import ErrorBanner from '../shared/ErrorBanner';
 import { gridColumnDef } from '../shared/gridColumn';
 import { usePivotStore } from '../../application/state/store';
 import { adaptQueryResult, toRows, type ColumnarResult } from '../../application/utils/columnarResult';
@@ -180,7 +179,7 @@ export default function SQLPlayground({
             {loading
               ? 'Running…'
               : error
-                ? <span style={{ color: 'var(--color-error)' }}>Query failed{elapsedMs !== null ? ` after ${elapsedMs} ms` : ''}</span>
+                ? <span style={{ color: 'var(--color-error)' }}>{error}</span>
                 : results
                   ? `${rowCount.toLocaleString(locale)} row${rowCount !== 1 ? 's' : ''} · ${elapsedMs} ms`
                   : 'Not run yet'}
@@ -204,12 +203,6 @@ export default function SQLPlayground({
         </div>
       </div>
 
-      {error && (
-        <div style={{ padding: '0 var(--space-3) var(--space-3)' }}>
-          <ErrorBanner title="Error" message={error} />
-        </div>
-      )}
-
       <div style={styles.gridContainer} className="ag-theme-alpine">
         {!gridLoaded ? (
           <div style={styles.loadingGrid}>
@@ -227,10 +220,10 @@ export default function SQLPlayground({
             domLayout="normal"
             onGridReady={onGridReady}
           />
-        ) : !loading && !error ? (
+        ) : !loading ? (
           <div style={styles.empty}>
-            <span>{results ? 'The query returned no rows' : 'Run a query to see rows'}</span>
-            {!results && <span className="pp-hint">{shortcut} in the editor runs it</span>}
+            <span>{error ? 'No rows: the query failed' : results ? 'The query returned no rows' : 'Run a query to see rows'}</span>
+            {!results && !error && <span className="pp-hint">{shortcut} in the editor runs it</span>}
           </div>
         ) : null}
       </div>

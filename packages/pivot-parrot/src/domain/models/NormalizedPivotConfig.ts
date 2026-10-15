@@ -53,7 +53,9 @@ export class NormalizedPivotConfig {
     // UI Settings with defaults
     this.autoUpdate = config.settings?.autoUpdate ?? true;
     this.autoExecute = config.settings?.autoExecute ?? false;
-    this.enableSQLPlayground = config.settings?.enableSQLPlayground ?? true;
+    // Off by default in remote mode: there the playground sends arbitrary SQL
+    // to the host's backend, so the host opts in (and guards it server-side).
+    this.enableSQLPlayground = config.settings?.enableSQLPlayground ?? this.mode !== 'remote';
     this.showSnapshots = config.settings?.showSnapshots ?? true;
     this.devMode = config.settings?.devMode ?? false;
     this.locale = config.settings?.locale ?? 'en-US';
