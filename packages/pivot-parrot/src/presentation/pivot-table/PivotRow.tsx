@@ -92,12 +92,7 @@ export function PivotRow({
 
   const valuesInRows = rowFields && rowFields.some(f => f === 'Σ Values');
   const valuesIndex = rowFields ? rowFields.indexOf('Σ Values') : -1;
-  const isTrueSubtotal = node.subtotals && hasKids && (
-    !valuesInRows ||
-    valuesIndex === 0 ||
-    depth < valuesIndex
-  );
-  const isSubtotalRow = isTrueSubtotal;
+  const isSubtotalRow = node.subtotals && hasKids;
 
   const fieldName = rowFields && rowFields[depth] ? rowFields[depth] : null;
   // For metric rows (at valuesIndex), use groupLabel (friendly name)

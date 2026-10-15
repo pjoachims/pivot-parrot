@@ -63,13 +63,16 @@ export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, col
       const beforeFields = originalFields.slice(0, valuesIndex).filter(f => f !== 'Σ Values');
       const afterFields = originalFields.slice(valuesIndex + 1).filter(f => f !== 'Σ Values');
 
-      node.values = columnOutline.map(col => {
+      const valuesArray = columnOutline.map(col => {
         // Use hash lookup: combine before + after paths (skipping Values position)
         const rowPath = [...beforePath, ...afterPath];
         const rowFieldsWithoutValues = [...beforeFields, ...afterFields];
         const hash = createCellHash(rowPath, rowFieldsWithoutValues, col.path, colFields);
         return lookupCubeValue(cubeIndex, hash, rowMetric);
       });
+      // Below the metric level a parent's row is that metric's subtotal.
+      node.subtotals = hasChildren ? valuesArray : undefined;
+      node.values = hasChildren ? null : valuesArray;
     } else {
       // Values in columns - use hash lookup (O(1) instead of O(n))
       const valuesArray = columnOutline.map(col => {
