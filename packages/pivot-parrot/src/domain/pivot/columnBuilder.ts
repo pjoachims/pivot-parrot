@@ -8,12 +8,18 @@ import { isGrouped, safeStringify } from '../../application/utils/cubeIndex';
 
 const isNumeric = (v: unknown): v is number | bigint => typeof v === 'number' || typeof v === 'bigint';
 
+// DECIMAL members can arrive as strings ("10.50"); order those by value too.
+const numericValue = (v: unknown): unknown =>
+  typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : v;
+
 /** Column member order: numbers and dates by value, text alphabetically, null (subtotal) last. */
 function compareMembers(a: unknown, b: unknown): number {
   if (a === null || a === undefined) return 1;
   if (b === null || b === undefined) return -1;
   if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
-  if (isNumeric(a) && isNumeric(b)) return a < b ? -1 : a > b ? 1 : 0;
+  const x = numericValue(a);
+  const y = numericValue(b);
+  if (isNumeric(x) && isNumeric(y)) return x < y ? -1 : x > y ? 1 : 0;
   return String(a).localeCompare(String(b));
 }
 

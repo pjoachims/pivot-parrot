@@ -27,3 +27,7 @@ it('orders dates chronologically', () => {
 it('still orders text members alphabetically', () => {
   expect(memberOrder(['West', 'East', 'North'], true)).toEqual(['East', 'North', 'West', 'total']);
 });
+
+it('orders DECIMAL members that arrive as strings by value', () => {
+  expect(memberOrder(['10.5', '9.25', '100.1', '-2.0', '9.3'], true)).toEqual(['-2.0', '9.25', '9.3', '10.5', '100.1', 'total']);
+});
