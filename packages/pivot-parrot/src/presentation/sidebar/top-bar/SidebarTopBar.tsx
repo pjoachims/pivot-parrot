@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePivotStore } from '../../../application/state/store';
 import SQLHistoryEntry from '../snapshots/SQLHistoryEntry';
 import BaseDialog from '../../shared/BaseDialog';
@@ -49,6 +49,12 @@ export function SidebarTopBar({
 
   // Close settings menu when clicking outside it
   useClickOutside('.settings-menu-container', () => setShowSettingsMenu(false));
+  useEffect(() => {
+    if (!showSettingsMenu) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowSettingsMenu(false); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showSettingsMenu]);
 
   const handleDownloadConfig = () => {
     if (config) {

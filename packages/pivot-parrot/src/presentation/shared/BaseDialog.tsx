@@ -37,6 +37,7 @@ export default function BaseDialog({
         ref={dialogRef}
         style={{ width: '100%', maxWidth, minWidth: '300px' }}
         className="pp-dialog pp-dialog-panel"
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

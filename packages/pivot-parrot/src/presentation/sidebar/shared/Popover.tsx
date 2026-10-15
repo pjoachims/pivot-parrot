@@ -69,6 +69,7 @@ export default function Popover({ children, onClose, title, position, width = 32
         ref={dialogRef}
         style={getDialogStyle()}
         className="pp-dialog pp-dialog-panel"
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title ? undefined : 'Dialog'}

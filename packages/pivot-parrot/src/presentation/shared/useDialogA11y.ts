@@ -19,10 +19,12 @@ export function useDialogA11y(containerRef: React.RefObject<HTMLElement>, onClos
     const container = containerRef.current;
 
     // Respect an existing autoFocus inside the dialog (e.g. an input with
-    // `autoFocus`) - only steal focus to the first focusable element if
-    // nothing inside the dialog is focused yet.
+    // `autoFocus`). Otherwise focus the first control below the header, so a
+    // dialog never opens with the ring on its own close button; a dialog
+    // without controls takes focus itself (the panels carry tabIndex=-1).
     if (container && !container.contains(document.activeElement)) {
-      const focusable = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+        .filter((el) => !el.closest('.pp-dialog-header'));
       (focusable[0] || container).focus?.();
     }
 
