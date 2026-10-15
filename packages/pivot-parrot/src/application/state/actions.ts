@@ -62,6 +62,20 @@ function matchesValueConfig(fieldName: string, valueConfig: ValueConfig): boolea
   return getAggregationId(valueConfig) === fieldName;
 }
 
+function sameValue(a: ValueConfig, b: ValueConfig): boolean {
+  return a.field === b.field
+    && a.aggregation.toUpperCase() === b.aggregation.toUpperCase()
+    && Boolean(a.isCustom) === Boolean(b.isCustom);
+}
+
+/** Insert `item` at `index` after removing every entry `isSame` matches; `index` counts the removed entries. */
+function insertOnce<T>(items: T[], item: T, index: number, isSame: (entry: T) => boolean): T[] {
+  const removedBefore = items.slice(0, index).filter(isSame).length;
+  const kept = items.filter(entry => !isSame(entry));
+  kept.splice(index - removedBefore, 0, item);
+  return kept;
+}
+
 function isNumericType(typeName: string | number | undefined): boolean {
   return typeof typeName === 'string' && Boolean(getArrowType(typeName)?.isNumeric);
 }
@@ -139,29 +153,25 @@ export function buildHandleDrop(
       if (isMeasure) {
         return { config, shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
       }
-      const targetArray = targetZone === 'rows' ? [...newConfig.rows] : [...newConfig.columns];
-      targetArray.splice(insertAt, 0, fieldName);
-      if (targetZone === 'rows') newConfig.rows = targetArray;
-      else newConfig.columns = targetArray;
+      // A dimension sits on one axis once; dropping it again moves it.
+      const otherZone = targetZone === 'rows' ? 'columns' : 'rows';
+      newConfig[otherZone] = newConfig[otherZone].filter(f => f !== fieldName);
+      newConfig[targetZone] = insertOnce(newConfig[targetZone], fieldName, insertAt, f => f === fieldName);
 
     } else if (targetZone === 'values') {
-      const targetArray = [...newConfig.values];
-
-      // Check if this is a custom metric
+      let valueConfig: ValueConfig;
       if (kind === FieldKind.CUSTOM_METRIC) {
-        // Custom metrics use isCustom: true and aggregation: 'custom'
-        targetArray.splice(insertAt, 0, { field: fieldName, aggregation: 'custom', isCustom: true });
+        valueConfig = { field: fieldName, aggregation: 'custom', isCustom: true };
       } else if (kind === FieldKind.AGGREGATION && draggedValueConfig) {
-        targetArray.splice(insertAt, 0, { ...draggedValueConfig });
+        valueConfig = { ...draggedValueConfig };
       } else {
         const defaultAgg = isNumericType(detectedTypes[fieldName]) ? 'Sum' : 'Count';
-        targetArray.splice(insertAt, 0, { field: fieldName, aggregation: defaultAgg });
+        valueConfig = { field: fieldName, aggregation: defaultAgg };
       }
-      newConfig.values = targetArray;
+      // A field may sit in Values with several aggregations (and in Rows too), but not twice with the same one.
+      newConfig.values = insertOnce(newConfig.values, valueConfig, insertAt, v => sameValue(v, valueConfig));
 
     } else if (targetZone === 'filters') {
-      const targetArray = [...(newConfig.filters || [])];
-
       // Enrich filter with info from FieldItem for HAVING clause generation
       const fieldItem = getFieldById(fieldName, availableFields, config);
 
@@ -191,8 +201,9 @@ export function buildHandleDrop(
         }
       }
 
-      targetArray.splice(insertAt, 0, filterItem);
-      newConfig.filters = targetArray;
+      const filters = newConfig.filters || [];
+      const placed = filters.find(f => f.field === fieldName) ?? filterItem;
+      newConfig.filters = insertOnce(filters, placed, insertAt, f => f.field === fieldName);
 
       // Auto-open dialog (unless custom filter or reordering)
       const isReordering = sourceZone === 'filters';
