@@ -58,6 +58,8 @@ function applyChartTheme(layout, colors: ReturnType<typeof getChartThemeColors>)
     ...(layout.yaxis && { yaxis: { ...layout.yaxis, ...axisTheme } }),
     ...(layout.yaxis2 && { yaxis2: { ...layout.yaxis2, ...axisTheme } }),
     ...(layout.legend && { legend: { ...layout.legend, font: { color: colors.textPrimary } } }),
+    // Transparent, muted icons: a quiet strip in the top margin, not a toolbar
+    modebar: { bgcolor: 'rgba(0,0,0,0)', color: colors.textMuted, activecolor: colors.textPrimary },
     hoverlabel: {
       ...layout.hoverlabel,
       bgcolor: colors.surfaceBg,

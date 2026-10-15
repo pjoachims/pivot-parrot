@@ -1151,6 +1151,13 @@
   background: #8a8a82;
 }
 
+/* Plotly's modebar lays its icons out inline; base-reset.css makes every
+   svg a block, which stacked the bar into a column over the legend. */
+.js-plotly-plot .modebar-btn svg {
+  display: inline-block;
+  max-width: none;
+}
+
 /* Both result grids (drilldown, SQL playground) are the same dense grid:
    row height a little over the sidebar row, type at the table's size.
    Doubled selector: ag-grid's theme CSS loads after this sheet and sets the
