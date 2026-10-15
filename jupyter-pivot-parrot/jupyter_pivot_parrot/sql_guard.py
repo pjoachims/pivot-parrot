@@ -7,19 +7,29 @@ gets through.
 
 With the ``duckdb`` dialect (and the ``duckdb`` package installed) the SQL is
 parsed by DuckDB itself: exactly one SELECT statement, no CTEs, no table
-functions (``read_csv``, ``query``, ...), no SHOW/DESCRIBE/SUMMARIZE and no
-table other than ``pivot_data``.
+functions (``read_csv``, ``query``, ...), no SHOW/DESCRIBE/SUMMARIZE, no
+session lookups (``getvariable``, ``current_setting``) and no table other than
+``pivot_data``.
 
 Every other dialect gets a textual check only: one statement that starts with
 SELECT. It cannot see which tables or functions a SELECT reads, so for those
 engines the connection's own permissions are the real boundary: connect as a
-principal that can read the pivot source and nothing else.
+principal that can read the pivot source and nothing else. The textual check
+reads string literals the way the declared dialect does, so the dialect must
+be the engine's.
 """
 
 import json
 import re
 
 SOURCE_TABLE = 'pivot_data'
+SESSION_FUNCTIONS = {'getvariable', 'current_setting', 'getenv'}
+
+# How the textual check reads string literals: the quotes in which a backslash
+# escapes, and whether r'...' is a raw literal (no escapes), which is refused.
+SPARK_READING = ("'\"", True)
+STANDARD_READINGS = (("'", False), ('', False))
+LITERAL_READINGS = {'databricks': (SPARK_READING,), 'spark': (SPARK_READING,)}
 
 
 class UnsafeQueryError(ValueError):
@@ -37,7 +47,7 @@ def ensure_safe_query(sql, dialect='duckdb'):
         if duckdb is not None:
             _check_with_duckdb(duckdb, sql)
             return
-    _check_textually(sql)
+    _check_textually(sql, LITERAL_READINGS.get(dialect, STANDARD_READINGS))
 
 
 def _check_with_duckdb(duckdb, sql):
@@ -69,6 +79,8 @@ def _check_tree(node):
     kind = node.get('type')
     if kind == 'TABLE_FUNCTION':
         raise UnsafeQueryError(f"Table function '{node['function'].get('function_name')}' is not allowed")
+    if kind == 'FUNCTION' and node.get('function_name', '').lower() in SESSION_FUNCTIONS:
+        raise UnsafeQueryError(f"Function '{node['function_name']}' is not allowed")
     if kind == 'SHOW_REF':
         raise UnsafeQueryError('SHOW, DESCRIBE and SUMMARIZE are not allowed')
     name = node.get('table_name')
@@ -78,12 +90,11 @@ def _check_tree(node):
         _check_tree(child)
 
 
-def _check_textually(sql):
-    # Backslash escapes inside string literals depend on the engine (Databricks
-    # yes, standard SQL no). A literal like 'a\' ends in one reading and not in
-    # the other, so the SQL must be safe under both.
-    for backslash_escapes in (True, False):
-        code = _strip_literals_and_comments(sql, backslash_escapes).strip()
+def _check_textually(sql, readings):
+    # An engine-neutral dialect could end a literal like 'a\' either way
+    # (backslash escape or not), so it gets both readings and must pass each.
+    for backslash_quotes, raw_literals in readings:
+        code = _strip_literals_and_comments(sql, backslash_quotes, raw_literals).strip()
         if code.endswith(';'):
             code = code[:-1]
         if ';' in code:
@@ -92,7 +103,7 @@ def _check_textually(sql):
             raise UnsafeQueryError('Only SELECT is allowed')
 
 
-def _strip_literals_and_comments(sql, backslash_escapes):
+def _strip_literals_and_comments(sql, backslash_quotes, raw_literals):
     out = []
     i, n = 0, len(sql)
     while i < n:
@@ -107,7 +118,11 @@ def _strip_literals_and_comments(sql, backslash_escapes):
             i = end + 2
             out.append(' ')
         elif ch in ("'", '"', '`'):
-            i = _skip_quoted(sql, i, ch, backslash_escapes and ch == "'")
+            # Where r'...' ends depends on whether the r starts a raw literal or
+            # ends an identifier. The library never writes one, so refuse it.
+            if raw_literals and ch != '`' and i > 0 and sql[i - 1] in 'rR':
+                raise UnsafeQueryError('Raw string literals are not allowed')
+            i = _skip_quoted(sql, i, ch, ch in backslash_quotes)
             out.append(' ')
         else:
             out.append(ch)

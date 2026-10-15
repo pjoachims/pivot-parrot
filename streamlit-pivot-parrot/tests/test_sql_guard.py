@@ -91,7 +91,6 @@ def test_multiple_statements_are_rejected(con):
 
 @pytest.mark.parametrize('sql', [
     'SELECT * FROM pivot_data; DROP TABLE secrets',
-    "SELECT 'a\\'; DROP TABLE secrets; --' FROM pivot_data",
     'DROP TABLE secrets',
     'WITH x AS (SELECT 1) DELETE FROM secrets',
     '/* SELECT */ DELETE FROM secrets',
@@ -99,6 +98,12 @@ def test_multiple_statements_are_rejected(con):
 def test_textual_fallback_rejects_non_select(con, sql):
     with pytest.raises(ValueError):
         run(con, sql, dialect='databricks')
+    assert con.execute('SELECT count(*) FROM secrets').fetchone()[0] == 1
+
+
+def test_generic_dialect_rejects_a_literal_that_ends_differently_per_engine(con):
+    with pytest.raises(ValueError):
+        run(con, "SELECT 'a\\'; DROP TABLE secrets; --' FROM pivot_data", dialect='generic')
     assert con.execute('SELECT count(*) FROM secrets').fetchone()[0] == 1
 
 

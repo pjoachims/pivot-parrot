@@ -72,7 +72,11 @@ def test_other_tables_are_rejected(con):
 @pytest.mark.parametrize("dialect", ["duckdb", "databricks"])
 def test_multiple_statements_are_rejected(con, dialect):
     assert run(con, "SELECT * FROM pivot_data; DROP TABLE secrets", dialect) == "error"
-    assert run(con, "SELECT 'a\\'; DROP TABLE secrets; --' FROM pivot_data", dialect) == "error"
+    assert con.execute("SELECT count(*) FROM secrets").fetchone()[0] == 1
+
+
+def test_generic_dialect_rejects_a_literal_that_ends_differently_per_engine(con):
+    assert run(con, "SELECT 'a\\'; DROP TABLE secrets; --' FROM pivot_data", "generic") == "error"
     assert con.execute("SELECT count(*) FROM secrets").fetchone()[0] == 1
 
 
