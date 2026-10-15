@@ -7,7 +7,7 @@ import { HavingFilterDialog } from './HavingFilterDialog';
 import Popover from '../shared/Popover';
 import SnapshotNameDialog from '../snapshots/SnapshotNameDialog';
 import { filterCustomMetrics } from '../../../application/utils/fieldUtils';
-import { buildWhereClauses } from '../../../domain/query/sql/sql-builder';
+import { buildFieldItemFilters, buildWhereCondition } from '../../../domain/query/sql/sql-builder';
 import { fieldDisplayName } from '../../../domain/field/fieldDisplayName';
 import { resolveFieldExpr } from '../../../domain/field/resolveFieldExpr';
 
@@ -125,20 +125,13 @@ export function DialogsManager({
               getUniqueValues: async (filtersToApply = []) => {
                 if (!dataEngine) return { values: [], truncated: false };
                 try {
-                  // Build WHERE clause from filters
-                  let whereClause = '';
                   const dialect = dataEngine.getDialect();
-                  if (filtersToApply.length > 0) {
-                    const { whereClause: where } = buildWhereClauses(
-                      filtersToApply,
-                      config.customFilters || [],
-                      dialect,
-                      config.values || [],
-                      config.customMetrics || [],
-                      config.hiddenValues || []
-                    );
-                    whereClause = where.replace(/^WHERE\s+/i, '');
-                  }
+                  const whereClause = buildWhereCondition(
+                    buildFieldItemFilters(filtersToApply, dialect, availableFields, config),
+                    dialect,
+                    availableFields,
+                    config
+                  );
 
                   // Use field.id if available (FieldItem), otherwise field.name
                   const fieldId = filterDialog.field.id || filterDialog.field.name;

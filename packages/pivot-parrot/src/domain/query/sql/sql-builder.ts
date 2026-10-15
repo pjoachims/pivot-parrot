@@ -1,101 +1,13 @@
 /**
  * SQL Query Building Utilities
- * Constructs WHERE and HAVING clauses using Filter classes
+ * Constructs WHERE conditions using Filter classes
  */
 
 import { buildFilter } from './filters';
 import { getFieldById } from '../../field/getFieldById';
 import { resolveFieldExpr } from '../../field/resolveFieldExpr';
+import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../field/derived-field-resolver-v2';
 import { FieldKind } from '../../models/types';
-
-/**
- * Translate UI filters to SQL WHERE and HAVING clauses
- * @param {Array} filters - Array of filter objects from FilterDialog
- * @param {Array} customFilters - Array of custom filter definitions from config
- * @param {SQLDialect} dialect - SQL dialect for engine-specific generation
- * @param {Array} values - Array of value configurations to detect aggregated filters
- * @param {Array} customMetrics - Array of custom metrics (persisted aggregations)
- * @param {Array} hiddenValues - Array of hidden value configurations (for HAVING clause filters)
- * @returns {Object} { whereClause: string, havingClause: string }
- */
-export function buildWhereClauses(filters, customFilters = [], dialect, values = [], customMetrics = [], hiddenValues = []) {
-  if (!filters || filters.length === 0) {
-    return { whereClause: '', havingClause: '' };
-  }
-
-  // Validate dialect parameter
-  if (!dialect || typeof dialect.quoteIdentifier !== 'function') {
-    throw new Error('buildWhereClauses requires a valid SQLDialect instance');
-  }
-
-  // Build a lookup of aggregated fields and their SQL expressions
-  // Maps filter field name -> aggregation SQL (e.g., "sum_sales" -> "SUM(sales)")
-  const aggregatedFields = new Map();
-
-  // Add currently active values (both visible and hidden)
-  const allValues = [...values, ...hiddenValues];
-  allValues.forEach(v => {
-    if (v.aggregation && v.field) {
-      const agg = v.aggregation.toUpperCase();
-      const aggSQL = dialect.buildAggregation(v.field, v.aggregation);
-
-      // Map various possible field name formats to the aggregation SQL
-      aggregatedFields.set(`${agg}_${v.field}`, aggSQL); // e.g., "SUM_sales"
-      aggregatedFields.set(`${agg.toLowerCase()}_${v.field}`, aggSQL); // e.g., "sum_sales"
-      aggregatedFields.set(v.field, aggSQL); // e.g., "sales" (when only one aggregation exists)
-    }
-  });
-
-  // Add custom metrics (persisted aggregations)
-  customMetrics.forEach(m => {
-    if (m.aggregation && m.field) {
-      aggregatedFields.set(m.id, dialect.buildAggregation(m.field, m.aggregation));
-    } else if (m.expr) {
-      // Custom metric with expression
-      aggregatedFields.set(m.id, m.expr);
-    }
-  });
-
-  const whereConditions = [];
-  const havingConditions = [];
-
-  filters.forEach(f => {
-    // Determine if this is a HAVING filter (on aggregated value)
-    const isHaving = f.filterType === 'having' || aggregatedFields.has(f.field);
-    const aggSQL = aggregatedFields.get(f.field);
-
-    // Build the filter SQL
-    let filterSQL;
-    if (f.isCustom || f.type === 'custom_filter') {
-      const customFilter = customFilters.find(cf => cf.id === f.field);
-      if (customFilter) {
-        filterSQL = buildFilter({
-          ...f,
-          expr: customFilter.expr,
-          name: customFilter.name
-        }).toSQL(dialect);
-      }
-    } else if (isHaving && aggSQL) {
-      filterSQL = buildFilter({ ...f, field: aggSQL }).toSQL(dialect, false);
-    } else {
-      filterSQL = buildFilter(f).toSQL(dialect);
-    }
-
-    if (!filterSQL) return;
-
-    // Route to appropriate clause
-    if (isHaving) {
-      havingConditions.push(filterSQL);
-    } else {
-      whereConditions.push(filterSQL);
-    }
-  });
-
-  return {
-    whereClause: whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '',
-    havingClause: havingConditions.length > 0 ? 'HAVING ' + havingConditions.join(' AND ') : ''
-  };
-}
 
 /**
  * Convert activeFilters to drilldown filter format
@@ -159,10 +71,20 @@ export function buildFieldItemFilters(activeFilters, dialect, availableFields = 
 }
 
 /**
- * Legacy function for backwards compatibility
- * @deprecated Use buildWhereClauses instead
+ * The WHERE condition (without the keyword) of filters built by buildFieldItemFilters,
+ * with {{}} references resolved against dimensions, as the pivot query applies it.
  */
-export function buildWhereClause(filters, customFilters = [], dialect) {
-  const { whereClause } = buildWhereClauses(filters, customFilters, dialect);
-  return whereClause;
+export function buildWhereCondition(whereFilters, dialect, availableFields = [], config: any = {}): string {
+  const dimensionLookup = buildReferenceLookup({
+    availableFields,
+    customGroupings: config.customGroupings || [],
+    customFilters: config.customFilters || [],
+    customMetrics: config.customMetrics || [],
+    includeMetrics: false
+  });
+  const resolved = whereFilters.map(f => ({
+    ...f,
+    sqlExpr: f.sqlExpr ? resolveDerivedFieldsInExpressionV2(f.sqlExpr, dimensionLookup) : f.sqlExpr
+  }));
+  return resolved.length > 0 ? dialect.buildWhereClause(resolved) : '';
 }

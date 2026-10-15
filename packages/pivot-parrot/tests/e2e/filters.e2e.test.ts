@@ -4,7 +4,6 @@ import { DuckDBDialect } from '../../src/domain/query/dialects/DuckDBDialect';
 import { DatabricksDialect } from '../../src/domain/query/dialects/DatabricksDialect';
 import { buildFilter } from '../../src/domain/query/sql/filters';
 import { buildPivotSQL } from '../../src/domain/query/sql/buildPivotSQL';
-import { buildWhereClauses } from '../../src/domain/query/sql/sql-builder';
 import { fromSchema, createDerived } from '../../src/domain/field/FieldItem';
 
 const dialect = new DuckDBDialect();
@@ -173,18 +172,6 @@ describe('HAVING on multi-word aggregations', () => {
   it('Std Dev', async () => {
     expect(await pivot(having('Std Dev', 'qty', 'greater', 100))).toHaveLength(1);
     expect(await pivot(having('Std Dev', 'qty', 'greater', 110))).toHaveLength(0);
-  });
-
-  it.each([
-    [false, ['A', 'B', null]],
-    [true, []],
-  ])('buildWhereClauses (the filter dialog path), isNot %s', async (isNot, expected) => {
-    const { havingClause } = buildWhereClauses(
-      [{ field: 'COUNT DISTINCT_customer', type: 'greater', value: 0, isNot }], [], dialect,
-      [{ field: 'customer', aggregation: 'Count Distinct' }],
-    );
-    const reader = await conn.runAndReadAll(`SELECT region FROM pivot_data GROUP BY region ${havingClause} ORDER BY region`);
-    expect(reader.getRows().map(r => r[0])).toEqual(expected);
   });
 });
 

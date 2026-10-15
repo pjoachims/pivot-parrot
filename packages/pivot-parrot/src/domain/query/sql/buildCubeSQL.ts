@@ -1,6 +1,7 @@
 import { resolveMetricReferences } from '../../field/metric-resolver';
 import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../field/derived-field-resolver-v2';
 import { resolveFieldExpr } from '../../field/resolveFieldExpr';
+import { buildWhereCondition } from './sql-builder';
 import { AGGREGATION_SQL_NAMES } from './aggregations';
 import { SIGMA_VALUES_ID } from '../../models/types';
 
@@ -44,12 +45,6 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     includeMetrics: true  // Metrics can reference other metrics for composition
   });
 
-  // Resolve references in filter expressions (use dimension lookup)
-  const resolvedWhereFilters = (whereFilters || []).map(f => ({
-    ...f,
-    sqlExpr: f.sqlExpr ? resolveDerivedFieldsInExpressionV2(f.sqlExpr, dimensionLookup) : f.sqlExpr
-  }));
-
   // HAVING filters could potentially reference metrics, but typically reference aggregations
   // For now, use dimension lookup (most HAVING filters are on SUM_field etc, not custom metrics)
   const resolvedHavingFilters = (havingFilters || []).map(f => ({
@@ -58,9 +53,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
   }));
 
   // Build WHERE and HAVING clauses from filter objects
-  const whereCondition = resolvedWhereFilters.length > 0
-    ? dialect.buildWhereClause(resolvedWhereFilters)
-    : '';
+  const whereCondition = buildWhereCondition(whereFilters || [], dialect, availableFields, config);
   const whereClause = whereCondition ? `WHERE ${whereCondition}` : '';
 
   const havingClause = resolvedHavingFilters.length > 0

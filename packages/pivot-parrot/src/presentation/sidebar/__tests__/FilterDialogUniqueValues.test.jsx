@@ -108,4 +108,34 @@ describe('filter dialog unique values', () => {
     await waitFor(() => expect(screen.getByText('A!')).toBeInTheDocument());
     expect(screen.getByText('B!')).toBeInTheDocument();
   });
+
+  describe('narrowed by the other active filters', () => {
+    const region = { id: 'region', name: 'region', dtype: 'string', kind: FieldKind.BASE_FIELD };
+    const orderId = { id: 'order_id', name: 'order_id', dtype: 'string', kind: FieldKind.BASE_FIELD };
+    const orderNo = { id: 'order_no', name: 'order_no', dtype: 'int32', kind: FieldKind.DERIVED_FIELD, formula: "CAST(substr(order_id, 4) AS INTEGER)" };
+
+    async function fetchRegionsWith(config) {
+      const store = createPivotStore();
+      store.setState({ config: { ...store.getState().config, ...config } });
+      showFilterDialog(engine, region, [region, orderId, orderNo], store);
+      fireEvent.click(screen.getByText(/Fetch Unique Values/i));
+      fireEvent.click(await screen.findByText(/^Fetch$/));
+    }
+
+    it('while a custom metric is in Values', async () => {
+      await fetchRegionsWith({
+        values: [{ field: 'm_rate', aggregation: 'custom', isCustom: true }],
+        customMetrics: [{ id: 'm_rate', name: 'Rate', expr: 'count(*) / 2' }],
+        filters: [{ field: 'order_id', type: 'equal', value: 'id_0001' }]
+      });
+      await waitFor(() => expect(screen.getByText('b')).toBeInTheDocument());
+      expect(screen.queryByText('a')).not.toBeInTheDocument();
+    });
+
+    it('on a derived field', async () => {
+      await fetchRegionsWith({ filters: [{ field: 'order_no', type: 'equal', value: '2' }] });
+      await waitFor(() => expect(screen.getByText('a')).toBeInTheDocument());
+      expect(screen.queryByText('b')).not.toBeInTheDocument();
+    });
+  });
 });
