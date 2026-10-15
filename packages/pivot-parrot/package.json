@@ -1,6 +1,6 @@
 {
   "name": "pivot-parrot",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "DuckDB-powered pivot table with React UI components",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,6 +30,11 @@
       "require": "./dist/display/index.js"
     }
   },
+  "files": [
+    "dist",
+    "src/styles",
+    "src/presentation/sidebar/styles.css"
+  ],
   "scripts": {
     "build": "rollup -c",
     "build:watch": "rollup -c -w",
