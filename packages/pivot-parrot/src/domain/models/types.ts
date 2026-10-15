@@ -52,15 +52,17 @@ export interface DerivedField {
  * Value configuration for aggregation
  * Note: UI uses capitalized aggregations (Sum, Count) but they're normalized to lowercase in SQL generation
  */
+export interface ValueFormat {
+  type?: 'number' | 'currency' | 'percentage';
+  decimals?: number;
+  currency?: string;              // ISO code for type 'currency', default 'USD'
+  useThousandSeparator?: boolean; // default: true for 'currency', false otherwise
+}
+
 export interface ValueConfig {
   field: string;
   aggregation: 'Sum' | 'Count' | 'Avg' | 'Min' | 'Max' | 'Count_distinct' | 'sum' | 'count' | 'avg' | 'min' | 'max' | 'count_distinct' | 'median' | 'std' | 'var' | 'custom';
-  format?: {
-    type?: 'number' | 'currency' | 'percent';
-    decimals?: number;
-    prefix?: string;
-    suffix?: string;
-  };
+  format?: ValueFormat;
   isCustom?: boolean;
 }
 
@@ -92,12 +94,7 @@ export interface CustomMetric {
   id: string;
   name: string;
   expr: string;
-  format?: {
-    type?: 'number' | 'currency' | 'percent';
-    decimals?: number;
-    prefix?: string;
-    suffix?: string;
-  };
+  format?: ValueFormat;
 }
 
 /**
