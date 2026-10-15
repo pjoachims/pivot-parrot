@@ -50,12 +50,6 @@ export interface BuildPivotSQLOptions {
 export interface BuildPivotSQLResult {
   /** The generated SQL string */
   sql: string;
-
-  /** Whether HAVING filters are present (may affect subtotals) */
-  hasHavingFilters: boolean;
-
-  /** The enriched config used for SQL generation */
-  enrichedConfig: PivotTableConfig;
 }
 
 
@@ -178,12 +172,9 @@ export function buildPivotSQL(options: BuildPivotSQLOptions): BuildPivotSQLResul
     availableFields
   );
 
-  // Step 3: Create enriched config
-  const enrichedConfig = { ...config, values: enrichedValues };
-
-  // Step 4: Generate SQL
+  // Step 3: Generate SQL
   const sql = buildCubeSQL(
-    enrichedConfig,
+    { ...config, values: enrichedValues },
     whereFilters,
     detectedTypes,
     tableName,
@@ -193,11 +184,7 @@ export function buildPivotSQL(options: BuildPivotSQLOptions): BuildPivotSQLResul
     disableSubtotals
   );
 
-  return {
-    sql,
-    hasHavingFilters: havingFilters.length > 0,
-    enrichedConfig
-  };
+  return { sql };
 }
 
 /**
