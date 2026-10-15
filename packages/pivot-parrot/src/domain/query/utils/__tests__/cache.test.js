@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashData, hashPivotConfig, getPivotConfigSignature } from '../cache';
+import { hashData } from '../cache';
 
 describe('hashData', () => {
   it('returns a stable hash for identical data', () => {
@@ -38,28 +38,5 @@ describe('hashData', () => {
       { id: 3, val: 'last' }
     ];
     expect(hashData(a)).not.toBe(hashData(b));
-  });
-});
-
-describe('getPivotConfigSignature / hashPivotConfig', () => {
-  it('is order-independent for dimensions across rows/columns', () => {
-    const configA = { rows: ['region'], columns: ['date'], values: [{ field: 'sales', aggregation: 'sum' }] };
-    const configB = { rows: ['date'], columns: ['region'], values: [{ field: 'sales', aggregation: 'sum' }] };
-    expect(hashPivotConfig(configA)).toBe(hashPivotConfig(configB));
-    expect(getPivotConfigSignature(configA)).toBe(getPivotConfigSignature(configB));
-  });
-
-  it('changes when filter values differ', () => {
-    const base = { rows: ['region'], columns: [], values: [{ field: 'sales', aggregation: 'sum' }], filters: [] };
-    const filtered = { ...base, filters: [{ field: 'region', type: 'equal', value: 'North' }] };
-    expect(hashPivotConfig(base)).not.toBe(hashPivotConfig(filtered));
-    expect(getPivotConfigSignature(base)).not.toBe(getPivotConfigSignature(filtered));
-  });
-
-  it('signature can be used to detect hash collisions on cache hit', () => {
-    const configA = { rows: ['region'], columns: [], values: [{ field: 'sales', aggregation: 'sum' }] };
-    const configB = { rows: ['region'], columns: [], values: [{ field: 'sales', aggregation: 'avg' }] };
-    // Signatures must differ whenever configs differ (used for verify-on-hit)
-    expect(getPivotConfigSignature(configA)).not.toBe(getPivotConfigSignature(configB));
   });
 });

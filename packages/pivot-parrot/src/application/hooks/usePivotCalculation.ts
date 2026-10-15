@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { buildPivotSQL } from '../../domain/query/sql/buildPivotSQL';
-import { hashPivotConfig, getPivotConfigSignature } from '../../domain/query/utils/cache';
 import { buildCubeIndex } from '../utils/cubeIndex';
 import { createLogger } from '../utils/logger';
 import { usePivotStore } from '../state/store';
@@ -32,7 +31,9 @@ export function usePivotCalculation({
   const [dtypes, setDtypes] = useState({});
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState(null);
-  const [cubeCache] = useState(() => new Map());
+  // Results keyed by the final SQL, scoped to one dataset: the SQL carries
+  // every expression behind the config, the scope carries the data.
+  const cubeCache = useMemo(() => new Map(), [engine, dataHash]);
   const abortControllerRef = useRef(null);
   const [calculationStartTime, setCalculationStartTime] = useState(null);
   const maxCacheSize = 5;
@@ -162,7 +163,7 @@ export function usePivotCalculation({
 
       const dialect = engine.getDialect();
 
-      const { sql, enrichedConfig } = buildPivotSQL({
+      const { sql } = buildPivotSQL({
         config: configToUse,
         dialect,
         availableFields,
@@ -185,15 +186,8 @@ export function usePivotCalculation({
         return;
       }
 
-      // Check cache
-      const configHash = hashPivotConfig(enrichedConfig, '');
-      const configSignature = getPivotConfigSignature(enrichedConfig, '');
-      const cached = cubeCache.get(configHash);
-
-      // hashPivotConfig is a 32-bit hash, so different configs can collide on
-      // the same key - verify against the stored canonical signature before
-      // trusting the hit, otherwise treat it as a miss.
-      if (cached && cached.signature === configSignature) {
+      const cached = cubeCache.get(finalSQL);
+      if (cached) {
         logger.debug('Cache hit', { rowCount: cached.cubeResults.length });
         setResultWithIndex(executionConfig, cached.cubeResults, cached.dtypes || {});
         setCalculating(false);
@@ -234,7 +228,7 @@ export function usePivotCalculation({
         const firstKey = cubeCache.keys().next().value;
         cubeCache.delete(firstKey);
       }
-      cubeCache.set(configHash, { cubeResults: result.data, dtypes: result.dtypes, sql: finalSQL, signature: configSignature });
+      cubeCache.set(finalSQL, { cubeResults: result.data, dtypes: result.dtypes });
 
       onExecutionComplete?.(executionConfig, result.data);
 
