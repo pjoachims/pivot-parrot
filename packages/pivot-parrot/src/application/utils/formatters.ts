@@ -66,8 +66,9 @@ export function defaultFormat(category: string | undefined): ValueFormat | undef
   return undefined;
 }
 
-/** Format a number for display. Percentages take a fraction (0.123 → 12.3%). */
+/** Format a number for display. Percentages take a fraction (0.123 → 12.3%). Non-finite shows empty, like null. */
 export function formatNumber(value: number, format: ValueFormat, locale = 'en-US'): string {
+  if (!Number.isFinite(value)) return '';
   const nf = numberFormatFor(format, locale);
   // A negative that rounds to zero would print "-0,0 %". signDisplay: 'negative'
   // says the same, but is newer than the ES2020 target and throws where unsupported.
@@ -94,7 +95,8 @@ export function findValueFormat(config, valueKey: string): ValueFormat | undefin
 export const createFormatValue = (config, locale = 'en-US', dtypes = {}, dialect = null) => (n, valueKey) => {
   const typeName = dtypes[valueKey] ?? null;
 
-  if (n === null || n === undefined || n === '') return '';
+  // DuckDB returns inf for 1/0: a value without a number, like null.
+  if (n === null || n === undefined || n === '' || (typeof n === 'number' && !Number.isFinite(n))) return '';
 
   // Use dialect transform if available
   if (typeName !== null && dialect && dialect.toDisplay) {

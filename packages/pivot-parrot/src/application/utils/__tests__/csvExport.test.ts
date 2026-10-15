@@ -189,3 +189,9 @@ describe('exportPivotCSV', () => {
     expect(new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)).toBe('\uFEFFRow Labels;Umsatz €;Quote\nKöln;1234,5;12,34%');
   });
 });
+
+describe('non-finite numbers in CSV', () => {
+  it('are written as empty cells, like null', () => {
+    expect(toCSV([[Infinity, -Infinity, NaN, { percent: Infinity }, 1.5]], 'de-DE')).toBe(';;;;1,5');
+  });
+});

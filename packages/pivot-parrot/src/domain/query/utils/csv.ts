@@ -28,9 +28,12 @@ export function toCSV(rows: CsvCell[][], locale?: string): string {
   const { decimal, delimiter } = csvSeparators(locale);
   const number = (n: number | bigint) => String(n).replace('.', decimal);
   const cell = (v: CsvCell): string => {
-    if (v == null) return '';
+    // A non-finite number (inf from 1/0) is written like null.
+    if (v == null || (typeof v === 'number' && !Number.isFinite(v))) return '';
     if (typeof v === 'number' || typeof v === 'bigint') return number(v);
-    if (typeof v === 'object' && 'percent' in v) return `${number(Number((v.percent * 100).toPrecision(15)))}%`;
+    if (typeof v === 'object' && 'percent' in v) {
+      return Number.isFinite(v.percent) ? `${number(Number((v.percent * 100).toPrecision(15)))}%` : '';
+    }
     const s = String(v);
     return s.includes('"') || s.includes(delimiter) || /[\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };

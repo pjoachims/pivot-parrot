@@ -68,3 +68,18 @@ describe('formatNumber', () => {
     expect(formatNumber(0, { type: 'number', decimals: 2 }, 'en-US')).toBe('0.00');
   });
 });
+
+describe('non-finite numbers (DuckDB returns inf for 1/0)', () => {
+  it('show as empty, like null', () => {
+    const f = createFormatValue(customConfig, 'de-DE');
+    for (const n of [Infinity, -Infinity, NaN]) {
+      expect(f(n, 'm1')).toBe('');
+      expect(f(n, 'm2')).toBe('');
+      expect(formatNumber(n, { type: 'currency', currency: 'EUR' }, 'de-DE')).toBe('');
+    }
+  });
+
+  it('leave text that is not a number alone', () => {
+    expect(createFormatValue(customConfig, 'de-DE')('n/a', 'm1')).toBe('n/a');
+  });
+});
