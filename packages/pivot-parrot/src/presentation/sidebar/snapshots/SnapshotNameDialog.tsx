@@ -11,6 +11,7 @@ import BaseDialog from '../../shared/BaseDialog';
 export default function SnapshotNameDialog({ onSave, onCancel, defaultName }) {
   const [name, setName] = useState(defaultName || '');
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = React.useId();
 
   // Auto-focus and select text on mount
   useEffect(() => {
@@ -46,9 +47,9 @@ export default function SnapshotNameDialog({ onSave, onCancel, defaultName }) {
       maxWidth="360px"
     >
       <div className="pp-field">
-        <label className="pp-label" htmlFor="pp-snapshot-name">Name</label>
+        <label className="pp-label" htmlFor={inputId}>Name</label>
         <input
-          id="pp-snapshot-name"
+          id={inputId}
           ref={inputRef}
           type="text"
           value={name}

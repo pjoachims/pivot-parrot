@@ -1,6 +1,7 @@
 import React from 'react';
 import { usePivotStore, usePivotLocale } from '../../../application/state/store';
 import type { SavedView } from '../../../domain/models/types';
+import { Icon } from '../../shared/Icon';
 
 /**
  * Snapshots Panel Component
@@ -33,135 +34,68 @@ export function SnapshotsPanel({
   }
 
   return (
-    <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-color-medium)' }}>
-      <button
-        onClick={() => setShowSnapshots(!showSnapshots)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'transparent',
-          border: 'none',
-          padding: '4px 0',
-          fontSize: '11px',
-          fontWeight: 500,
-          color: 'var(--text-secondary)',
-          cursor: 'pointer'
-        }}
-      >
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-            <circle cx="12" cy="13" r="4" />
-          </svg>
+    <div style={{ padding: 'var(--space-1) var(--space-3) var(--space-2)', borderTop: '1px solid var(--border-color-medium)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+        <button
+          onClick={() => setShowSnapshots(!showSnapshots)}
+          aria-expanded={showSnapshots}
+          className="pp-btn pp-btn--quiet pp-btn--sm"
+          style={{ flex: 1, justifyContent: 'flex-start', paddingLeft: 0 }}
+        >
+          <Icon name="chevron-right" style={{ transform: showSnapshots ? 'rotate(90deg)' : undefined, transition: 'transform var(--transition-fast)' }} />
+          <Icon name="camera" />
           Snapshots ({snapshots.length})
-        </span>
-        <span style={{ transform: showSnapshots ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
-      </button>
+        </button>
+        {showSnapshots && (
+          <button
+            onClick={() => setSnapshotNameDialog(true)}
+            className="pp-btn pp-btn--sm"
+            title="Save the current layout as a snapshot"
+          >
+            <Icon name="plus" />
+            New
+          </button>
+        )}
+      </div>
 
       {error && (
-        <div role="alert" style={{ fontSize: '10px', color: 'var(--color-error)', padding: '4px 2px' }}>
+        <div role="alert" className="pp-hint" style={{ color: 'var(--color-error)', padding: 'var(--space-1) 0' }}>
           {error}
         </div>
       )}
 
       {showSnapshots && (
-        <div style={{ marginTop: '8px' }}>
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-            <button
-              onClick={() => setSnapshotNameDialog(true)}
-              style={{
-                flex: 1,
-                padding: '3px 6px',
-                fontSize: '11px',
-                color: 'var(--color-accent)',
-                background: 'var(--surface-bg)',
-                border: '1px solid var(--color-accent)',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}
-            >
-              + New
-            </button>
+        snapshots.length === 0 ? (
+          <div className="pp-hint" style={{ padding: 'var(--space-2) 0 var(--space-1)' }}>
+            No snapshots yet
           </div>
-
-          {snapshots.length === 0 ? (
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
-              No snapshots yet
-            </div>
-          ) : (
-            <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-              {snapshots.map((snapshot) => (
-                <div
-                  key={snapshot.id}
-                  style={{
-                    padding: '4px 6px',
-                    marginBottom: '5px',
-                    background: 'transparent',
-                    border: '1px dashed var(--border-color-medium)',
-                    borderRadius: '3px',
-                    fontSize: '10px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-                    <div
-                      className="pp-truncate"
-                      style={{
-                        fontWeight: 500,
-                        color: 'var(--text-secondary)',
-                        fontSize: '10px'
-                      }}
-                    >
-                      {snapshot.name}
-                    </div>
-                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                      {new Date(snapshot.createdAt).toLocaleString(locale)}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
-                    <button
-                      onClick={() => onLoadSnapshot && onLoadSnapshot(snapshot.id)}
-                      aria-label={`Load snapshot ${snapshot.name}`}
-                      style={{
-                        padding: '2px 5px',
-                        fontSize: '9px',
-                        color: 'var(--color-accent)',
-                        background: 'var(--surface-bg)',
-                        border: '1px solid var(--border-color-medium)',
-                        borderRadius: '2px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Load
-                    </button>
-                    <button
-                      onClick={() => onDeleteSnapshot && onDeleteSnapshot(snapshot.id)}
-                      aria-label={`Delete snapshot ${snapshot.name}`}
-                      className="pp-danger-btn-hover"
-                      style={{
-                        padding: '2px 5px',
-                        fontSize: '10px',
-                        color: 'var(--color-error)',
-                        background: 'var(--surface-bg)',
-                        border: '1px solid var(--border-color-medium)',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        lineHeight: '1'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
+        ) : (
+          <div style={{ maxHeight: '150px', overflowY: 'auto', marginTop: 'var(--space-1)' }}>
+            {snapshots.map((snapshot) => (
+              <div key={snapshot.id} className="pp-field-row" style={{ height: 'auto', minHeight: '32px', cursor: 'default', paddingLeft: 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="pp-truncate" style={{ fontWeight: 500 }}>{snapshot.name}</div>
+                  <div className="pp-hint">{new Date(snapshot.createdAt).toLocaleString(locale)}</div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <button
+                  onClick={() => onLoadSnapshot && onLoadSnapshot(snapshot.id)}
+                  aria-label={`Load snapshot ${snapshot.name}`}
+                  className="pp-btn pp-btn--sm"
+                >
+                  Load
+                </button>
+                <button
+                  onClick={() => onDeleteSnapshot && onDeleteSnapshot(snapshot.id)}
+                  aria-label={`Delete snapshot ${snapshot.name}`}
+                  title="Delete snapshot"
+                  className="pp-icon-btn pp-icon-btn--danger"
+                >
+                  <Icon name="trash" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

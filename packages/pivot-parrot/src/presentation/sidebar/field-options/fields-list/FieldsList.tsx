@@ -50,10 +50,10 @@ export default function FieldsList() {
   const customGroupings = filterCustomMetrics(config.customGroupings || [], searchQuery);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white">
-      <div className="px-3 py-2">
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--surface-bg)' }}>
+      <div style={{ padding: '0 var(--space-1) var(--space-2)' }}>
         {availableFieldsFiltered.length === 0 && customMetrics.length === 0 && searchQuery ? (
-          <div className="text-xs text-gray-500 text-center py-4">
+          <div className="pp-hint" style={{ textAlign: 'center', padding: 'var(--space-4) 0' }}>
             No fields matching "{searchQuery}"
           </div>
         ) : null}

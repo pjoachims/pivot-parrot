@@ -11,7 +11,7 @@ export function FieldOptionsSearch() {
   const setSearchQuery = usePivotStore(s => s.setSearchQuery);
 
   return (
-    <div className="px-3 py-2 text-xs" style={{ display: 'flex' }}>
+    <div style={{ display: 'flex', padding: 'var(--space-2) var(--space-3)' }}>
       <SearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
     </div>
   );

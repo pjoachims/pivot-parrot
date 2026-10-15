@@ -1,66 +1,44 @@
 import React from 'react';
 import { usePivotStore } from '../../../application/state/store';
-import {
-  CustomExpressionColors,
-  CustomExpressionSymbols,
-  type CustomExpressionType
-} from '../shared/CustomExpressionIcons';
+import { CustomExpressionIcon, type CustomExpressionType } from '../shared/CustomExpressionIcons';
 
-interface CreateButtonProps {
-  type: CustomExpressionType;
-  onClick: () => void;
-}
-
-function CreateButton({ type, onClick }: CreateButtonProps) {
-  const color = CustomExpressionColors[type];
-  const symbol = CustomExpressionSymbols[type];
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '2px',
-        padding: '2px 4px',
-        fontSize: '11px',
-        color,
-        background: 'transparent',
-        border: `1px solid ${color}`,
-        borderRadius: '3px',
-        cursor: 'pointer'
-      }}
-      title={`Create custom ${type}`}
-      aria-label={`Create custom ${type}`}
-    >
-      <span style={{ fontSize: '10px' }}>+</span>
-      <span style={{ fontSize: '12px' }}>{symbol}</span>
-    </button>
-  );
-}
+const CREATE: Array<{ type: CustomExpressionType; label: string }> = [
+  { type: 'metric', label: 'Metric' },
+  { type: 'grouping', label: 'Group' },
+  { type: 'filter', label: 'Filter' }
+];
 
 /**
- * FieldOptionsActions component
- * Displays action buttons for creating custom metrics, groupings, and filters
+ * Create a custom metric, grouping or filter: three neutral buttons, each with
+ * the glyph its result carries in the field list.
  */
 export function FieldOptionsActions() {
   const setExpressionDialog = usePivotStore(s => s.setExpressionDialog);
 
   return (
     <div
-      className="px-3 py-2 text-xs bg-white"
+      role="group"
+      aria-label="Create custom field"
       style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 'var(--space-1)',
+        padding: 'var(--space-2) var(--space-3)',
+        borderTop: '1px solid var(--border-color-light)'
       }}
     >
-      <span>Drag fields:</span>
-      <div style={{ display: 'flex', gap: '4px' }}>
-        <CreateButton type="metric" onClick={() => setExpressionDialog({ type: 'metric', editing: null })} />
-        <CreateButton type="grouping" onClick={() => setExpressionDialog({ type: 'grouping', editing: null })} />
-        <CreateButton type="filter" onClick={() => setExpressionDialog({ type: 'filter', editing: null })} />
-      </div>
+      {CREATE.map(({ type, label }) => (
+        <button
+          key={type}
+          onClick={() => setExpressionDialog({ type, editing: null })}
+          className="pp-btn pp-btn--sm"
+          title={`Create custom ${type}`}
+          aria-label={`Create custom ${type}`}
+        >
+          <CustomExpressionIcon type={type} />
+          <span className="pp-truncate">{label}</span>
+        </button>
+      ))}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { usePivotStore } from '../../../../application/state/store';
 import { FieldKind } from '../../../../domain/models/types';
 import DropZone from './DropZone';
+import { Icon } from '../../../shared/Icon';
 import FieldItem from '../fields-list/FieldItem';
 import ValueItem from './ValueItem';
 import { enrichValuesWithMetrics } from '../../../../application/utils/fieldUtils';
@@ -192,7 +193,7 @@ export default function DropZonesGrid() {
   };
 
   return (
-    <div className="grid grid-cols-2 bg-white" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: 'var(--surface-bg)', borderTop: '1px solid var(--border-color-light)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', background: 'var(--surface-bg)', borderTop: '1px solid var(--border-color-light)' }}>
       {/* Filters */}
       <DropZone
         title="Filters"
@@ -202,12 +203,9 @@ export default function DropZonesGrid() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        borderClass="border-r border-b border-gray-200"
         borderStyle={{ borderRight: '1px solid var(--border-color-light)', borderBottom: '1px solid var(--border-color-light)' }}
         isEmpty={config.filters.length === 0}
-        icon={
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-500"><rect x="3" y="7" width="10" height="2" rx="1" fill="currentColor"/></svg>
-        }
+        icon={<Icon name="filter" />}
       >
         {config.filters.map((field) => {
           const fieldId = typeof field === 'string' ? field : field.field;
@@ -230,7 +228,7 @@ export default function DropZonesGrid() {
                 onRemove={handleRemoveFilter}
                 onFilterClick={(e) => handleFilterClick(fieldId, e.currentTarget.parentElement)}
                 onMoveToZone={(targetZone) => handleDropAction(fieldId, 'filters', targetZone, null)}
-                className={hasActiveFilter ? 'border-blue-500 bg-blue-50' : ''}
+                className={hasActiveFilter ? 'is-active' : ''}
                 onClick={undefined}
                 onShowDerived={undefined}
               >
@@ -250,12 +248,9 @@ export default function DropZonesGrid() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        borderClass="border-b border-gray-200"
         borderStyle={{ borderBottom: '1px solid var(--border-color-light)' }}
         isEmpty={config.columns.length === 0}
-        icon={
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-500"><rect x="3" y="3" width="4" height="4" rx="1" fill="currentColor"/><rect x="9" y="3" width="4" height="4" rx="1" fill="currentColor"/><rect x="3" y="9" width="4" height="4" rx="1" fill="currentColor"/><rect x="9" y="9" width="4" height="4" rx="1" fill="currentColor"/></svg>
-        }
+        icon={<Icon name="columns" />}
       >
         {config.columns.map((fieldId) => {
           const fieldItem = availableFields.find(f => f.id === fieldId) || fieldId;
@@ -288,12 +283,9 @@ export default function DropZonesGrid() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        borderClass="border-r border-gray-200"
         borderStyle={{ borderRight: '1px solid var(--border-color-light)' }}
         isEmpty={config.rows.length === 0}
-        icon={
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-500"><rect x="3" y="3" width="10" height="2" rx="1" fill="currentColor"/><rect x="3" y="7" width="10" height="2" rx="1" fill="currentColor"/><rect x="3" y="11" width="10" height="2" rx="1" fill="currentColor"/></svg>
-        }
+        icon={<Icon name="rows" />}
       >
         {config.rows.map((fieldId) => {
           const fieldItem = availableFields.find(f => f.id === fieldId) || fieldId;
@@ -327,9 +319,7 @@ export default function DropZonesGrid() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         isEmpty={config.values.length === 0}
-        icon={
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-500"><text x="8" y="12" textAnchor="middle" fontSize="14" fontWeight="bold" fill="currentColor">Σ</text></svg>
-        }
+        icon={<Icon name="sigma" />}
       >
         {enrichedValues.map((valueField, index) => (
           <ValueItem
