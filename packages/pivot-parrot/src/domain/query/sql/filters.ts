@@ -8,6 +8,7 @@
  */
 
 import type { SQLDialect } from '../dialects/SQLDialect';
+import { RELATIVE_DATE_UNITS, type RelativeDate } from '../../models/types';
 
 /**
  * A LIKE pattern literal ('<prefix><value><suffix>') that matches the value literally.
@@ -78,6 +79,51 @@ class DateRangeFilter extends Filter {
 
   getLabel(): string {
     return `${this.start} to ${this.end}`;
+  }
+}
+
+/** "Last 7 days", "This week", "Yesterday": how a relative date filter reads, wherever it is shown. */
+export function relativeDateLabel({ mode, n, unit }: RelativeDate, isNot = false): string {
+  const range = n === 1 && unit === 'day' ? (mode === 'last' ? 'Today' : 'Yesterday')
+    : n === 1 ? `${mode === 'last' ? 'This' : 'Previous'} ${unit}`
+    : `${mode === 'last' ? 'Last' : 'Previous'} ${n} ${unit}s`;
+  return isNot ? `not ${range}` : range;
+}
+
+/** Saved views come back from the host's store, and unit and n end up in the SQL text. */
+function parseRelativeDate(relative: any): RelativeDate {
+  const { mode, n, unit } = relative ?? {};
+  if ((mode !== 'last' && mode !== 'previous') || !Number.isInteger(n) || n < 1 || !RELATIVE_DATE_UNITS.includes(unit)) {
+    throw new Error(`Invalid relative date: ${JSON.stringify(relative)}`);
+  }
+  return { mode, n, unit };
+}
+
+/**
+ * Relative Date Filter: a half-open range of whole periods, resolved by the engine at query time
+ */
+class RelativeDateFilter extends Filter {
+  public relative: RelativeDate;
+  public isNot: boolean;
+
+  constructor({ field, dtype, relative, isNot = false }: any) {
+    super({ field, dtype });
+    this.relative = parseRelativeDate(relative);
+    this.isNot = isNot;
+  }
+
+  toSQL(dialect: SQLDialect, quoteField = true): string {
+    const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
+    const { mode, n, unit } = this.relative;
+    const [from, to] = mode === 'last' ? [1 - n, 1] : [-n, 0];
+    const start = dialect.getFunction('period_start', unit, from);
+    const end = dialect.getFunction('period_start', unit, to);
+    const condition = `(${field} >= ${start} AND ${field} < ${end})`;
+    return this.isNot ? negate(field, condition) : condition;
+  }
+
+  getLabel(): string {
+    return relativeDateLabel(this.relative, this.isNot);
   }
 }
 
@@ -431,6 +477,9 @@ export function buildFilter(filterDict) {
   switch (type) {
     case 'date_range':
       return new DateRangeFilter(filterDict);
+
+    case 'relative_date':
+      return new RelativeDateFilter(filterDict);
 
     case 'one_of':
       return new OneOfFilter(filterDict);
