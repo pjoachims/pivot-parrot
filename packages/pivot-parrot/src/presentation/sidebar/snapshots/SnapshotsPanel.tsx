@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePivotStore } from '../../../application/state/store';
+import { usePivotStore, usePivotLocale } from '../../../application/state/store';
 import type { SavedView } from '../../../domain/models/types';
 
 /**
@@ -22,6 +22,7 @@ export function SnapshotsPanel({
   onDeleteSnapshot
 }: SnapshotsPanelProps) {
   // Store state
+  const locale = usePivotLocale();
   const showSnapshots = usePivotStore(s => s.showSnapshots);
   const setShowSnapshots = usePivotStore(s => s.setShowSnapshots);
   const setSnapshotNameDialog = usePivotStore(s => s.setSnapshotNameDialog);
@@ -119,7 +120,7 @@ export function SnapshotsPanel({
                       {snapshot.name}
                     </div>
                     <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                      {new Date(snapshot.createdAt).toLocaleString()}
+                      {new Date(snapshot.createdAt).toLocaleString(locale)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
