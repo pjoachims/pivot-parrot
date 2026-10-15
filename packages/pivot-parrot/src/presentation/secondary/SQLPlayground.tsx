@@ -203,7 +203,7 @@ export default function SQLPlayground({
         </div>
       </div>
 
-      <div style={styles.gridContainer} className="ag-theme-alpine">
+      <div style={styles.gridContainer} className="ag-theme-alpine ag-theme-compact">
         {!gridLoaded ? (
           <div style={styles.loadingGrid}>
             <span className="pp-spinner" aria-hidden="true" />

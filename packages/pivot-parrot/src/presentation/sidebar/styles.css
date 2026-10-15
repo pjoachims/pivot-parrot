@@ -1151,6 +1151,16 @@
   background: #8a8a82;
 }
 
+/* Both result grids (drilldown, SQL playground) are the same dense grid:
+   row height a little over the sidebar row, type at the table's size.
+   Doubled selector: ag-grid's theme CSS loads after this sheet and sets the
+   same variables on .ag-theme-alpine. */
+.ag-theme-alpine.ag-theme-compact {
+  --ag-font-size: 11px;
+  --ag-row-height: 25px;
+  --ag-header-height: 28px;
+}
+
 /* The SQL Playground / Drilldown results grids use ag-grid's "alpine" theme,
    which is a separate widget library with its own CSS custom properties
    (not the pivot-parrot tokens above). Reskin it too via ag-grid's own

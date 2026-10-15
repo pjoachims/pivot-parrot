@@ -324,13 +324,6 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
       {/* Grid */}
       <div style={styles.gridContainer} className="ag-theme-alpine ag-theme-compact">
-        <style>{`
-          .ag-theme-compact {
-            --ag-font-size: 11px;
-            --ag-row-height: 25px;
-            --ag-header-height: 28px;
-          }
-        `}</style>
         {!gridLoaded ? (
           <div style={styles.loading}>
             <span className="pp-spinner" aria-hidden="true" />
