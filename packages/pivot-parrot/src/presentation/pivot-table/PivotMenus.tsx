@@ -5,7 +5,6 @@ import { toMetricKey, toMetricLabel } from '../../domain/pivot/utils';
  * Sort Menu - Sort rows by value field
  */
 export function SortMenu({
-  styles,
   data,
   config,
   sortConfig,
@@ -39,18 +38,12 @@ export function SortMenu({
   }
 
   return (
-    <div className="pivot-popover-menu" style={styles.popoverMenu} onClick={(e) => e.stopPropagation()}>
-      <div style={styles.menuHeader}>Sort Rows</div>
-
-      <div style={{ ...styles.settingSection, borderBottom: 'none', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
-        <div style={{ flex: 1 }}>
-          <label style={styles.settingLabel}>Value</label>
-          <select
-            className="pivot-select"
-            style={styles.subtotalsDropdown}
-            value={sortConfig.valueKey || ''}
-            onChange={handleValueChange}
-          >
+    <div className="pp-menu" style={{ minWidth: '240px', paddingBottom: 'var(--space-3)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="pp-menu-title">Sort Rows</div>
+      <div className="pp-row" style={{ padding: 'var(--space-1) var(--space-3) 0' }}>
+        <div className="pp-field">
+          <label className="pp-label">Value</label>
+          <select className="pp-select" value={sortConfig.valueKey || ''} onChange={handleValueChange}>
             <option value="">None</option>
             {valueFields.map((valueKey, idx) => (
               <option key={idx} value={valueKey}>
@@ -59,12 +52,10 @@ export function SortMenu({
             ))}
           </select>
         </div>
-
-        <div style={{ flex: 1 }}>
-          <label style={styles.settingLabel}>Direction</label>
+        <div className="pp-field">
+          <label className="pp-label">Direction</label>
           <select
-            className="pivot-select"
-            style={styles.subtotalsDropdown}
+            className="pp-select"
             value={sortConfig.direction}
             onChange={handleDirectionChange}
             disabled={!sortConfig.valueKey}

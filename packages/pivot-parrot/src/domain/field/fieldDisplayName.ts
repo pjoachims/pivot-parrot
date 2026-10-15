@@ -1,3 +1,5 @@
+import { findAggregation } from './aggregations';
+
 interface Named {
   id: string;
   name: string;
@@ -9,13 +11,12 @@ export interface NamingConfig {
   customGroupings?: Named[];
   customFilters?: Named[];
   values?: { field: string; aggregation: string; isCustom?: boolean }[];
+  filters?: { field: string; sourceField?: string; aggregation?: string }[];
 }
 
 function aggregationName(fieldId: string, config: NamingConfig, availableFields: Named[]): string | undefined {
-  const value = (config.values || []).find(
-    v => !v.isCustom && v.aggregation && `${v.aggregation.toUpperCase()}_${v.field}` === fieldId
-  );
-  return value && `${value.aggregation.toUpperCase()}(${fieldDisplayName(value.field, config, availableFields)})`;
+  const entry = findAggregation(fieldId, config);
+  return entry && `${entry.aggregation.toUpperCase()}(${fieldDisplayName(entry.field, config, availableFields)})`;
 }
 
 function knownName(fieldId: string, config: NamingConfig, availableFields: Named[]): string | undefined {

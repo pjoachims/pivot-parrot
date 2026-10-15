@@ -44,18 +44,16 @@ export function HavingFilterDialog({ field, displayName, onApply, onClose, exist
       title={`Filter: ${displayName}`}
       onClose={onClose}
       position={position}
-      width={350}
+      width={320}
     >
-      <div style={{ padding: '10px' }}>
-        {/* Operator Selection */}
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            Operator
-          </label>
+      <div className="pp-dialog-body">
+        <div className="pp-field">
+          <label className="pp-label" htmlFor={`${field.name}-having-op`}>Operator</label>
           <select
+            id={`${field.name}-having-op`}
             value={operator}
             onChange={(e) => setOperator(e.target.value)}
-            style={{ width: '100%', padding: '4px 8px', border: '1px solid var(--border-color-medium)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-base)' }}
+            className="pp-select"
           >
             {operators.map(op => (
               <option key={op.value} value={op.value}>
@@ -65,55 +63,23 @@ export function HavingFilterDialog({ field, displayName, onApply, onClose, exist
           </select>
         </div>
 
-        {/* Value Input */}
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            Value
-          </label>
+        <div className="pp-field">
+          <label className="pp-label" htmlFor={`${field.name}-having-value`}>Value</label>
           <input
+            id={`${field.name}-having-value`}
             type="number"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Enter numeric value"
-            style={{ width: '100%', padding: '4px 8px', border: '1px solid var(--border-color-medium)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-base)' }}
+            className="pp-input"
             autoFocus
           />
         </div>
+      </div>
 
-        {/* Footer */}
-        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '4px 12px',
-              fontSize: 'var(--text-base)',
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-              background: 'var(--surface-bg)',
-              border: '1px solid var(--border-color-medium)',
-              borderRadius: 'var(--radius-sm)',
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={!value}
-            style={{
-              padding: '4px 12px',
-              fontSize: 'var(--text-base)',
-              fontWeight: 500,
-              color: 'var(--text-inverse)',
-              background: value ? 'var(--color-accent)' : 'var(--text-disabled)',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-              cursor: value ? 'pointer' : 'not-allowed'
-            }}
-          >
-            Apply
-          </button>
-        </div>
+      <div className="pp-dialog-footer">
+        <button onClick={onClose} className="pp-btn">Cancel</button>
+        <button onClick={handleApply} disabled={!value} className="pp-btn pp-btn--primary">Apply</button>
       </div>
     </Popover>
   );

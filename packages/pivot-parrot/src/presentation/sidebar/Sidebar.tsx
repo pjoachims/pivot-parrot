@@ -1,3 +1,4 @@
+import { Icon } from '../shared/Icon';
 import React from 'react';
 
 /**
@@ -31,30 +32,12 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onDrop, children }: Sid
       >
         <button
           onClick={onToggleCollapse}
-          className="pp-icon-btn-hover"
-          style={{
-            width: '28px',
-            height: '28px',
-            margin: '0 auto',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--surface-subtle)',
-            border: '1px solid var(--border-color-light)',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            color: 'var(--text-muted)',
-            transition: 'all 0.2s',
-            padding: 0
-          }}
+          className="pp-icon-btn"
+          style={{ margin: '0 auto' }}
           title="Show sidebar"
           aria-label="Show sidebar"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
+          <Icon name="menu" />
         </button>
       </div>
     );
@@ -72,6 +55,11 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onDrop, children }: Sid
     <div
       className="sidebar-container"
       style={{
+        // Fixed: sized by its content, one long field name widened the whole
+        // sidebar instead of truncating in its row or chip
+        width: '320px',
+        minWidth: 0,
+        flexShrink: 0,
         maxWidth: '100%',
         boxSizing: 'border-box',
         overflow: 'hidden',

@@ -38,7 +38,6 @@ interface PivotMainPanelProps {
   // Settings
   locale?: string;
   enableSQLPlayground?: boolean;
-  isRemoteConnection: boolean;
 
   // Handlers
   handlers: PivotHandlers;
@@ -112,7 +111,6 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
   dataEngine,
   locale,
   enableSQLPlayground,
-  isRemoteConnection,
   handlers
 }) => {
   // Get state from store
@@ -211,7 +209,7 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
                     config={executionConfig || config}
                     locale={locale}
                     onDrilldown={handlers.handleDrilldown}
-                    onOpenSQL={enableSQLPlayground && !isRemoteConnection ? handlers.handleOpenSQL : null}
+                    onOpenSQL={enableSQLPlayground ? handlers.handleOpenSQL : null}
                   />
                 </div>
               )}

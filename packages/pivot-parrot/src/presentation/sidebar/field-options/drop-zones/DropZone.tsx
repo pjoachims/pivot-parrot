@@ -15,7 +15,6 @@ export default function DropZone({
   onDrop,
   children,
   className = "",
-  borderClass = "border-gray-200",
   borderStyle = {},
   isEmpty = false
 }) {
@@ -43,32 +42,29 @@ export default function DropZone({
 
   return (
     <div
-      className={`p-2 drop-zone ${borderClass} ${isDragOver ? 'drag-over' : ''} ${className}`}
-      style={{ padding: '8px', ...borderStyle }}
+      className={`drop-zone ${isDragOver ? 'drag-over' : ''} ${className}`}
+      style={{ padding: 'var(--space-2) var(--space-2) var(--space-3)', minWidth: 0, ...borderStyle }}
       data-dropzone={zone}
       onDragOver={handleZoneDragOver}
       onDragLeave={onDragLeave}
       onDrop={(e) => onDrop?.(e, zone, insertionIndex ?? childrenArray.length)}
     >
-      <div className="flex items-center gap-2 mb-2 text-xs text-gray-700">
-        {icon && (
-          <span className="inline-flex items-center justify-center w-5 h-5">{icon}</span>
-        )}
-        <span className="font-semibold">{title}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 'var(--control-h-sm)', marginBottom: 'var(--space-1)', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+        {icon && <span style={{ display: 'inline-flex', color: 'var(--text-muted)' }}>{icon}</span>}
+        <span>{title}</span>
       </div>
-      <div className="space-y-1 relative" style={{ minHeight: '60px', maxHeight: '200px', overflowY: 'auto' }}>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', minHeight: 'var(--control-h-sm)', maxHeight: '200px', overflowY: 'auto' }}>
         {isEmpty && (
           <div style={{
-            minHeight: '60px',
-            background: isDragOver ? 'var(--color-accent-subtle)' : 'var(--surface-subtle)',
-            border: isDragOver ? '2px dashed var(--color-accent-hover)' : '1px dashed var(--border-color-medium)',
-            borderRadius: '6px',
+            height: 'var(--control-h-sm)',
+            border: `1px dashed ${isDragOver ? 'var(--color-accent)' : 'var(--border-color-medium)'}`,
+            borderRadius: 'var(--radius-sm)',
+            background: isDragOver ? 'var(--color-accent-subtle)' : 'transparent',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-disabled)',
-            fontSize: '0.75rem',
-            fontStyle: 'italic'
+            fontSize: 'var(--text-sm)'
           }}>
             Drop here
           </div>
@@ -79,7 +75,7 @@ export default function DropZone({
             <React.Fragment key={child.key || index}>
               {/* Insertion indicator before this item */}
               {isDragOver && insertionIndex === index && (
-                <div className="h-1 bg-blue-500 rounded-full opacity-75 -my-0.5"></div>
+                <div style={insertionLine}></div>
               )}
               {/* Enhanced child with drag over handlers */}
               {React.cloneElement(child, {
@@ -127,9 +123,15 @@ export default function DropZone({
         })}
         {/* Insertion indicator at the end */}
         {isDragOver && insertionIndex === childrenArray.length && (
-          <div className="h-1 bg-blue-500 rounded-full opacity-75 -my-0.5"></div>
+          <div style={insertionLine}></div>
         )}
       </div>
     </div>
   );
 }
+
+const insertionLine: React.CSSProperties = {
+  height: '2px',
+  margin: '-3px 0',
+  background: 'var(--color-accent)'
+};

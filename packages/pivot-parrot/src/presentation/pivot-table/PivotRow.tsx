@@ -1,3 +1,4 @@
+import { Icon } from '../shared/Icon';
 import React from 'react';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
@@ -138,7 +139,7 @@ export function PivotRow({
       <td style={labelStyle}>
         {hasKids && (
           <button
-            className="pp-icon-btn-primary-hover"
+            className="pp-expand-btn"
             style={styles.expandButton}
             onClick={(e) => {
               e.stopPropagation();
@@ -153,15 +154,7 @@ export function PivotRow({
             }}
             aria-label={isOpen ? `Collapse ${displayLabel}` : `Expand ${displayLabel}`}
           >
-            {isOpen ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ pointerEvents: 'none' }}>
-                <polyline points="6 9 12 15 18 9" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ pointerEvents: 'none' }}>
-                <polyline points="9 18 15 12 9 6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
+            <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} style={{ pointerEvents: 'none' }} />
           </button>
         )}
         <span style={styles.groupText}>{displayLabel}</span>

@@ -34,110 +34,33 @@ export default function FieldRenameDialog({
       title={`Rename Field`}
       onClose={onClose}
       position={position}
-      width={300}
+      width={320}
     >
-      <div style={{ padding: '10px' }}>
-        <div style={{ marginBottom: '8px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: 'var(--text-xs)',
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
-            marginBottom: '3px'
-          }}>
-            Field ID
-          </label>
-          <input
-            type="text"
-            value={field.id}
-            disabled
-            style={{
-              width: '100%',
-              padding: '4px 6px',
-              border: '1px solid var(--border-color-medium)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--text-sm)',
-              fontFamily: 'inherit',
-              background: 'var(--surface-hover)',
-              color: 'var(--text-muted)'
-            }}
-          />
+      <div className="pp-dialog-body">
+        <div className="pp-field">
+          <label className="pp-label" htmlFor={`${field.id}-rename-id`}>Field ID</label>
+          <input id={`${field.id}-rename-id`} type="text" value={field.id} disabled className="pp-input" style={{ color: 'var(--text-muted)', background: 'var(--surface-subtle)' }} />
         </div>
 
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: 'var(--text-xs)',
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
-            marginBottom: '3px'
-          }}>
-            Display Name
-          </label>
+        <div className="pp-field">
+          <label className="pp-label" htmlFor={`${field.id}-rename-name`}>Display Name</label>
           <input
+            id={`${field.id}-rename-name`}
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Enter display name"
             autoFocus
-            style={{
-              width: '100%',
-              padding: '4px 6px',
-              border: '1px solid var(--border-color-medium)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--text-sm)',
-              fontFamily: 'inherit'
-            }}
+            className="pp-input"
           />
-          <div style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--text-muted)',
-            marginTop: '3px'
-          }}>
-            This changes how the field is displayed in the UI
-          </div>
+          <div className="pp-hint">This changes how the field is displayed in the UI</div>
         </div>
+      </div>
 
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '4px',
-          borderTop: '1px solid var(--border-color-light)',
-          paddingTop: '8px'
-        }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '4px 10px',
-              border: '1px solid var(--border-color-medium)',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--surface-bg)',
-              color: 'var(--text-secondary)',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 500,
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={!newName.trim()}
-            style={{
-              padding: '4px 10px',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-              background: newName.trim() ? 'var(--color-accent)' : 'var(--text-disabled)',
-              color: 'var(--text-inverse)',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 500,
-              cursor: newName.trim() ? 'pointer' : 'not-allowed'
-            }}
-          >
-            Rename
-          </button>
-        </div>
+      <div className="pp-dialog-footer">
+        <button onClick={onClose} className="pp-btn">Cancel</button>
+        <button onClick={handleApply} disabled={!newName.trim()} className="pp-btn pp-btn--primary">Rename</button>
       </div>
     </Popover>
   );

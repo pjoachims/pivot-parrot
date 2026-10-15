@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from '../shared/Icon';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
@@ -56,25 +57,25 @@ export default function BarLineChartConfig({
   return (
     <>
       {/* X-Axis and Group By side by side */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label}>X-Axis</label>
+      <div className="pp-row">
+        <div className="pp-field">
+          <label className="pp-label">X-Axis</label>
           <select
             value={xAxis}
             onChange={(e) => setXAxis(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             {dimensions.map(dim => (
               <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Group by</label>
+        <div className="pp-field">
+          <label className="pp-label">Group by</label>
           <select
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== xAxis).map(dim => (
@@ -82,12 +83,12 @@ export default function BarLineChartConfig({
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Bar Mode</label>
+        <div className="pp-field">
+          <label className="pp-label">Bar Mode</label>
           <select
             value={barMode}
             onChange={(e) => setBarMode(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="group">Clustered</option>
             <option value="stack">Stacked</option>
@@ -96,87 +97,81 @@ export default function BarLineChartConfig({
         </div>
       </div>
 
-      {/* Metrics Section */}
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <label style={styles.label}>Metrics</label>
-          <button onClick={addMetric} style={styles.addButton}>
-            + Add
+      <div className="pp-field">
+        <div className="pp-label-row">
+          <span className="pp-label">Metrics</span>
+          <button onClick={addMetric} className="pp-btn pp-btn--sm">
+            <Icon name="plus" />
+            Add
           </button>
         </div>
-        <div style={styles.metricsList}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {metrics.map((metric, index) => (
-            <div key={index} style={styles.metricCard}>
-              <div style={styles.metricMain}>
+            <div key={index} style={metricRow}>
+              <select
+                value={metric.field}
+                onChange={(e) => updateMetric(index, 'field', e.target.value)}
+                aria-label={`Metric ${index + 1}`}
+                className="pp-select pp-select--sm"
+              >
+                {valueFields.map(vf => (
+                  <option key={vf.field} value={vf.field}>{vf.label}</option>
+                ))}
+              </select>
+              <select
+                value={metric.chartType}
+                onChange={(e) => updateMetric(index, 'chartType', e.target.value)}
+                aria-label="Mark"
+                className="pp-select pp-select--sm"
+              >
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+              </select>
+              <select
+                value={metric.axis}
+                onChange={(e) => updateMetric(index, 'axis', e.target.value)}
+                aria-label="Axis"
+                className="pp-select pp-select--sm"
+              >
+                <option value="Ax1">Left Axis</option>
+                <option value="Ax2">Right Axis</option>
+              </select>
+              {metric.chartType === 'line' ? (
                 <select
-                  value={metric.field}
-                  onChange={(e) => updateMetric(index, 'field', e.target.value)}
-                  style={styles.metricSelect}
+                  value={metric.lineStyle}
+                  onChange={(e) => updateMetric(index, 'lineStyle', e.target.value)}
+                  aria-label="Line style"
+                  className="pp-select pp-select--sm"
                 >
-                  {valueFields.map(vf => (
-                    <option key={vf.field} value={vf.field}>{vf.label}</option>
-                  ))}
+                  <option value="solid">Solid</option>
+                  <option value="dash">Dash</option>
+                  <option value="dot">Dot</option>
+                  <option value="dashdot">DashDot</option>
                 </select>
-                <button
-                  onClick={() => removeMetric(index)}
-                  style={{
-                    ...styles.removeButton,
-                    opacity: metrics.length === 1 ? 0.3 : 1
-                  }}
-                  disabled={metrics.length === 1}
-                  title="Remove metric"
-                  aria-label="Remove metric"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-              <div style={styles.metricOptions}>
-                <select
-                  value={metric.chartType}
-                  onChange={(e) => updateMetric(index, 'chartType', e.target.value)}
-                  style={styles.optionSelect}
-                >
-                  <option value="bar">Bar</option>
-                  <option value="line">Line</option>
-                </select>
-                <select
-                  value={metric.axis}
-                  onChange={(e) => updateMetric(index, 'axis', e.target.value)}
-                  style={styles.optionSelect}
-                >
-                  <option value="Ax1">Left Axis</option>
-                  <option value="Ax2">Right Axis</option>
-                </select>
-                {metric.chartType === 'line' ? (
-                  <select
-                    value={metric.lineStyle}
-                    onChange={(e) => updateMetric(index, 'lineStyle', e.target.value)}
-                    style={styles.optionSelect}
-                  >
-                    <option value="solid">Solid</option>
-                    <option value="dash">Dash</option>
-                    <option value="dot">Dot</option>
-                    <option value="dashdot">DashDot</option>
-                  </select>
-                ) : (
-                  <div style={styles.opacityControl}>
-                    <span style={styles.opacityLabel}>Opacity</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={metric.opacity}
-                      onChange={(e) => updateMetric(index, 'opacity', parseFloat(e.target.value))}
-                      style={styles.opacitySlider}
-                    />
-                    <span style={styles.opacityValue}>{(metric.opacity * 100).toFixed(0)}%</span>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', minWidth: 0 }} title="Opacity">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={metric.opacity}
+                    onChange={(e) => updateMetric(index, 'opacity', parseFloat(e.target.value))}
+                    aria-label="Opacity"
+                    style={{ flex: 1, minWidth: 0, margin: 0 }}
+                  />
+                  <span className="pp-hint" style={{ width: '30px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{(metric.opacity * 100).toFixed(0)}%</span>
+                </label>
+              )}
+              <button
+                onClick={() => removeMetric(index)}
+                className="pp-icon-btn pp-icon-btn--danger"
+                disabled={metrics.length === 1}
+                title="Remove metric"
+                aria-label="Remove metric"
+              >
+                <Icon name="x" />
+              </button>
             </div>
           ))}
         </div>
@@ -185,130 +180,12 @@ export default function BarLineChartConfig({
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  row: {
-    display: 'flex',
-    gap: '12px',
-    marginBottom: '12px'
-  },
-  field: {
-    flex: 1,
-    minWidth: 0
-  },
-  fieldSmall: {
-    width: '100px',
-    flexShrink: 0
-  },
-  section: {
-    marginBottom: '8px'
-  },
-  sectionHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '6px'
-  },
-  label: {
-    display: 'block',
-    marginBottom: '4px',
-    fontSize: '10px',
-    fontWeight: 600,
-    color: 'var(--text-secondary)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.3px'
-  },
-  select: {
-    width: '100%',
-    padding: '6px 8px',
-    fontSize: '11px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer'
-  },
-  addButton: {
-    padding: '3px 8px',
-    fontSize: '10px',
-    fontWeight: 500,
-    color: 'var(--color-accent)',
-    border: '1px solid var(--color-accent)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    cursor: 'pointer'
-  },
-  metricsList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '6px'
-  },
-  metricCard: {
-    padding: '8px',
-    border: '1px solid var(--border-color-light)',
-    borderRadius: '6px',
-    backgroundColor: 'var(--surface-subtle)'
-  },
-  metricMain: {
-    display: 'flex',
-    gap: '6px',
-    alignItems: 'center',
-    marginBottom: '6px'
-  },
-  metricSelect: {
-    flex: 1,
-    padding: '5px 8px',
-    fontSize: '11px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer'
-  },
-  metricOptions: {
-    display: 'flex',
-    gap: '6px',
-    alignItems: 'center'
-  },
-  optionSelect: {
-    padding: '4px 6px',
-    fontSize: '10px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '3px',
-    backgroundColor: 'var(--surface-bg)',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer'
-  },
-  removeButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '22px',
-    height: '22px',
-    padding: '0',
-    color: 'var(--text-muted)',
-    border: 'none',
-    borderRadius: '4px',
-    backgroundColor: 'transparent',
-    cursor: 'pointer'
-  },
-  opacityControl: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px'
-  },
-  opacityLabel: {
-    fontSize: '10px',
-    color: 'var(--text-muted)'
-  },
-  opacitySlider: {
-    width: '50px',
-    height: '4px'
-  },
-  opacityValue: {
-    fontSize: '10px',
-    color: 'var(--text-muted)',
-    minWidth: '28px'
-  }
+// metric / mark / axis / opacity-or-line-style / remove, aligned across rows
+const metricRow: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) 64px 104px 88px var(--control-h-sm)',
+  alignItems: 'center',
+  gap: 'var(--space-2)'
 };
 
 // ============================================================================

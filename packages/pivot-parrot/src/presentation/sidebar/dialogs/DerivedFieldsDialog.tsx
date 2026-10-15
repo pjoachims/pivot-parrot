@@ -242,20 +242,23 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
   // Timestamp: show time bucketing UI
   if (isTimestamp) {
     return (
-      <Popover title={`Time Bucket: ${displayName}`} onClose={onClose} position={position} width={240}>
-        <div style={styles.content}>
-          <div style={styles.bucketRow}>
+      <Popover title={`Time Bucket: ${displayName}`} onClose={onClose} position={position} width={280}>
+        <div className="pp-dialog-body">
+          <div className="pp-row">
             <input
               type="number"
               min="1"
               value={bucketValue}
               onChange={(e) => setBucketValue(Math.max(1, parseInt(e.target.value) || 1))}
-              style={styles.bucketInput}
+              aria-label="Bucket size"
+              className="pp-input"
+              style={{ width: '64px', flex: '0 0 auto', textAlign: 'right' }}
             />
             <select
               value={bucketUnit}
               onChange={(e) => setBucketUnit(e.target.value)}
-              style={styles.bucketSelect}
+              aria-label="Bucket unit"
+              className="pp-select"
             >
               <option value="seconds">seconds</option>
               <option value="minutes">minutes</option>
@@ -264,11 +267,9 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
           </div>
         </div>
 
-        <div style={styles.footer}>
-          <button onClick={addTimeBucket} style={styles.addButton}>
-            Add Bucket
-          </button>
-          <button onClick={onClose} style={styles.cancelButton}>Cancel</button>
+        <div className="pp-dialog-footer">
+          <button onClick={onClose} className="pp-btn">Cancel</button>
+          <button onClick={addTimeBucket} className="pp-btn pp-btn--primary">Add Bucket</button>
         </div>
       </Popover>
     );
@@ -277,12 +278,12 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
   // Date: show year/quarter/month options
   if (availableOptions.length === 0) {
     return (
-      <Popover title={`Derived: ${displayName}`} onClose={onClose} position={position} width={240}>
-        <div style={styles.content}>
-          <p style={styles.emptyMessage}>All derived fields already created</p>
+      <Popover title={`Derived: ${displayName}`} onClose={onClose} position={position} width={280}>
+        <div className="pp-dialog-body">
+          <p className="pp-hint" style={{ margin: 0 }}>All derived fields already created</p>
         </div>
-        <div style={styles.footer}>
-          <button onClick={onClose} style={styles.cancelButton}>Close</button>
+        <div className="pp-dialog-footer">
+          <button onClick={onClose} className="pp-btn">Close</button>
         </div>
       </Popover>
     );
@@ -292,24 +293,22 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
     const isWeek = option.id === 'week';
     const isMonth = option.id === 'month';
     const isQuarter = option.id === 'quarter';
-    const isYear = option.id === 'year';
     const showYearToggle = isWeek || isMonth || isQuarter;
     const showFormat = isWeek || isMonth || isQuarter;
 
     return (
-      <div key={option.id} style={styles.optionRow}>
-        <label style={styles.option}>
+      <div key={option.id} style={optionRow}>
+        <label className="pp-check" style={{ color: 'var(--text-primary)' }}>
           <input
             type="checkbox"
             checked={selected.includes(option.id)}
             onChange={() => toggleOption(option.id)}
-            style={styles.checkbox}
           />
-          <span style={styles.optionLabel}>{option.label}</span>
+          {option.label}
         </label>
 
-        {showYearToggle && (
-          <label style={styles.yearToggle}>
+        {showYearToggle ? (
+          <label className="pp-check">
             <input
               type="checkbox"
               checked={
@@ -322,13 +321,12 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
                 if (isMonth) setIncludeYearMonth(e.target.checked);
                 if (isQuarter) setIncludeYearQuarter(e.target.checked);
               }}
-              style={styles.yearCheckbox}
             />
-            <span style={styles.yearLabel}>+Year</span>
+            + Year
           </label>
-        )}
+        ) : <span />}
 
-        {showFormat && (
+        {showFormat ? (
           <select
             value={
               isWeek ? weekFormat :
@@ -340,7 +338,8 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
               if (isMonth) setMonthFormat(e.target.value);
               if (isQuarter) setQuarterFormat(e.target.value);
             }}
-            style={styles.formatSelect}
+            aria-label={`${option.label} format`}
+            className="pp-select pp-select--sm"
           >
             {isWeek && (
               <>
@@ -362,164 +361,34 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
               </>
             )}
           </select>
-        )}
+        ) : <span />}
       </div>
     );
   };
 
   return (
     <Popover title={`Derived: ${displayName}`} onClose={onClose} position={position} width={320}>
-      <div style={styles.content}>
+      <div className="pp-dialog-body" style={{ gap: 0, paddingTop: 'var(--space-2)', paddingBottom: 'var(--space-2)' }}>
         {availableOptions.map(option => renderOption(option))}
       </div>
 
-      <div style={styles.footer}>
-        <button
-          onClick={addSelected}
-          disabled={selected.length === 0}
-          style={{
-            ...styles.addButton,
-            ...(selected.length === 0 ? styles.addButtonDisabled : {})
-          }}
-        >
+      <div className="pp-dialog-footer">
+        <button onClick={onClose} className="pp-btn">Cancel</button>
+        <button onClick={addHierarchy} className="pp-btn">Add All</button>
+        <button onClick={addSelected} disabled={selected.length === 0} className="pp-btn pp-btn--primary">
           Add ({selected.length})
         </button>
-        <button
-          onClick={addHierarchy}
-          style={styles.hierarchyButton}
-        >
-          Add All
-        </button>
-        <button onClick={onClose} style={styles.cancelButton}>Cancel</button>
       </div>
     </Popover>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  content: {
-    padding: '8px 10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px'
-  },
-  bucketRow: {
-    display: 'flex',
-    gap: '6px',
-    alignItems: 'center'
-  },
-  bucketInput: {
-    width: '60px',
-    padding: '4px 6px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-sm)',
-    color: 'var(--text-secondary)'
-  },
-  bucketSelect: {
-    flex: 1,
-    padding: '4px 6px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-sm)',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer'
-  },
-  optionRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '4px 0',
-    borderBottom: '1px solid var(--surface-hover)'
-  },
-  option: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    cursor: 'pointer',
-    fontSize: 'var(--text-sm)',
-    flex: '0 0 80px'
-  },
-  checkbox: {
-    cursor: 'pointer',
-    width: '12px',
-    height: '12px'
-  },
-  optionLabel: {
-    color: 'var(--text-secondary)',
-    fontSize: 'var(--text-sm)',
-    fontWeight: 500
-  },
-  yearToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-    flex: '0 0 60px'
-  },
-  yearCheckbox: {
-    marginRight: '4px',
-    cursor: 'pointer',
-    width: '14px',
-    height: '14px'
-  },
-  yearLabel: {
-    fontSize: 'var(--text-xs)',
-    color: 'var(--text-muted)'
-  },
-  formatSelect: {
-    fontSize: 'var(--text-sm)',
-    padding: '2px 4px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    cursor: 'pointer',
-    flex: '1'
-  },
-  emptyMessage: {
-    color: 'var(--text-muted)',
-    fontSize: 'var(--text-sm)',
-    textAlign: 'center',
-    margin: 0
-  },
-  footer: {
-    padding: '6px 8px',
-    borderTop: '1px solid var(--border-color-light)',
-    display: 'flex',
-    gap: '4px'
-  },
-  addButton: {
-    padding: '4px 8px',
-    background: 'var(--text-secondary)',
-    color: 'var(--text-inverse)',
-    border: 'none',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-xs)',
-    fontWeight: 500,
-    cursor: 'pointer'
-  },
-  addButtonDisabled: {
-    background: 'var(--border-color-medium)',
-    cursor: 'not-allowed',
-    color: 'var(--text-disabled)'
-  },
-  hierarchyButton: {
-    padding: '4px 8px',
-    background: 'transparent',
-    color: 'var(--text-muted)',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-xs)',
-    fontWeight: 500,
-    cursor: 'pointer'
-  },
-  cancelButton: {
-    padding: '4px 8px',
-    background: 'transparent',
-    color: 'var(--text-muted)',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-xs)',
-    fontWeight: 500,
-    cursor: 'pointer',
-    marginLeft: 'auto'
-  }
+// Field / +Year / format: fixed columns so the three controls line up across rows
+const optionRow: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 72px 96px',
+  alignItems: 'center',
+  gap: 'var(--space-2)',
+  minHeight: '32px',
+  borderBottom: '1px solid var(--border-color-light)'
 };

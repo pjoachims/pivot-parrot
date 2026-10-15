@@ -36,12 +36,12 @@ export default function ScatterChartConfig({
   return (
     <>
       {/* Point Level - full width */}
-      <div style={styles.section}>
-        <label style={styles.label}>Point Level</label>
+      <div className="pp-field">
+        <label className="pp-label">Point Level</label>
         <select
           value={pointLevel}
           onChange={(e) => setPointLevel(e.target.value)}
-          style={styles.select}
+          className="pp-select"
         >
           {dimensions.map(dim => (
             <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
@@ -50,25 +50,25 @@ export default function ScatterChartConfig({
       </div>
 
       {/* X and Y Metrics side by side */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label}>X-Axis</label>
+      <div className="pp-row">
+        <div className="pp-field">
+          <label className="pp-label">X-Axis</label>
           <select
             value={xMetric}
             onChange={(e) => setXMetric(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             {valueFields.map(vf => (
               <option key={vf.field} value={vf.field}>{vf.label}</option>
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Y-Axis</label>
+        <div className="pp-field">
+          <label className="pp-label">Y-Axis</label>
           <select
             value={yMetric}
             onChange={(e) => setYMetric(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             {valueFields.map(vf => (
               <option key={vf.field} value={vf.field}>{vf.label}</option>
@@ -78,13 +78,13 @@ export default function ScatterChartConfig({
       </div>
 
       {/* Size and Color side by side */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label}>Size by</label>
+      <div className="pp-row">
+        <div className="pp-field">
+          <label className="pp-label">Size by</label>
           <select
             value={sizeBy || ''}
             onChange={(e) => setSizeBy(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="">None (fixed size)</option>
             {valueFields.map(vf => (
@@ -92,12 +92,12 @@ export default function ScatterChartConfig({
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Color by</label>
+        <div className="pp-field">
+          <label className="pp-label">Color by</label>
           <select
             value={colorBy}
             onChange={(e) => setColorBy(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== pointLevel).map(dim => (
@@ -110,39 +110,6 @@ export default function ScatterChartConfig({
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  row: {
-    display: 'flex',
-    gap: '12px',
-    marginBottom: '12px'
-  },
-  field: {
-    flex: 1,
-    minWidth: 0
-  },
-  section: {
-    marginBottom: '12px'
-  },
-  label: {
-    display: 'block',
-    marginBottom: '4px',
-    fontSize: '10px',
-    fontWeight: 600,
-    color: 'var(--text-secondary)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.3px'
-  },
-  select: {
-    width: '100%',
-    padding: '6px 8px',
-    fontSize: '11px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer'
-  }
-};
 
 // ============================================================================
 // Data Transformation & Rendering

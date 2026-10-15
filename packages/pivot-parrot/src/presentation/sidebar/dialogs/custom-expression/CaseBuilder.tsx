@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from '../../../shared/Icon';
 
 interface CaseCondition {
   when: string;
@@ -11,64 +12,14 @@ interface CaseBuilderProps {
   onChange: (conditions: CaseCondition[], elseResult: string) => void;
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  row: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  label: {
-    fontSize: 'var(--text-xs)',
-    fontWeight: 500,
-    color: 'var(--text-muted)',
-    minWidth: '32px',
-  },
-  input: {
-    padding: '4px 6px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-xs)',
-    flex: 1,
-  },
-  thenInput: {
-    padding: '4px 6px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontSize: 'var(--text-xs)',
-    width: '80px',
-  },
-  removeBtn: {
-    padding: '2px 6px',
-    border: 'none',
-    background: 'transparent',
-    color: 'var(--text-disabled)',
-    fontSize: '14px',
-    cursor: 'pointer',
-    lineHeight: 1,
-  },
-  addBtn: {
-    padding: '4px 8px',
-    border: '1px dashed var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    background: 'var(--surface-bg)',
-    color: 'var(--text-muted)',
-    fontSize: 'var(--text-xs)',
-    cursor: 'pointer',
-    marginTop: '2px',
-  },
-  elseRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    marginTop: '4px',
-    paddingTop: '6px',
-    borderTop: '1px solid var(--border-color-light)',
-  },
+// When / condition / Then / result / remove: the Else row reuses the grid so
+// its input lines up under the conditions.
+const grid: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '36px minmax(0, 1fr) 36px 112px var(--control-h-sm)',
+  alignItems: 'center',
+  columnGap: 'var(--space-2)',
+  rowGap: 'var(--space-1)'
 };
 
 export function buildCaseSQL(conditions: CaseCondition[], elseResult: string): string {
@@ -97,43 +48,53 @@ export function CaseBuilder({ conditions, elseResult, onChange }: CaseBuilderPro
   };
 
   return (
-    <div style={styles.container}>
+    <div style={grid}>
       {conditions.map((c, i) => (
-        <div key={i} style={styles.row}>
-          <span style={styles.label}>When</span>
+        <React.Fragment key={i}>
+          <span className="pp-label">When</span>
           <input
             type="text"
             value={c.when}
             onChange={(e) => updateCondition(i, 'when', e.target.value)}
             placeholder="e.g. sales > 1000"
-            style={styles.input}
+            aria-label={`Condition ${i + 1}`}
+            className="pp-input"
           />
-          <span style={styles.label}>Then</span>
+          <span className="pp-label">Then</span>
           <input
             type="text"
             value={c.then}
             onChange={(e) => updateCondition(i, 'then', e.target.value)}
             placeholder="High"
-            style={styles.thenInput}
+            aria-label={`Result ${i + 1}`}
+            className="pp-input"
           />
-          {conditions.length > 1 && (
-            <button onClick={() => removeCondition(i)} style={styles.removeBtn} aria-label="Remove condition" title="Remove condition">×</button>
-          )}
-        </div>
+          {conditions.length > 1 ? (
+            <button onClick={() => removeCondition(i)} className="pp-icon-btn pp-icon-btn--danger" aria-label="Remove condition" title="Remove condition">
+              <Icon name="x" />
+            </button>
+          ) : <span />}
+        </React.Fragment>
       ))}
 
-      <button onClick={addCondition} style={styles.addBtn}>+ Add condition</button>
+      <span />
+      <button onClick={addCondition} className="pp-btn pp-btn--quiet pp-btn--sm" style={{ justifySelf: 'start', gridColumn: '2 / 5', paddingLeft: 0 }}>
+        <Icon name="plus" />
+        Add condition
+      </button>
+      <span />
 
-      <div style={styles.elseRow}>
-        <span style={styles.label}>Else</span>
-        <input
-          type="text"
-          value={elseResult}
-          onChange={(e) => onChange(conditions, e.target.value)}
-          placeholder="default (optional)"
-          style={{ ...styles.input, flex: 1 }}
-        />
-      </div>
+      <span className="pp-label">Else</span>
+      <input
+        type="text"
+        value={elseResult}
+        onChange={(e) => onChange(conditions, e.target.value)}
+        placeholder="default (optional)"
+        aria-label="Else result"
+        className="pp-input"
+        style={{ gridColumn: '2 / 5' }}
+      />
+      <span />
     </div>
   );
 }

@@ -4,30 +4,15 @@ import { exportDataCSV, exportPivotCSV } from '../../application/utils/export';
 import { usePivotStore } from '../../application/state/store';
 import ErrorBanner from '../shared/ErrorBanner';
 import { useClickOutside } from '../shared/useClickOutside';
+import { Icon, type IconName } from '../shared/Icon';
 
 type SecondaryDisplayMode = 'hidden' | 'full' | 'split-below' | 'split-right';
 
-const displayModeIcons: Record<SecondaryDisplayMode, React.ReactNode> = {
-  hidden: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  ),
-  full: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  ),
-  'split-below': (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="7" rx="1" /><rect x="3" y="14" width="18" height="7" rx="1" />
-    </svg>
-  ),
-  'split-right': (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="18" rx="1" /><rect x="14" y="3" width="7" height="18" rx="1" />
-    </svg>
-  )
+const displayModeIcons: Record<SecondaryDisplayMode, IconName> = {
+  hidden: 'x',
+  full: 'chart-bar',
+  'split-below': 'panels',
+  'split-right': 'columns'
 };
 
 /**
@@ -143,242 +128,89 @@ export default function PivotDisplayHeader({
     }
   };
 
-  const verticalSeparator = {
-    width: '1px',
-    height: '20px',
-    background: 'var(--border-color-medium)',
-    margin: '0 8px'
-  };
-
-  const iconButtonStyle = {
-    width: '24px',
-    height: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 0,
-    background: 'transparent',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    color: 'var(--text-muted)'
-  };
-
-  const sectionLabelStyle = {
-    fontSize: '11px',
-    fontWeight: 500,
-    color: 'var(--text-muted)',
-    marginRight: '4px'
-  };
+  const separator = <div style={{ width: '1px', height: '16px', background: 'var(--border-color-light)', margin: '0 var(--space-1)' }} />;
+  const menuAnchor: React.CSSProperties = { position: 'absolute', top: '100%', left: 0, marginTop: 'var(--space-1)', zIndex: 'var(--z-dropdown)' as any };
 
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '8px 12px',
+      height: '40px',
+      padding: '0 var(--space-2)',
       background: 'var(--surface-bg)',
       borderBottom: 'var(--border-width, 1px) solid var(--border-color-medium)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
-        {/* Sort Section */}
-        <div className="sort-menu-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <span style={sectionLabelStyle}>Sort</span>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div className="sort-menu-container" style={{ position: 'relative' }}>
           <button
             onClick={() => {
               setShowSortMenu(!showSortMenu);
               setShowExportMenu(false);
             }}
-            className="pp-icon-btn-hover"
-            style={iconButtonStyle}
+            className="pp-btn pp-btn--quiet pp-btn--sm"
+            aria-expanded={showSortMenu}
             title="Sort rows"
             aria-label="Sort rows"
           >
-            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-            </svg>
+            Sort
+            <Icon name="sort" />
           </button>
-
-          {/* Sort dropdown menu */}
           {showSortMenu && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: '4px',
-              zIndex: 'var(--z-dropdown)' as any
-            }}>
-              <SortMenu
-                styles={{
-                  popoverMenu: {
-                    background: 'var(--surface-bg)',
-                    border: '1px solid var(--border-color-medium)',
-                    borderRadius: '6px',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                    minWidth: '200px'
-                  },
-                  menuHeader: {
-                    padding: '6px 10px',
-                    borderBottom: '1px solid var(--border-color-light)',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)'
-                  },
-                  settingSection: {
-                    padding: '8px 10px',
-                    borderBottom: '1px solid var(--border-color-light)'
-                  },
-                  settingLabel: {
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    marginBottom: '4px',
-                    display: 'block'
-                  },
-                  subtotalsDropdown: {
-                    width: '100%',
-                    padding: '4px 6px',
-                    fontSize: '11px',
-                    border: '1px solid var(--border-color-medium)',
-                    borderRadius: '4px',
-                    background: 'var(--surface-bg)',
-                    color: 'var(--text-secondary)'
-                  },
-                  menuButton: {
-                    background: 'var(--surface-bg)',
-                    border: '1px solid var(--border-color-light)',
-                    padding: '5px 10px',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 500,
-                    borderRadius: '4px'
-                  }
-                }}
-                data={data}
-                config={config}
-                sortConfig={sortConfig}
-                onSortChange={setSortConfig}
-              />
+            <div style={menuAnchor}>
+              <SortMenu data={data} config={config} sortConfig={sortConfig} onSortChange={setSortConfig} />
             </div>
           )}
         </div>
 
-        <div style={verticalSeparator}></div>
+        {separator}
 
-        {/* Export Section */}
-        <div className="export-menu-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <span style={sectionLabelStyle}>Export</span>
+        <div className="export-menu-container" style={{ position: 'relative' }}>
           <button
             onClick={() => {
               setShowExportMenu(!showExportMenu);
               setShowSortMenu(false);
             }}
-            className="pp-icon-btn-hover"
-            style={iconButtonStyle}
+            className="pp-btn pp-btn--quiet pp-btn--sm"
+            aria-expanded={showExportMenu}
             title="Export CSV"
             aria-label="Export CSV"
           >
-            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
+            Export
+            <Icon name="download" />
           </button>
-
-          {/* Export dropdown menu */}
           {showExportMenu && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: '4px',
-              minWidth: '200px',
-              background: 'var(--surface-bg)',
-              border: '1px solid var(--border-color-medium)',
-              borderRadius: '6px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              zIndex: 'var(--z-dropdown)' as any,
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                padding: '6px 10px',
-                borderBottom: '1px solid var(--border-color-light)',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--text-secondary)'
-              }}>
-                Export CSV
-              </div>
+            <div className="pp-menu" role="menu" style={{ ...menuAnchor, minWidth: '200px' }}>
+              <div className="pp-menu-title">Export CSV</div>
               {exportError && (
-                <div style={{ padding: '6px 10px' }}>
+                <div style={{ padding: 'var(--space-1) var(--space-3)' }}>
                   <ErrorBanner message={exportError} onDismiss={() => setExportError('')} style={{ padding: '4px 6px', fontSize: 'var(--text-xs)' }} />
                 </div>
               )}
-              <button
-                onClick={handleExportData}
-                className="pp-icon-btn-hover"
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  textAlign: 'left',
-                  padding: '8px 10px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
+              <button role="menuitem" onClick={handleExportData} className="pp-menu-item">
+                <Icon name="list" />
                 Raw Results
               </button>
-              <button
-                onClick={handleExportLayout}
-                className="pp-icon-btn-hover"
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  textAlign: 'left',
-                  padding: '8px 10px',
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="9" x2="9" y2="21" />
-                </svg>
+              <button role="menuitem" onClick={handleExportLayout} className="pp-menu-item">
+                <Icon name="table" />
                 Visual Layout
               </button>
             </div>
           )}
         </div>
 
-        <div style={verticalSeparator}></div>
+        {separator}
 
-        {/* Chart Section */}
         <div className="chart-mode-menu-container" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <span style={sectionLabelStyle}>Chart</span>
           <button
             onClick={openChartDialog}
-            className="pp-icon-btn-hover"
-            style={iconButtonStyle}
+            className="pp-btn pp-btn--quiet pp-btn--sm"
             title="Create chart"
             aria-label="Create chart"
           >
-            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
+            Chart
+            <Icon name="chart-bar" />
           </button>
-
-          {/* Chart mode selector - only show if chart exists */}
           {hasChart && (
             <>
               <button
@@ -387,68 +219,33 @@ export default function PivotDisplayHeader({
                   setShowSortMenu(false);
                   setShowExportMenu(false);
                 }}
-                className="pp-icon-btn-hover"
-                style={iconButtonStyle}
+                className="pp-icon-btn"
+                aria-expanded={showChartModeMenu}
                 title="Chart display mode"
                 aria-label="Chart display mode"
               >
-                <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <Icon name="panels" />
               </button>
-
-              {/* Chart mode dropdown menu */}
               {showChartModeMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '4px',
-                  minWidth: '180px',
-                  background: 'var(--surface-bg)',
-                  border: '1px solid var(--border-color-medium)',
-                  borderRadius: '6px',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  zIndex: 'var(--z-dropdown)' as any,
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    padding: '6px 10px',
-                    borderBottom: '1px solid var(--border-color-light)',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)'
-                  }}>
-                    Display Mode
-                  </div>
+                <div className="pp-menu" role="menu" style={{ ...menuAnchor, left: 'auto', right: 0, minWidth: '200px' }}>
+                  <div className="pp-menu-title">Display Mode</div>
                   {displayModes.map(mode => (
                     <button
                       key={mode.value}
+                      role="menuitemradio"
+                      aria-checked={chartDisplayMode === mode.value}
                       onClick={() => {
                         setSecondaryDisplayMode(mode.value);
                         setShowChartModeMenu(false);
                       }}
-                      className={chartDisplayMode !== mode.value ? 'pp-row-hover' : undefined}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        textAlign: 'left',
-                        padding: '8px 10px',
-                        border: 'none',
-                        background: chartDisplayMode === mode.value ? 'var(--surface-hover)' : 'transparent',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        color: 'var(--text-secondary)',
-                        fontWeight: chartDisplayMode === mode.value ? 600 : 400
-                      }}
+                      className="pp-menu-item"
+                      style={{ height: 'auto', padding: '6px var(--space-3)' }}
                     >
-                      {displayModeIcons[mode.value]}
-                      <div>
-                        <div>{mode.label}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{mode.desc}</div>
-                      </div>
+                      <Icon name={displayModeIcons[mode.value]} />
+                      <span>
+                        <span style={{ display: 'block' }}>{mode.label}</span>
+                        <span className="pp-hint" style={{ display: 'block' }}>{mode.desc}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -457,30 +254,23 @@ export default function PivotDisplayHeader({
           )}
         </div>
 
-        {/* SQL Section */}
         {onOpenSQL && (
           <>
-            <div style={verticalSeparator}></div>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <span style={sectionLabelStyle}>SQL</span>
-              <button
-                onClick={onOpenSQL}
-                className="pp-icon-btn-hover"
-                style={iconButtonStyle}
-                title="SQL Playground"
-                aria-label="SQL Playground"
-              >
-                <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </button>
-            </div>
+            {separator}
+            <button
+              onClick={onOpenSQL}
+              className="pp-btn pp-btn--quiet pp-btn--sm"
+              title="SQL Playground"
+              aria-label="SQL Playground"
+            >
+              SQL
+              <Icon name="terminal" />
+            </button>
           </>
         )}
       </div>
 
-      {/* Right: brand wordmark + theme toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
         <a
           href="https://github.com/pjoachims/pivot-parrot"
           target="_blank"
@@ -488,7 +278,7 @@ export default function PivotDisplayHeader({
           title="Pivot Parrot on GitHub"
           className="pp-brand-link"
           style={{
-            fontSize: '11px',
+            fontSize: 'var(--text-sm)',
             fontWeight: 600,
             letterSpacing: '0.02em',
             color: 'var(--text-muted)',
@@ -499,26 +289,14 @@ export default function PivotDisplayHeader({
         >
           <span aria-hidden="true">🦜 </span>Pivot Parrot
         </a>
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
         <button
           onClick={toggleTheme}
-          className="pp-icon-btn-hover"
-          style={iconButtonStyle}
+          className="pp-icon-btn"
           title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         >
-          {theme === 'dark' ? (
-            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="4" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
-            </svg>
-          ) : (
-            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-            </svg>
-          )}
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
-      </div>
       </div>
     </div>
   );

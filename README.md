@@ -109,6 +109,13 @@ import * as duckdb from '@duckdb/duckdb-wasm';
 <Pivot config={{ mode: 'local', duckdb, data: arrowBytes }} />
 ```
 
+`config.settings` takes, among others:
+
+- `autoUpdate` (default `true`): re-run the pivot on every layout change.
+- `enableSQLPlayground` (default `true` in local mode, `false` in remote mode): the toolbar's SQL Playground. In remote mode its queries go through your `executeQuery` callback like every other query, so turn it on only when your backend guards what it runs; a rejected query shows its error in the playground's status line.
+- `showSnapshots` (default `true`): the built-in Snapshots panel.
+- `locale` (default `'en-US'`): number and date formatting.
+
 ### Saved snapshots
 
 A snapshot is a saved view: the pivot config, sort, chart, split and the open drilldown's filters, never the result data. Loading one re-runs its query, so the numbers are always current. By default snapshots live in memory for as long as the component does. Pass `snapshotStore` to keep them elsewhere, for example per user on your server. If a store call fails, the Snapshots panel shows the error and the pivot keeps working. Each view carries `v: 1`, so a stored view can be migrated when its shape changes.

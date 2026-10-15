@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { usePivotStore } from '../../application/state/store';
 import { gridColumnDef } from '../shared/gridColumn';
+import { Icon } from '../shared/Icon';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 
 // Constants
@@ -170,41 +171,39 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
   return (
     <div style={styles.container}>
       {/* Header with display mode menu */}
-      <div style={styles.header}>
+      <div className="pp-panel-header">
         <div style={styles.headerLeft}>
-          <span style={styles.title}>Drilldown</span>
+          <span className="pp-panel-title">Drilldown</span>
 
           {/* Info icon with hover tooltip */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <button
-              className="pp-icon-btn-hover"
-              style={styles.infoButton}
+              className="pp-icon-btn"
               title="Drilldown details"
               aria-label="Drilldown details"
               onMouseEnter={() => setShowInfoTooltip(true)}
               onMouseLeave={() => setShowInfoTooltip(false)}
             >
-              <svg style={{ width: '16px', height: '16px', pointerEvents: 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <Icon name="info" style={{ pointerEvents: 'none' }} />
             </button>
 
             {/* Info tooltip */}
             {showInfoTooltip && (
               <div
+                className="pp-menu"
                 style={styles.infoTooltip}
                 onMouseEnter={() => setShowInfoTooltip(true)}
                 onMouseLeave={() => setShowInfoTooltip(false)}
               >
-                <div style={{ marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px', fontSize: '11px' }}>Filters</div>
-                  <div style={{ color: 'var(--text-muted)', lineHeight: '1.5', fontSize: '11px', fontFamily: 'monospace' }}>
+                <div style={{ marginBottom: 'var(--space-3)' }}>
+                  <div className="pp-section-title" style={{ marginBottom: 'var(--space-1)' }}>Filters</div>
+                  <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     {filterDisplay}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px', fontSize: '11px' }}>Rows</div>
-                  <div style={{ color: 'var(--text-muted)', lineHeight: '1.5', fontSize: '11px' }}>
+                  <div className="pp-section-title" style={{ marginBottom: 'var(--space-1)' }}>Rows</div>
+                  <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     {result && result.numRows >= 10000
                       ? 'Limited to 10,000 rows (query may have returned more)'
                       : `${result?.numRows || 0} row${result?.numRows !== 1 ? 's' : ''}`}
@@ -217,12 +216,14 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
         <div style={styles.headerRight}>
           {sql && (
-            <button onClick={handleCopySQL} style={styles.exportButton} title="Copy SQL query">
-              {copiedSQL ? '✓ Copied!' : 'Copy SQL'}
+            <button onClick={handleCopySQL} className="pp-btn pp-btn--sm" title="Copy SQL query">
+              <Icon name={copiedSQL ? 'check' : 'copy'} />
+              {copiedSQL ? 'Copied' : 'Copy SQL'}
             </button>
           )}
 
-          <button onClick={handleExportCSV} style={styles.exportButton}>
+          <button onClick={handleExportCSV} className="pp-btn pp-btn--sm">
+            <Icon name="download" />
             Export CSV
           </button>
 
@@ -231,7 +232,8 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
             <button
               ref={columnButtonRef}
               onClick={handleColumnMenuClick}
-              style={styles.exportButton}
+              className="pp-btn pp-btn--sm"
+              aria-expanded={showColumnMenu}
               title="Select columns"
             >
               Columns ({availableColumns.filter(col => selectedColumns[col] !== false).length}/{availableColumns.length})
@@ -250,12 +252,12 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
                   }}
                   onClick={() => setShowColumnMenu(false)}
                 />
-                <div style={{
+                <div className="pp-menu" style={{
                   ...styles.columnMenu,
                   ...(menuAbove ? styles.columnMenuAbove : {})
                 }}>
                   <div style={styles.columnMenuHeader}>
-                    <span>Select Columns</span>
+                    <span className="pp-section-title">Select Columns</span>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button
                         onClick={() => {
@@ -265,7 +267,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
                           });
                           setSelectedColumns(allSelected);
                         }}
-                        style={styles.columnMenuAction}
+                        className="pp-btn pp-btn--quiet pp-btn--sm"
                       >
                         All
                       </button>
@@ -277,7 +279,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
                           });
                           setSelectedColumns(noneSelected);
                         }}
-                        style={styles.columnMenuAction}
+                        className="pp-btn pp-btn--quiet pp-btn--sm"
                       >
                         None
                       </button>
@@ -285,7 +287,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
                   </div>
                   <div style={styles.columnMenuList}>
                     {availableColumns.map(col => (
-                      <label key={col} style={styles.columnMenuItem}>
+                      <label key={col} className="pp-check pp-row-hover" style={styles.columnMenuItem}>
                         <input
                           type="checkbox"
                           checked={selectedColumns[col] !== false}
@@ -295,7 +297,6 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
                               [col]: e.target.checked
                             });
                           }}
-                          style={{ cursor: 'pointer' }}
                         />
                         <span className="pp-truncate">{fieldDisplayName(col, config, availableFields)}</span>
                       </label>
@@ -309,7 +310,9 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
           <select
             value={drilldownDisplayMode}
             onChange={(e) => onDrilldownDisplayModeChange(e.target.value)}
-            style={styles.displayModeSelect}
+            className="pp-select pp-select--sm"
+            style={{ width: 'auto' }}
+            aria-label="Drilldown display mode"
           >
             <option value="split-below">Split Below</option>
             <option value="split-right">Split Right</option>
@@ -321,13 +324,6 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
       {/* Grid */}
       <div style={styles.gridContainer} className="ag-theme-alpine ag-theme-compact">
-        <style>{`
-          .ag-theme-compact {
-            --ag-font-size: 11px;
-            --ag-row-height: 25px;
-            --ag-header-height: 28px;
-          }
-        `}</style>
         {!gridLoaded ? (
           <div style={styles.loading}>
             <span className="pp-spinner" aria-hidden="true" />
@@ -362,75 +358,20 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--surface-bg)',
     overflow: 'hidden'
   },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '8px 12px',
-    borderBottom: '1px solid var(--border-color-light)',
-    background: 'var(--surface-subtle)'
-  },
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    flex: 1,
-    overflow: 'visible' // Changed from 'hidden' to allow tooltip to show
+    gap: 'var(--space-1)',
+    flex: 1
   },
   headerRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px'
-  },
-  title: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: 'var(--text-primary)',
-    whiteSpace: 'nowrap'
-  },
-  separator: {
-    color: 'var(--border-color-medium)',
-    fontSize: '13px',
-    userSelect: 'none'
-  },
-  filterInfo: {
-    fontSize: '11px',
-    color: 'var(--text-muted)',
-    fontFamily: 'monospace',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-  rowCount: {
-    fontSize: '11px',
-    color: 'var(--text-muted)',
-    whiteSpace: 'nowrap'
-  },
-  displayModeSelect: {
-    padding: '4px 8px',
-    fontSize: '11px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0
-  },
-  exportButton: {
-    padding: '4px 10px',
-    fontSize: '11px',
-    color: 'var(--color-accent)',
-    border: '1px solid var(--color-accent)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-    flexShrink: 0
+    gap: 'var(--space-2)'
   },
   gridContainer: {
     flex: 1,
-    padding: '20px',
+    padding: 'var(--space-3)',
     overflow: 'hidden'
   },
   empty: {
@@ -444,99 +385,57 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     top: '100%',
     right: 0,
-    marginTop: '4px',
-    minWidth: '200px',
+    marginTop: 'var(--space-1)',
+    minWidth: '220px',
     maxWidth: '300px',
-    background: 'var(--surface-bg)',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '6px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     zIndex: 'var(--z-dropdown)' as any,
     maxHeight: '400px',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    paddingTop: 0
   },
   columnMenuAbove: {
     top: 'auto',
     bottom: '100%',
     marginTop: 0,
-    marginBottom: '4px'
+    marginBottom: 'var(--space-1)'
   },
   columnMenuHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '8px 10px',
-    borderBottom: '1px solid var(--border-color-light)',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: 'var(--text-secondary)'
-  },
-  columnMenuAction: {
-    padding: '2px 6px',
-    fontSize: '10px',
-    color: 'var(--color-accent)',
-    background: 'transparent',
-    border: '1px solid var(--color-accent)',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    transition: 'all 0.2s'
+    gap: 'var(--space-2)',
+    padding: 'var(--space-1) var(--space-1) var(--space-1) var(--space-3)',
+    borderBottom: '1px solid var(--border-color-light)'
   },
   columnMenuList: {
     overflowY: 'auto',
     maxHeight: '350px',
-    padding: '4px'
+    padding: 'var(--space-1) 0'
   },
   columnMenuItem: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 8px',
-    fontSize: '11px',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-    borderRadius: '3px',
-    userSelect: 'none',
-    transition: 'background 0.2s'
-  },
-  infoButton: {
-    width: '24px',
-    height: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 0,
-    background: 'transparent',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    color: 'var(--text-muted)',
-    marginLeft: '4px',
-    transition: 'background 0.15s'
+    minHeight: 'var(--control-h-sm)',
+    padding: '0 var(--space-3)',
+    color: 'var(--text-primary)'
   },
   infoTooltip: {
     position: 'absolute',
     top: '100%',
     left: 0,
-    marginTop: '8px',
+    marginTop: 'var(--space-1)',
     minWidth: '280px',
     maxWidth: '400px',
-    background: 'var(--surface-bg)',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '6px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.1), 0 4px 10px rgba(0,0,0,0.05)',
     zIndex: 'var(--z-popover)' as any,
-    padding: '12px',
-    fontSize: '11px',
-    color: 'var(--text-secondary)'
+    padding: 'var(--space-3)'
   },
   loading: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: 'var(--space-2)',
     padding: '2rem',
     color: 'var(--text-muted)',
-    fontSize: '14px'
+    fontSize: 'var(--text-md)'
   }
 };

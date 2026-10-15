@@ -219,7 +219,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       background: 'rgba(0,0,0,0.8)',
       color: 'var(--text-inverse)',
       padding: '10px',
-      fontSize: '10px',
+      fontSize: 'var(--text-xs)',
       fontFamily: 'monospace',
       zIndex: 'var(--z-overlay)' as any,
       borderRadius: '4px'

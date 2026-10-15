@@ -523,7 +523,6 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
         dataEngine={dataEngine}
         locale={cfg.locale}
         enableSQLPlayground={cfg.enableSQLPlayground}
-        isRemoteConnection={isRemoteConnection}
         handlers={handlers}
       />
     </div>
@@ -591,20 +590,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--surface-bg, #ffffff)',
     overflow: 'hidden',
     border: 'var(--border-width, 1px) solid var(--border-color-light, #e5e7eb)'
-  },
-  sidebar: {
-    background: '#ffffff',
-    borderRight: 'var(--border-width, 1px) solid var(--border-color-medium, #d1d5db)',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  mainPanel: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'relative',
-    overflow: 'hidden',
-    background: '#ffffff'
   },
   toggleButton: {
     position: 'absolute',

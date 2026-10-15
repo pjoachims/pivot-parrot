@@ -15,51 +15,18 @@ import {
   autoManageValuesField
 } from '../utils/fieldUtils';
 import { getFieldById } from '../utils/getFieldById';
+import { aggregationId } from '../../domain/field/aggregations';
 
-/**
- * Get FieldKind for a field by checking FieldItem or custom expressions
- */
 function getFieldKind(fieldName: string, config: PivotTableConfig, availableFields: FieldItem[]): FieldKind {
-  // Special case
   if (fieldName === SIGMA_VALUES_ID) return FieldKind.SIGMA_VALUES;
-
-  // Check active aggregations (e.g., SUM_sales)
-  for (const valueConfig of config.values || []) {
-    if (valueConfig.isCustom) continue;
-    const aggId = `${valueConfig.aggregation.toUpperCase()}_${valueConfig.field}`;
-    if (aggId === fieldName) {
-      return FieldKind.AGGREGATION;
-    }
-  }
-
-  // Check custom metrics
-  if ((config.customMetrics || []).some(m => m.id === fieldName)) {
-    return FieldKind.CUSTOM_METRIC;
-  }
-
-  // Check custom expressions (not FieldItems)
-  if ((config.customFilters || []).some(f => f.id === fieldName)) return FieldKind.CUSTOM_FILTER;
-  if ((config.customGroupings || []).some(g => g.id === fieldName)) return FieldKind.CUSTOM_GROUPING;
-
-  // Look up FieldItem (has kind property)
-  const fieldItem = availableFields.find(f => f.id === fieldName);
-  if (fieldItem) {
-    return fieldItem.kind;
-  }
-
-  // Fallback
-  return FieldKind.BASE_FIELD;
-}
-
-function getAggregationId(valueConfig: ValueConfig): string {
-  return `${valueConfig.aggregation.toUpperCase()}_${valueConfig.field}`;
+  return getFieldById(fieldName, availableFields, config)?.kind ?? FieldKind.BASE_FIELD;
 }
 
 function matchesValueConfig(fieldName: string, valueConfig: ValueConfig): boolean {
   if (valueConfig.isCustom) {
     return valueConfig.field === fieldName;
   }
-  return getAggregationId(valueConfig) === fieldName;
+  return aggregationId(valueConfig) === fieldName;
 }
 
 function sameValue(a: ValueConfig, b: ValueConfig): boolean {
@@ -114,6 +81,7 @@ export function buildHandleDrop(
 ) {
   return (fieldName: string, sourceZone: string, targetZone: string | null, index: number | null = null, sourceIndex: number | null = null) => {
     // Step 1: Determine field type
+    const fieldItem = getFieldById(fieldName, availableFields, config);
     const kind = getFieldKind(fieldName, config, availableFields);
     const isMeasure = kind === FieldKind.AGGREGATION || kind === FieldKind.CUSTOM_METRIC;
     const draggedValueConfig = sourceZone === 'values'
@@ -167,6 +135,9 @@ export function buildHandleDrop(
         valueConfig = { field: fieldName, aggregation: 'custom', isCustom: true };
       } else if (kind === FieldKind.AGGREGATION && draggedValueConfig) {
         valueConfig = { ...draggedValueConfig };
+      } else if (kind === FieldKind.AGGREGATION && fieldItem?.sourceField && fieldItem.aggregation) {
+        // Coming back from Filters, where the aggregation lived as a HAVING filter
+        valueConfig = { field: fieldItem.sourceField, aggregation: fieldItem.aggregation as ValueConfig['aggregation'] };
       } else {
         const defaultAgg = isNumericType(detectedTypes[fieldName]) ? 'Sum' : 'Count';
         valueConfig = { field: fieldName, aggregation: defaultAgg };
@@ -177,8 +148,6 @@ export function buildHandleDrop(
 
     } else if (targetZone === 'filters') {
       // Enrich filter with info from FieldItem for HAVING clause generation
-      const fieldItem = getFieldById(fieldName, availableFields, config);
-
       const filterItem: any = { field: fieldName, type: 'equal' };
 
       // Mark custom filters so they're recognized in SQL generation

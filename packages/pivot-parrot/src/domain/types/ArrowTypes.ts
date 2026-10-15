@@ -423,7 +423,9 @@ export type ArrowType = typeof Arrow[keyof typeof Arrow];
  * Lookup Arrow type by name
  * Handles parameterized types like "decimal<35,19>" by extracting base type
  */
-export function getArrowType(name: string): ArrowType | null {
+export function getArrowType(name: string | undefined): ArrowType | null {
+  // A remote result without an Arrow schema carries no type names
+  if (!name) return null;
   // For parameterized types like "decimal<35,19>", extract base type
   const baseName = name.includes('<') ? name.slice(0, name.indexOf('<')) : name;
   return (Arrow as any)[baseName] || null;

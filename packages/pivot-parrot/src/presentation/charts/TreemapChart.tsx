@@ -73,25 +73,25 @@ export default function TreemapChartConfig({
   return (
     <>
       {/* Metric and Color side by side */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label}>Size Metric</label>
+      <div className="pp-row">
+        <div className="pp-field">
+          <label className="pp-label">Size Metric</label>
           <select
             value={metric}
             onChange={(e) => setMetric(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             {valueFields.map(vf => (
               <option key={vf.field} value={vf.field}>{vf.label}</option>
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Color Metric</label>
+        <div className="pp-field">
+          <label className="pp-label">Color Metric</label>
           <select
             value={colorMetric}
             onChange={(e) => setColorMetric(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="">Same as size</option>
             {valueFields.map(vf => (
@@ -102,25 +102,25 @@ export default function TreemapChartConfig({
       </div>
 
       {/* Hierarchy Levels */}
-      <div style={styles.row}>
-        <div style={styles.field}>
-          <label style={styles.label}>Level 1</label>
+      <div className="pp-row">
+        <div className="pp-field">
+          <label className="pp-label">Level 1</label>
           <select
             value={level1}
             onChange={(e) => setLevel1(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             {dimensions.map(dim => (
               <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Level 2</label>
+        <div className="pp-field">
+          <label className="pp-label">Level 2</label>
           <select
             value={level2}
             onChange={(e) => setLevel2(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== level1 && dim !== level3).map(dim => (
@@ -128,12 +128,12 @@ export default function TreemapChartConfig({
             ))}
           </select>
         </div>
-        <div style={styles.field}>
-          <label style={styles.label}>Level 3</label>
+        <div className="pp-field">
+          <label className="pp-label">Level 3</label>
           <select
             value={level3}
             onChange={(e) => setLevel3(e.target.value)}
-            style={styles.select}
+            className="pp-select"
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== level1 && dim !== level2 && level2).map(dim => (
@@ -144,13 +144,13 @@ export default function TreemapChartConfig({
       </div>
 
       {/* Color Scheme */}
-      <div style={styles.section}>
-        <label style={styles.label}>Color Scheme</label>
+      <div className="pp-field">
+        <label className="pp-label">Color Scheme</label>
         <div style={styles.schemeSelector}>
           <select
             value={colorScheme}
             onChange={(e) => setColorScheme(e.target.value)}
-            style={styles.schemeSelect}
+            className="pp-select"
           >
             {colorSchemes.map(scheme => (
               <option key={scheme.value} value={scheme.value}>{scheme.value}</option>
@@ -186,58 +186,16 @@ const colorSchemes = [
 ];
 
 const styles: Record<string, React.CSSProperties> = {
-  row: {
-    display: 'flex',
-    gap: '12px',
-    marginBottom: '12px'
-  },
-  field: {
-    flex: 1,
-    minWidth: 0
-  },
-  section: {
-    marginBottom: '8px'
-  },
-  label: {
-    display: 'block',
-    marginBottom: '4px',
-    fontSize: '10px',
-    fontWeight: 600,
-    color: 'var(--text-secondary)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.3px'
-  },
-  select: {
-    width: '100%',
-    padding: '6px 8px',
-    fontSize: '11px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer'
-  },
   schemeSelector: {
     display: 'flex',
-    gap: '8px',
+    gap: 'var(--space-2)',
     alignItems: 'center'
   },
-  schemeSelect: {
-    flex: 1,
-    padding: '6px 8px',
-    fontSize: '11px',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: '4px',
-    backgroundColor: 'var(--surface-bg)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer'
-  },
   schemePreview: {
-    width: '80px',
-    height: '28px',
-    borderRadius: '4px',
+    flex: '0 0 96px',
+    height: 'var(--control-h)',
     border: '1px solid var(--border-color-medium)',
-    flexShrink: 0
+    borderRadius: 'var(--radius-sm)'
   }
 };
 

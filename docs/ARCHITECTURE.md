@@ -380,7 +380,7 @@ interface PivotConfig {
   settings?: {
     autoUpdate?: boolean;      // Default: true
     locale?: string;           // Default: 'en-US'
-    enableSQLPlayground?: boolean;
+    enableSQLPlayground?: boolean; // Default: true local, false remote
     devMode?: boolean;
   };
 

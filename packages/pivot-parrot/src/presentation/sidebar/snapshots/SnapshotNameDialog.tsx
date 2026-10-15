@@ -11,6 +11,7 @@ import BaseDialog from '../../shared/BaseDialog';
 export default function SnapshotNameDialog({ onSave, onCancel, defaultName }) {
   const [name, setName] = useState(defaultName || '');
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = React.useId();
 
   // Auto-focus and select text on mount
   useEffect(() => {
@@ -43,40 +44,21 @@ export default function SnapshotNameDialog({ onSave, onCancel, defaultName }) {
       submitLabel="Save"
       submitDisabled={!trimmedName}
       showCancelButton
-      maxWidth="320px"
+      maxWidth="360px"
     >
-      <div style={styles.inputGroup}>
-        <label style={styles.label}>Snapshot Name:</label>
+      <div className="pp-field">
+        <label className="pp-label" htmlFor={inputId}>Name</label>
         <input
+          id={inputId}
           ref={inputRef}
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={handleKeyDown}
-          style={styles.input}
+          className="pp-input"
           placeholder="Enter snapshot name..."
         />
       </div>
     </BaseDialog>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px'
-  },
-  label: {
-    fontSize: 'var(--text-sm)',
-    fontWeight: 500,
-    color: 'var(--text-secondary)'
-  },
-  input: {
-    padding: '6px 8px',
-    fontSize: 'var(--text-base)',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    fontFamily: 'inherit'
-  }
-};

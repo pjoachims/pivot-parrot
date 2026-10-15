@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import BaseDialog from '../../shared/BaseDialog';
-import { styles } from './custom-expression/styles';
 import { validateCustomMetric } from './custom-expression/validation';
 import { HelpButtons, HelpContent } from './custom-expression/HelpContent';
 import { FormatSection } from './custom-expression/FormatSection';
@@ -14,22 +13,19 @@ const TYPE_CONFIG = {
     title: 'Custom Metric',
     placeholder: 'e.g., SUM(sales) / SUM(quantity)',
     buttonText: 'Create Metric',
-    showFormat: true,
-    icon: '∑'
+    showFormat: true
   },
   filter: {
     title: 'Custom Filter',
     placeholder: 'e.g., sales > 1000 AND region != \'Asia\'',
     buttonText: 'Create Filter',
-    showFormat: false,
-    icon: '⊘'
+    showFormat: false
   },
   grouping: {
     title: 'Custom Grouping',
     placeholder: 'e.g., YEAR(date) or LEFT(name, 1)',
     buttonText: 'Create Grouping',
-    showFormat: false,
-    icon: '⊗'
+    showFormat: false
   }
 };
 
@@ -46,6 +42,7 @@ export default function CustomExpressionDialog({
   editingId = null
 }) {
   const typeConfig = TYPE_CONFIG[type];
+  const fieldId = React.useId();
 
   const [name, setName] = useState(initialName);
   const [formula, setFormula] = useState(initialFormula);
@@ -150,12 +147,11 @@ export default function CustomExpressionDialog({
       onSubmit={handleSave}
       submitLabel={initialName ? 'Save' : typeConfig.buttonText}
       showCancelButton
-      maxWidth="380px"
     >
-          {/* Name Input */}
-          <div style={styles.field}>
-            <label style={styles.label}>Name</label>
+          <div className="pp-field">
+            <label className="pp-label" htmlFor={`${fieldId}-name`}>Name</label>
             <input
+              id={`${fieldId}-name`}
               type="text"
               value={name}
               onChange={(e) => {
@@ -164,24 +160,22 @@ export default function CustomExpressionDialog({
                 setError('');
               }}
               placeholder={`e.g., My ${typeConfig.title}`}
-              style={styles.input}
+              className="pp-input"
               autoFocus
             />
           </div>
 
-          {/* Formula/Expression Input */}
-          <div style={styles.field}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-              <label style={{ ...styles.label, marginBottom: 0 }}>
+          <div className="pp-field">
+            <div className="pp-label-row">
+              <label className="pp-label" htmlFor={`${fieldId}-formula`}>
                 {type === 'filter' ? 'SQL Expression' : 'Formula'}
               </label>
               {type === 'grouping' && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <label className="pp-check">
                   <input
                     type="checkbox"
                     checked={useCaseBuilder}
                     onChange={(e) => setUseCaseBuilder(e.target.checked)}
-                    style={{ margin: 0 }}
                   />
                   Case Builder
                 </label>
@@ -196,18 +190,19 @@ export default function CustomExpressionDialog({
               />
             ) : (
               <textarea
+                id={`${fieldId}-formula`}
                 value={formula}
                 onChange={(e) => {
                   setFormula(e.target.value);
                   setError('');
                 }}
                 placeholder={typeConfig.placeholder}
-                style={styles.textarea}
-                rows={3}
+                className="pp-textarea pp-textarea--code"
+                rows={4}
+                spellCheck={false}
               />
             )}
 
-            {/* Help Buttons (only for metrics) */}
             {type === 'metric' && (
               <>
                 <HelpButtons
@@ -215,8 +210,6 @@ export default function CustomExpressionDialog({
                   setShowHelp={setShowHelp}
                   availableMetrics={availableMetrics}
                 />
-
-                {/* Help Content */}
                 <HelpContent
                   showHelp={showHelp}
                   availableMetrics={availableMetrics}
@@ -228,7 +221,6 @@ export default function CustomExpressionDialog({
             )}
           </div>
 
-          {/* Format Section (only for metrics) */}
           {typeConfig.showFormat && (
             <FormatSection
               formatType={formatType}
@@ -242,9 +234,8 @@ export default function CustomExpressionDialog({
             />
           )}
 
-          {/* Error */}
           {error && (
-            <div style={styles.error}>{error}</div>
+            <div className="pp-alert" role="alert">{error}</div>
           )}
     </BaseDialog>
   );

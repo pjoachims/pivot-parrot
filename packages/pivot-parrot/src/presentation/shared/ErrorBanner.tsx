@@ -8,44 +8,19 @@ interface ErrorBannerProps {
 }
 
 /**
- * Single shared error banner used across the presentation layer, replacing
- * several near-duplicate inline error boxes (PivotMainPanel, SQLPlayground).
+ * The one error banner of the presentation layer (pivot errors, display
+ * limits, export and settings errors): a .pp-alert with an optional
+ * Dismiss, which inherits the alert's colour.
  */
 export default function ErrorBanner({ message, title, onDismiss, style }: ErrorBannerProps) {
   return (
-    <div style={{ ...styles.container, ...style }} role="alert">
-      <span>{title && <strong>{title}: </strong>}{message}</span>
+    <div className="pp-alert" style={style} role="alert">
+      <span style={{ flex: 1, minWidth: 0 }}>{title && <strong>{title}: </strong>}{message}</span>
       {onDismiss && (
-        <button onClick={onDismiss} style={styles.dismissButton} aria-label="Dismiss error">
+        <button onClick={onDismiss} className="pp-btn pp-btn--quiet pp-btn--sm" aria-label="Dismiss error">
           Dismiss
         </button>
       )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'var(--color-error-bg)',
-    border: '1px solid var(--color-error-border)',
-    borderRadius: 'var(--radius-md)',
-    padding: '0.75rem',
-    fontSize: 'var(--text-base)',
-    color: 'var(--color-error)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '12px'
-  },
-  dismissButton: {
-    padding: '4px 8px',
-    fontSize: 'var(--text-sm)',
-    fontWeight: 500,
-    background: 'transparent',
-    border: '1px solid var(--color-error-border)',
-    borderRadius: 'var(--radius-sm)',
-    color: 'var(--color-error)',
-    cursor: 'pointer',
-    flexShrink: 0
-  }
-};
