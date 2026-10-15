@@ -54,11 +54,10 @@ export function usePivotHandlers({
   const setAvailableFields = usePivotStore((s) => s.setAvailableFields);
 
   // ==================== SNAPSHOT HANDLERS ====================
-  const handleCreateSnapshot = useCallback((name?: string) => {
-    if (!executionConfig) {
-      return;
-    }
-    const view: PivotView = {
+  /** The screen as a saved view; null before the first query has been committed. */
+  const buildView = useCallback((): PivotView | null => {
+    if (!executionConfig) return null;
+    return {
       v: 1,
       config: executionConfig,
       derivedFields: availableFields.filter(f => f.kind === FieldKind.DERIVED_FIELD),
@@ -69,8 +68,13 @@ export function usePivotHandlers({
       splitPosition: splitPane.splitPosition,
       drilldownFilters: drilldown.drilldownFilters ?? null
     };
+  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown]);
+
+  const handleCreateSnapshot = useCallback((name?: string) => {
+    const view = buildView();
+    if (!view) return;
     void snapshots.createSnapshot(name || `Snapshot ${snapshots.snapshots.length + 1}`, view);
-  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, snapshots]);
+  }, [buildView, snapshots]);
 
   // The drilldown must query with the restored view's fields and groupings,
   // which reach useDrilldown only on the render after the restore.
@@ -81,11 +85,9 @@ export function usePivotHandlers({
     drilldown.executeDrilldown(pendingDrilldown).catch((err: any) => calculation.setError(err.message));
   }, [pendingDrilldown]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleLoadSnapshot = useCallback((snapshotId: string) => {
-    const saved = snapshots.snapshots.find(s => s.id === snapshotId);
-    if (!saved) return;
+  const applyView = useCallback((stored: PivotView) => {
     // A fresh copy every time, so the committed config is a new object and re-queries.
-    const view = fromPlainJSON<PivotView>(saved.view);
+    const view = fromPlainJSON<PivotView>(stored);
 
     const knownIds = new Set(availableFields.map(f => f.id));
     const missing = view.derivedFields.filter(f => !knownIds.has(f.id));
@@ -101,7 +103,12 @@ export function usePivotHandlers({
 
     drilldown.clearDrilldown();
     setPendingDrilldown(view.drilldownFilters);
-  }, [snapshots, availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane]);
+  }, [availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane]);
+
+  const handleLoadSnapshot = useCallback((snapshotId: string) => {
+    const saved = snapshots.snapshots.find(s => s.id === snapshotId);
+    if (saved) applyView(saved.view);
+  }, [snapshots, applyView]);
 
   const handleDeleteSnapshot = useCallback((snapshotId: string) => {
     void snapshots.deleteSnapshot(snapshotId);
@@ -203,6 +210,8 @@ export function usePivotHandlers({
   }, [config, availableFields, detectedTypes, calculation, displayData, dialect]);
 
   return {
+    buildView,
+    applyView,
     handleCreateSnapshot,
     handleLoadSnapshot,
     handleDeleteSnapshot,

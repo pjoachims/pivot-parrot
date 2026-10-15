@@ -127,6 +127,19 @@ const snapshotStore = {
 <Pivot config={{ mode: 'local', duckdb, data: arrowBytes, snapshotStore }} />
 ```
 
+To keep saved views in your own UI instead, hide the panel with `settings.showSnapshots: false` and use the ref. `getView()` returns the view a snapshot would hold now (plain JSON, `null` until the first query has run). `loadView(view)` restores one the way the panel does and throws on a version other than 1. Called before the pivot has finished loading, it waits until it has, and the last call wins, so loading `?view=<id>` right after mount works.
+
+```tsx
+import { Pivot, type PivotHandle, type PivotView } from 'pivot-parrot';
+
+const pivot = useRef<PivotHandle>(null);
+
+const save = () => api.saveView(pivot.current?.getView());
+const open = (view: PivotView) => pivot.current?.loadView(view);
+
+<Pivot ref={pivot} config={{ mode: 'local', duckdb, data: arrowBytes, settings: { showSnapshots: false } }} />
+```
+
 The [live demo](https://pjoachims.github.io/pivot-parrot/) is this component wrapped in a small shell ([`demo-app/`](demo-app)), deployed to GitHub Pages on every push to `main`.
 
 ## Features

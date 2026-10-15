@@ -21,6 +21,7 @@ export class NormalizedPivotConfig {
   readonly autoUpdate: boolean;
   readonly autoExecute: boolean;
   readonly enableSQLPlayground: boolean;
+  readonly showSnapshots: boolean;
   readonly devMode: boolean;
   readonly locale: string;
   readonly height: number;
@@ -53,6 +54,7 @@ export class NormalizedPivotConfig {
     this.autoUpdate = config.settings?.autoUpdate ?? true;
     this.autoExecute = config.settings?.autoExecute ?? false;
     this.enableSQLPlayground = config.settings?.enableSQLPlayground ?? true;
+    this.showSnapshots = config.settings?.showSnapshots ?? true;
     this.devMode = config.settings?.devMode ?? false;
     this.locale = config.settings?.locale ?? 'en-US';
     this.height = config.settings?.height ?? 1000;

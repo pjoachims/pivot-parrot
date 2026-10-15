@@ -16,7 +16,8 @@ import { useDevMode } from '../../application/hooks/useDevMode';
 import { profiler } from '../../domain/query/utils/profiler';
 import { computeLeafColumns } from '../../application/utils/columnHelpers';
 import JSZip from 'jszip';
-import type { PivotConfig, PivotTableConfig } from '../../domain/models/types';
+import type { PivotConfig, PivotTableConfig, PivotView } from '../../domain/models/types';
+import { toPlainJSON } from '../../domain/snapshot/json';
 import { FieldKind } from '../../domain/models/types';
 import { NormalizedPivotConfig } from '../../domain/models/NormalizedPivotConfig';
 import { usePivotStore, usePivotInstanceKey, PivotStoreContext, createPivotStore } from '../../application/state/store';
@@ -56,7 +57,19 @@ const getNotificationStyle = (level = 'info') => ({
  * Must be wrapped with PivotStoreContext.Provider
  * Contains all hooks, effects, and rendering logic
  */
-const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotConfig }, ref) => {
+/** What a ref on `<Pivot>` exposes to the host. */
+export interface PivotHandle {
+  exportConfig(): { config: PivotTableConfig; availableFields: FieldItem[]; detectedTypes: Record<string, string | number> };
+  calculatePivot(previewMode?: boolean, previewConfig?: PivotTableConfig | null): Promise<unknown>;
+  getDataEngine(): any;
+  downloadTestFixture(): Promise<void>;
+  /** The view a snapshot created now would hold; null before the first query has been committed. */
+  getView(): PivotView | null;
+  /** Loads `view` like the Snapshots panel does. Before init completes it is queued; the last call wins. */
+  loadView(view: PivotView): void;
+}
+
+const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: pivotConfig = {} }, ref) => {
   // Normalize config with defaults (useMemo because it's derived from props, not internal state)
   const cfg = useMemo(() => new NormalizedPivotConfig(pivotConfig), [pivotConfig]);
   // Hosts often pass an inline config object, so `cfg` changes on every parent
@@ -153,7 +166,8 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Custom hooks
   const splitPane = useSplitPane(activeView, secondaryDisplayMode);
-  const snapshots = useSnapshots(cfg.snapshotStore);
+  // Hidden, the host store is never listed: the host keeps its views itself.
+  const snapshots = useSnapshots(cfg.showSnapshots ? cfg.snapshotStore : null);
   // Pivot calculation - executes queries
   const dataVersion = usePivotStore((s) => s.dataVersion);
   // The engine and dataset of the last completed init: a new one re-runs the committed config.
@@ -422,6 +436,14 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Chart gracefully handles config changes via error handling in ChartView
 
+  const pendingViewRef = useRef<PivotView | null>(null);
+  useEffect(() => {
+    const view = pendingViewRef.current;
+    if (!initComplete || !view) return;
+    pendingViewRef.current = null;
+    handlers.applyView(view);
+  }, [initComplete]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     exportConfig: () => ({
@@ -434,7 +456,19 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
     getDataEngine: () => queryEngine || dataEngine,
 
-    downloadTestFixture: handlers.handleDownloadTestFixtureZip
+    downloadTestFixture: handlers.handleDownloadTestFixtureZip,
+
+    getView: () => {
+      const view = handlers.buildView();
+      return view && toPlainJSON(view);
+    },
+
+    loadView: (view: PivotView) => {
+      if (view?.v !== 1) throw new Error(`Cannot load a pivot view of version ${view?.v}; this version of pivot-parrot reads version 1.`);
+      // Applied before init, the init's own initialConfig would overwrite it.
+      if (initComplete) handlers.applyView(view);
+      else pendingViewRef.current = view;
+    }
   }));
 
   return (
@@ -472,10 +506,10 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
         onFieldsChanged={setAvailableFields}
         onAutoUpdateChange={setAutoUpdate}
         onToggleCollapse={toggleSidebar}
-        onCreateSnapshot={handlers.handleCreateSnapshot}
-        onLoadSnapshot={handlers.handleLoadSnapshot}
-        onDeleteSnapshot={handlers.handleDeleteSnapshot}
-        onSnapshotsImported={snapshots.importSnapshots}
+        onCreateSnapshot={cfg.showSnapshots ? handlers.handleCreateSnapshot : undefined}
+        onLoadSnapshot={cfg.showSnapshots ? handlers.handleLoadSnapshot : undefined}
+        onDeleteSnapshot={cfg.showSnapshots ? handlers.handleDeleteSnapshot : undefined}
+        onSnapshotsImported={cfg.showSnapshots ? snapshots.importSnapshots : undefined}
       />
 
       {/* Main Panel */}
@@ -517,7 +551,7 @@ PivotInner.displayName = 'PivotInner';
  * }} />
  * ```
  */
-const Pivot = forwardRef(({ config: pivotConfig = {}, children }: { config?: PivotConfig; children?: React.ReactNode }, ref) => {
+const Pivot = forwardRef<PivotHandle, { config?: PivotConfig; children?: React.ReactNode }>(({ config: pivotConfig = {}, children }, ref) => {
   const instanceKey = pivotConfig.instanceKey || 'default';
 
   // Create store once on mount - each Pivot instance gets its own independent store

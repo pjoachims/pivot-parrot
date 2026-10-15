@@ -12,6 +12,7 @@
 // PRESENTATION LAYER - React Components
 // ============================================================================
 export { Pivot } from './presentation/pivot/Pivot';
+export type { PivotHandle } from './presentation/pivot/Pivot';
 export * from './presentation';
 
 // ============================================================================
