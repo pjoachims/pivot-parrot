@@ -271,11 +271,11 @@ export function updateCustomMetric(config, expressionId, name, formula, format, 
 
   return {
     ...config,
-    [configKey]: (config[configKey] || []).map(m =>
-      m.id === expressionId
-        ? { ...m, name, expr: formula, ...(type === 'metric' && format ? { format } : {}) }
-        : m
-    )
+    [configKey]: (config[configKey] || []).map(m => {
+      if (m.id !== expressionId) return m;
+      const { format: _cleared, ...rest } = m;
+      return { ...rest, name, expr: formula, ...(type === 'metric' && format ? { format } : {}) };
+    })
   };
 }
 
