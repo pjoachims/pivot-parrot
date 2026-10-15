@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from './Icon';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -33,30 +34,20 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   render(): React.ReactNode {
     if (this.state.hasError) {
       return (
-        <div style={styles.errorContainer}>
-          <div style={styles.errorIcon}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-              <path d="M12 9v4" />
-              <path d="M12 17h.01" />
-            </svg>
-          </div>
-          <h2 style={styles.errorTitle}>Something went wrong</h2>
-          <p style={styles.errorMessage}>
-            {this.state.error && this.state.error.toString()}
-          </p>
+        <div style={styles.container} role="alert">
+          <Icon name="alert-triangle" style={styles.icon} />
+          <div style={styles.title}>Something went wrong</div>
+          <div style={styles.message}>{this.state.error && this.state.error.toString()}</div>
           <button
-            style={styles.resetButton}
+            className="pp-btn pp-btn--primary"
             onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
           >
-            Try Again
+            Try again
           </button>
           {this.state.errorInfo && (
-            <details style={styles.errorDetails}>
-              <summary style={styles.errorSummary}>Stack trace</summary>
-              <pre style={styles.errorStack}>
-                {this.state.errorInfo.componentStack}
-              </pre>
+            <details style={styles.details}>
+              <summary className="pp-hint" style={{ cursor: 'pointer' }}>Stack trace</summary>
+              <pre style={styles.stack}>{this.state.errorInfo.componentStack}</pre>
             </details>
           )}
         </div>
@@ -68,52 +59,48 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  errorContainer: {
-    padding: '2rem',
-    textAlign: 'center' as const,
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 'var(--space-2)',
+    margin: 'var(--space-4)',
+    padding: 'var(--space-4)',
+    textAlign: 'center',
     background: 'var(--surface-bg)',
     border: '1px solid var(--color-error-border)',
-    borderRadius: '8px',
-    margin: '1rem'
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--text-primary)',
+    fontSize: 'var(--text-md)'
   },
-  errorIcon: {
-    display: 'flex',
-    justifyContent: 'center',
-    marginBottom: '1rem',
+  icon: {
+    width: 24,
+    height: 24,
     color: 'var(--color-error)'
   },
-  errorTitle: {
-    color: 'var(--color-error)',
-    marginBottom: '0.5rem'
+  title: {
+    fontSize: 'var(--text-base)',
+    fontWeight: 600
   },
-  errorMessage: {
+  message: {
     color: 'var(--text-muted)',
-    marginBottom: '1rem'
+    marginBottom: 'var(--space-2)'
   },
-  resetButton: {
-    padding: '0.5rem 1rem',
-    background: 'var(--color-accent)',
-    color: 'var(--text-inverse)',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '1rem'
+  details: {
+    alignSelf: 'stretch',
+    marginTop: 'var(--space-2)',
+    textAlign: 'left'
   },
-  errorDetails: {
-    marginTop: '1rem',
-    textAlign: 'left' as const
-  },
-  errorSummary: {
-    cursor: 'pointer',
-    color: 'var(--text-muted)',
-    marginBottom: '0.5rem'
-  },
-  errorStack: {
+  stack: {
+    margin: 'var(--space-2) 0 0',
+    padding: 'var(--space-3)',
     background: 'var(--surface-subtle)',
-    padding: '1rem',
-    borderRadius: '4px',
+    border: '1px solid var(--border-color-light)',
+    borderRadius: 'var(--radius-sm)',
     overflow: 'auto',
-    fontSize: '0.875rem',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-sm)',
+    lineHeight: 1.5,
     color: 'var(--text-secondary)'
   }
 };

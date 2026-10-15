@@ -426,12 +426,19 @@
   font-variant-numeric: tabular-nums;
 }
 .pp-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: 6px var(--space-2);
   border: 1px solid var(--color-error-border);
   border-radius: var(--radius-sm);
   background: var(--color-error-bg);
   color: var(--color-error);
   font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.pp-alert .pp-btn {
+  color: inherit;
 }
 
 /* Segmented control (IS / NOT, display modes): one bordered strip, the
@@ -654,44 +661,6 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Hover-state utilities, replacing JS onMouseEnter/onMouseLeave style
-   mutation. Apply alongside an inline `background` for the non-hover state
-   only when the element isn't in some other "active/selected" state. */
-.pp-row-hover:hover {
-  background: var(--surface-subtle) !important;
-}
-
-.pp-menu-item-hover {
-  background: var(--surface-bg);
-}
-.pp-menu-item-hover:hover {
-  background: var(--surface-subtle);
-}
-
-/* Icon-button hover states (top bar settings menu) */
-.pp-icon-btn-hover:hover {
-  background: var(--surface-hover);
-}
-.pp-icon-btn-muted:hover {
-  color: var(--text-muted);
-}
-.pp-accent-menu-btn:hover {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
-}
-.pp-danger-btn-hover:hover {
-  background: var(--color-error-bg);
-}
-.pp-icon-btn-primary-hover:hover {
-  color: var(--text-primary);
-}
-
-/* Solid accent button hover (darken on hover), e.g. a "Copy" action button
-   with a filled accent background - pairs with inline base
-   background: 'var(--color-accent)' */
-.pp-accent-btn-hover:hover {
-  background: var(--color-accent-hover);
-}
 
 /* ==========================================================================
    Sidebar. Field-list rows and zone chips share one anatomy:
@@ -832,10 +801,18 @@
   cursor: pointer;
 }
 
-/* Pivot table data-cell hover outline (moved out of PivotDisplay.tsx's
-   inline <style> tag) */
+/* A checkbox row in a list (drilldown columns, filter values) */
+.pp-row-hover:hover {
+  background: var(--surface-subtle) !important;
+}
+
+/* Pivot table: data-cell hover outline, and the row's expand chevron, a
+   14px hit area inside the row height (an icon button would grow the row) */
 .pivot-data-cell:hover {
   box-shadow: inset 0 0 0 1px var(--color-accent) !important;
+}
+.pp-expand-btn:hover {
+  color: var(--text-primary);
 }
 
 /* Container */
@@ -850,90 +827,6 @@
   border-bottom: var(--border-width) solid var(--border-color-light);
 }
 
-/* Tailwind utility classes used in component */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-1 { flex: 1 1 0%; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
-.grid { display: grid; }
-.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-.py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
-.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.p-1 { padding: 0.25rem; }
-.p-2 { padding: 0.5rem; }
-.pr-8 { padding-right: 2rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.w-full { width: 100%; }
-.w-3 { width: 0.75rem; }
-.w-3\.5 { width: 0.875rem; }
-.w-4 { width: 1rem; }
-.w-5 { width: 1.25rem; }
-.h-3 { height: 0.75rem; }
-.h-3\.5 { height: 0.875rem; }
-.h-4 { height: 1rem; }
-.h-5 { height: 1.25rem; }
-.text-xs { font-size: 0.75rem; line-height: 1rem; }
-.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
-.font-normal { font-weight: 400; }
-.font-semibold { font-weight: 600; }
-.bg-white { background-color: var(--surface-bg); }
-.bg-gray-100 { background-color: var(--surface-hover); }
-.bg-gray-200 { background-color: var(--border-color-light); }
-.text-gray-400 { color: var(--text-muted); }
-.text-gray-500 { color: var(--text-muted); }
-.text-gray-600 { color: #4b5563; }
-.text-gray-700 { color: var(--text-secondary); }
-/* Referenced by several field-options rows for actionable icon buttons
-   (rename/remove/derive-field). Previously undefined (dead classes, so
-   these hover color changes were silent no-ops) - defined here once so
-   every caller benefits. */
-.text-blue-500 { color: var(--color-accent); }
-.hover\:text-blue-600:hover { color: var(--color-accent-hover); }
-.hover\:text-blue-700:hover { color: var(--color-accent-hover); }
-.hover\:text-red-600:hover { color: var(--color-error); }
-/* Active-filter highlight (DropZonesGrid). Previously undefined (dead
-   classes) so the highlight was a silent no-op - defined here once. */
-.border-blue-500 { border-color: var(--color-accent); }
-.bg-blue-50 { background-color: var(--color-accent-subtle); }
-.border { border-width: 1px; }
-.border-b { border-bottom-width: 1px; }
-.border-r { border-right-width: 1px; }
-.border-gray-200 { border-color: var(--border-color-light); }
-.border-gray-300 { border-color: var(--border-color-medium); }
-.border-gray-400 { border-color: var(--border-color-dark); }
-.rounded { border-radius: 0.25rem; }
-.overflow-y-auto { overflow-y: auto; }
-.cursor-move { cursor: move; }
-.select-none { user-select: none; }
-.relative { position: relative; }
-.absolute { position: absolute; }
-.right-2 { right: 0.5rem; }
-.top-1\/2 { top: 50%; }
-.-translate-y-1\/2 { transform: translateY(-50%); }
-.inline-block { display: inline-block; }
-.align-middle { vertical-align: middle; }
-.inline-flex { display: inline-flex; }
-.space-y-1 > * + * { margin-top: 0.25rem; }
-
-/* Interactive states */
-.hover\:bg-gray-50:hover { background-color: var(--surface-subtle); }
-.hover\:bg-gray-100:hover { background-color: var(--surface-hover); }
-.hover\:text-gray-700:hover { color: var(--text-secondary); }
-.focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
-.focus\:border-blue-500:focus { border-color: var(--color-accent); }
-
-/* Additional spacing utilities */
-.h-1 { height: 0.25rem; }
-.bg-blue-500 { background-color: var(--color-accent); }
-.rounded-full { border-radius: 9999px; }
-.opacity-75 { opacity: 0.75; }
-.-my-0\.5 { margin-top: -0.125rem; margin-bottom: -0.125rem; }
 
 /* Custom drag/drop styles */
 .dragging {

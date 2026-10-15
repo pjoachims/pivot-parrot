@@ -7,6 +7,11 @@ interface ProgressIndicatorProps {
   maxTime?: number; // in milliseconds
 }
 
+/**
+ * Inline progress panel for a host that renders its own loading state:
+ * message, elapsed / limit, and a bar that moves to the warning and error
+ * colours as the limit nears.
+ */
 export function ProgressIndicator({ message, startTime, onCancel, maxTime }: ProgressIndicatorProps) {
   const [elapsed, setElapsed] = useState(0);
 
@@ -23,50 +28,31 @@ export function ProgressIndicator({ message, startTime, onCancel, maxTime }: Pro
   const progress = maxTime ? Math.min((elapsed / maxTime) * 100, 100) : null;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.content}>
-        {/* Spinner */}
-        <div
-          className="pp-spinner"
-          style={{ width: '40px', height: '40px', borderWidth: '4px', borderTopColor: 'var(--color-accent)' }}
-        ></div>
-
-        {/* Message */}
-        <div style={styles.message}>{message}</div>
-
-        {/* Time Display */}
-        <div style={styles.timeDisplay}>
-          <span style={styles.elapsed}>{elapsedSeconds}s</span>
-          {maxSeconds && (
-            <>
-              <span style={styles.separator}>/</span>
-              <span style={styles.max}>{maxSeconds}s</span>
-            </>
+    <div style={styles.container} role="status" aria-live="polite">
+      <div className="pp-dialog" style={styles.panel}>
+        <div className="pp-dialog-body" style={{ alignItems: 'center' }}>
+          <span className="pp-spinner" aria-hidden="true" style={{ width: 24, height: 24 }} />
+          <div style={styles.message}>{message}</div>
+          <div className="pp-readout">
+            <span>Elapsed</span>
+            <span>{elapsedSeconds}s{maxSeconds && ` / ${maxSeconds}s`}</span>
+          </div>
+          {progress !== null && (
+            <div style={styles.track} aria-hidden="true">
+              <div
+                style={{
+                  ...styles.bar,
+                  width: `${progress}%`,
+                  backgroundColor: progress > 90 ? 'var(--color-error)' : progress > 70 ? 'var(--color-warning)' : 'var(--color-accent)'
+                }}
+              />
+            </div>
           )}
         </div>
-
-        {/* Progress Bar (if maxTime provided) */}
-        {progress !== null && (
-          <div style={styles.progressBarContainer}>
-            <div
-              style={{
-                ...styles.progressBar,
-                width: `${progress}%`,
-                backgroundColor: progress > 90 ? 'var(--color-error)' : progress > 70 ? 'var(--color-warning)' : 'var(--color-accent)'
-              }}
-            />
-          </div>
-        )}
-
-        {/* Cancel Button */}
         {onCancel && (
-          <button
-            onClick={onCancel}
-            className="pp-danger-btn-hover"
-            style={styles.cancelButton}
-          >
-            Cancel
-          </button>
+          <div className="pp-dialog-footer">
+            <button onClick={onCancel} className="pp-btn">Cancel</button>
+          </div>
         )}
       </div>
     </div>
@@ -76,68 +62,28 @@ export function ProgressIndicator({ message, startTime, onCancel, maxTime }: Pro
 const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '32px',
-    color: 'var(--text-secondary)'
+    padding: 'var(--space-4)'
   },
-  content: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '16px',
-    background: 'var(--surface-bg)',
-    padding: '24px 32px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    minWidth: '280px'
+  panel: {
+    width: 320,
+    boxShadow: 'none'
   },
   message: {
-    fontSize: '14px',
-    fontWeight: 500,
+    fontSize: 'var(--text-md)',
+    fontWeight: 600,
     color: 'var(--text-primary)',
     textAlign: 'center'
   },
-  timeDisplay: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '4px',
-    fontSize: '13px',
-    fontFamily: 'ui-monospace, monospace'
-  },
-  elapsed: {
-    fontWeight: 600,
-    color: 'var(--color-accent)'
-  },
-  separator: {
-    color: 'var(--text-muted)'
-  },
-  max: {
-    color: 'var(--text-muted)'
-  },
-  progressBarContainer: {
+  track: {
     width: '100%',
-    height: '6px',
+    height: 4,
     background: 'var(--border-color-light)',
-    borderRadius: '3px',
     overflow: 'hidden'
   },
-  progressBar: {
+  bar: {
     height: '100%',
-    transition: 'width 0.1s ease-out, background-color 0.3s ease',
-    borderRadius: '3px'
-  },
-  cancelButton: {
-    marginTop: '8px',
-    padding: '6px 16px',
-    fontSize: '12px',
-    fontWeight: 500,
-    color: 'var(--color-error)',
-    background: 'var(--surface-bg)',
-    border: '1px solid var(--color-error)',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    transition: 'background 0.15s ease'
+    transition: 'width 0.1s ease-out, background-color 0.3s ease'
   }
 };

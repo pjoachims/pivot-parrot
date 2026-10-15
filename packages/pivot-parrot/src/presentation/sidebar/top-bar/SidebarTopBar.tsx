@@ -412,7 +412,7 @@ export function SidebarTopBar({
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {sqlHistory.map((entry, idx) => (
-                <SQLHistoryEntry key={idx} entry={entry} index={idx} />
+                <SQLHistoryEntry key={idx} entry={entry} />
               ))}
             </div>
           )}
