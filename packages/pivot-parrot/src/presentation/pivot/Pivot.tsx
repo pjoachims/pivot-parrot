@@ -59,6 +59,11 @@ const getNotificationStyle = (level = 'info') => ({
 const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotConfig }, ref) => {
   // Normalize config with defaults (useMemo because it's derived from props, not internal state)
   const cfg = useMemo(() => new NormalizedPivotConfig(pivotConfig), [pivotConfig]);
+  // Hosts often pass an inline config object, so `cfg` changes on every parent
+  // render. Effects that must not re-run then (init, callbacks) read it from here.
+  const cfgRef = useRef(cfg);
+  cfgRef.current = cfg;
+  const initialConfigAppliedRef = useRef(false);
 
   // ==================== ZUSTAND STATE ====================
   // Get instance key from context
@@ -222,10 +227,8 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Notify parent of config changes
   useEffect(() => {
-    if (cfg.onConfigChange) {
-      cfg.onConfigChange(config);
-    }
-  }, [config, cfg.onConfigChange]);
+    cfgRef.current.onConfigChange?.(config);
+  }, [config]);
 
   // Auto-commit config to executionConfig when autoUpdate is enabled
   // Only commit if initialization is complete (guards execution boundary)
@@ -282,6 +285,19 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // 3) Apply config (custom metrics validated against base fields)
   // 4) Set initComplete = true → queries can execute
   useEffect(() => {
+    const cfg = cfgRef.current;
+
+    // initialConfig seeds the first init only; a later engine or data change keeps the user's edits.
+    function applyInitialConfig() {
+      if (initialConfigAppliedRef.current) return;
+      initialConfigAppliedRef.current = true;
+      const initialConfig = cfg.getPivotTableConfig();
+      logger.debug('Initial config from cfg', { hasInitialConfig: !!initialConfig, initialConfig });
+      if (initialConfig) {
+        setConfig(initialConfig);
+      }
+    }
+
     async function _initLocalMode() {
       logger.debug('Starting local mode initialization', {
         hasData: !!cfg.data,
@@ -301,15 +317,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
         logger.debug('Data loaded successfully');
 
         // Step 3: Apply config now that base fields are available
-        const initialConfig = cfg.getPivotTableConfig();
-        logger.debug('Initial config from cfg', {
-          hasInitialConfig: !!initialConfig,
-          initialConfig
-        });
-        if (initialConfig) {
-          setConfig(initialConfig);
-          logger.debug('Config applied');
-        }
+        applyInitialConfig();
 
         // Step 4: Ready to execute queries (fields + config loaded)
         logger.debug('Setting initComplete = true');
@@ -362,14 +370,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
           // derivedFieldsMap is now computed automatically from availableFields via useMemo
 
           // Step 3: Apply config now that base fields are available
-          const initialConfig = cfg.getPivotTableConfig();
-          logger.debug('Initial config from cfg', {
-            hasInitialConfig: !!initialConfig,
-            initialConfig
-          });
-          if (initialConfig) {
-            setConfig(initialConfig);
-          }
+          applyInitialConfig();
 
           // Step 4: Ready to execute queries
           logger.debug('Setting initComplete = true');
@@ -401,7 +402,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
     } else {
       logger.warn('No initialization path - missing engines');
     }
-  }, [cfg.data, dataEngine, queryEngine, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig, cfg]);
+  }, [cfg.data, dataEngine, queryEngine, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig]);
 
 
   // Chart gracefully handles config changes via error handling in ChartView
