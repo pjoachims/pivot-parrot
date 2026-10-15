@@ -129,6 +129,8 @@ const snapshotStore = {
 
 To keep saved views in your own UI instead, hide the panel with `settings.showSnapshots: false` and use the ref. `getView()` returns the view a snapshot would hold now (plain JSON, `null` until the first query has run). `loadView(view)` restores one the way the panel does and throws on a version other than 1. Called before the pivot has finished loading, it waits until it has, and the last call wins, so loading `?view=<id>` right after mount works.
 
+To keep the panel next to your own UI, give the store a `subscribe(onChange)` that returns an unsubscribe and call `onChange` after your UI saved or deleted a view: the panel lists the store again.
+
 ```tsx
 import { Pivot, type PivotHandle, type PivotView } from 'pivot-parrot';
 
