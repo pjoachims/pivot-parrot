@@ -4,6 +4,7 @@ import { usePivotStore } from '../state/store';
 import { computeLeafColumns } from '../utils/columnHelpers';
 import { buildPivotCSV } from '../../application/utils/export';
 import { toRows } from '../utils/columnarResult';
+import { dataToCSV } from '../../domain/query/utils/csv';
 
 interface UsePivotHandlersProps {
   calculation: any;
@@ -180,21 +181,7 @@ export function usePivotHandlers({
 
       // 2. Add cube_results.csv
       if (calculation.cubeResults && calculation.cubeResults.length > 0) {
-        const headers = Object.keys(calculation.cubeResults[0]);
-        let cubeCSV = headers.join(',') + '\n';
-        calculation.cubeResults.forEach((row: any) => {
-          const values = headers.map(h => {
-            const val = row[h];
-            if (val === null || val === undefined) return '';
-            const str = String(val);
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-              return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-          });
-          cubeCSV += values.join(',') + '\n';
-        });
-        zip.file('cube_results.csv', cubeCSV);
+        zip.file('cube_results.csv', dataToCSV(calculation.cubeResults));
       }
 
       // 3. Add expected_output.csv
