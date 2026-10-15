@@ -109,6 +109,24 @@ import * as duckdb from '@duckdb/duckdb-wasm';
 <Pivot config={{ mode: 'local', duckdb, data: arrowBytes }} />
 ```
 
+### Saved snapshots
+
+A snapshot is a saved view: the pivot config, sort, chart, split and the open drilldown's filters, never the result data. Loading one re-runs its query, so the numbers are always current. By default snapshots live in memory for as long as the component does. Pass `snapshotStore` to keep them elsewhere, for example per user on your server. If a store call fails, the Snapshots panel shows the error and the pivot keeps working. Each view carries `v: 1`, so a stored view can be migrated when its shape changes.
+
+```jsx
+const snapshotStore = {
+  list: () => fetch('/api/views').then(r => r.json()),
+  save: (view) => fetch('/api/views', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(view),           // { id?, name, view }
+  }).then(r => r.json()),                 // -> { id, name, createdAt, view }
+  remove: (id) => fetch(`/api/views/${id}`, { method: 'DELETE' }).then(() => {}),
+};
+
+<Pivot config={{ mode: 'local', duckdb, data: arrowBytes, snapshotStore }} />
+```
+
 The [live demo](https://pjoachims.github.io/pivot-parrot/) is this component wrapped in a small shell ([`demo-app/`](demo-app)), deployed to GitHub Pages on every push to `main`.
 
 ## Features
@@ -119,7 +137,7 @@ The [live demo](https://pjoachims.github.io/pivot-parrot/) is this component wra
 - **Charts** — bar/line, scatter, treemap via Plotly (lazy-loaded, theme-aware)
 - **Local or remote** — DuckDB WASM in the browser, or your own warehouse via a two-method connection protocol
 - **Arrow end-to-end** — zero-copy columnar data transfer between Python and the browser
-- **Snapshots & export** — save pivot states, export to CSV
+- **Snapshots & export** — save views (in memory or in your own store), export to CSV
 
 ## Packages
 
