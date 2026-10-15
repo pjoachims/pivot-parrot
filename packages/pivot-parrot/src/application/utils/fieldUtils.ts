@@ -4,8 +4,7 @@
  */
 
 import { generateUniqueId } from './nameGenerator';
-import { CustomMetric, CustomFilter, CustomGrouping } from '../../domain/models/types';
-import { getArrowType } from '../../domain/types/ArrowTypes';
+import { CustomMetric, CustomFilter, CustomGrouping, SIGMA_VALUES_ID } from '../../domain/models/types';
 export { lookupField, getFieldSQL, fieldExists, getFieldLabel, createFieldLookup } from './lookupField';
 
 type CustomExpression = CustomMetric | CustomFilter | CustomGrouping;
@@ -28,7 +27,7 @@ export function isFieldUsed(fieldName, config) {
          config.columns.some(f => getFieldId(f) === fieldName) ||
          config.rows.some(f => getFieldId(f) === fieldName) ||
          config.values.some(v => getFieldId(v.field) === fieldName) ||
-         (fieldName === 'Σ Values' && (config.rows.some(f => getFieldId(f) === 'Σ Values') || config.columns.some(f => getFieldId(f) === 'Σ Values')));
+         (fieldName === SIGMA_VALUES_ID && (config.rows.some(f => getFieldId(f) === SIGMA_VALUES_ID) || config.columns.some(f => getFieldId(f) === SIGMA_VALUES_ID)));
 }
 
 /**
@@ -101,7 +100,7 @@ export function filterAvailableFields(availableFields, derivedFieldsMap, searchQ
   const allDerivedFields = Object.values(derivedFieldsMap).flat();
   const filtered = availableFields.filter(field => {
     const fieldId = typeof field === 'string' ? field : field.id;
-    return fieldId !== 'Σ Values' && !allDerivedFields.includes(fieldId);
+    return fieldId !== SIGMA_VALUES_ID && !allDerivedFields.includes(fieldId);
   });
 
   if (!searchQuery.trim()) {
@@ -272,11 +271,11 @@ export function updateCustomMetric(config, expressionId, name, formula, format, 
 
   return {
     ...config,
-    [configKey]: (config[configKey] || []).map(m =>
-      m.id === expressionId
-        ? { ...m, name, expr: formula, ...(type === 'metric' && format ? { format } : {}) }
-        : m
-    )
+    [configKey]: (config[configKey] || []).map(m => {
+      if (m.id !== expressionId) return m;
+      const { format: _cleared, ...rest } = m;
+      return { ...rest, name, expr: formula, ...(type === 'metric' && format ? { format } : {}) };
+    })
   };
 }
 
@@ -318,55 +317,6 @@ export function deleteCustomMetric(config, metricId) {
 }
 
 /**
- * Handle field checkbox toggle (add/remove from zones)
- */
-export function toggleFieldUsage(fieldName, checked, config, detectedTypes) {
-  let newConfig = { ...config };
-  if (checked) {
-    // Add to Values zone with smart default aggregation
-    if (!config.values.some(v => getFieldId(v.field) === fieldName)) {
-      const fieldTypeName = detectedTypes[fieldName]; // e.g., 'int64', 'decimal<35,19>'
-      const fieldTypeInfo = getArrowType(fieldTypeName); // Handles parameterized types like decimal<35,19>
-      const defaultAgg = fieldTypeInfo?.isNumeric ? 'Sum' : 'Count';
-      newConfig.values = [...config.values, { field: fieldName, aggregation: defaultAgg }];
-    }
-  } else {
-    // Remove from all zones
-    newConfig.filters = config.filters.filter(f => getFieldId(f) !== fieldName);
-    newConfig.columns = config.columns.filter(f => getFieldId(f) !== fieldName);
-    newConfig.rows = config.rows.filter(f => getFieldId(f) !== fieldName);
-    newConfig.values = config.values.filter(v => getFieldId(v.field) !== fieldName);
-  }
-  return newConfig;
-}
-
-/**
- * Handle custom metric checkbox toggle (add/remove from Values only)
- */
-export function toggleCustomMetricUsage(metricId, checked, config) {
-  if (checked) {
-    // Add to Values zone (store only ID reference)
-    return {
-      ...config,
-      values: [
-        ...config.values,
-        {
-          field: metricId,
-          aggregation: 'custom',
-          isCustom: true
-        }
-      ]
-    };
-  } else {
-    // Remove from Values zone (but keep in customMetrics)
-    return {
-      ...config,
-      values: config.values.filter(v => getFieldId(v.field) !== metricId)
-    };
-  }
-}
-
-/**
  * Auto-manage Σ Values field based on number of value fields
  *
  * Rules:
@@ -377,18 +327,18 @@ export function toggleCustomMetricUsage(metricId, checked, config) {
  */
 export function autoManageValuesField(config: any) {
   const hasMultipleValues = config.values.length >= 2;
-  const hasValuesInRows = config.rows.some((f: any) => getFieldId(f) === 'Σ Values');
-  const hasValuesInCols = config.columns.some((f: any) => getFieldId(f) === 'Σ Values');
+  const hasValuesInRows = config.rows.some((f: any) => getFieldId(f) === SIGMA_VALUES_ID);
+  const hasValuesInCols = config.columns.some((f: any) => getFieldId(f) === SIGMA_VALUES_ID);
 
   let newConfig = { ...config };
 
   if (hasMultipleValues && !hasValuesInRows && !hasValuesInCols) {
     // Auto-inject to columns at the end
-    newConfig.columns = [...config.columns, 'Σ Values'];
+    newConfig.columns = [...config.columns, SIGMA_VALUES_ID];
   } else if (!hasMultipleValues && (hasValuesInRows || hasValuesInCols)) {
     // Auto-remove when only 1 or 0 value fields
-    newConfig.rows = config.rows.filter((f: any) => getFieldId(f) !== 'Σ Values');
-    newConfig.columns = config.columns.filter((f: any) => getFieldId(f) !== 'Σ Values');
+    newConfig.rows = config.rows.filter((f: any) => getFieldId(f) !== SIGMA_VALUES_ID);
+    newConfig.columns = config.columns.filter((f: any) => getFieldId(f) !== SIGMA_VALUES_ID);
   }
 
   return newConfig;

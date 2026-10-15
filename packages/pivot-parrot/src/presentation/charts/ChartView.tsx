@@ -95,7 +95,7 @@ const WarningIcon = () => (
   </svg>
 );
 
-export default function ChartView({ chartConfig, cubeResults, config, fields, dialect, dtypes }) {
+export default function ChartView({ chartConfig, cubeResults, config, fields, dialect, dtypes, locale = 'en-US' }) {
   // Read from store
   const activeView = usePivotStore((s) => s.activeView);
   const secondaryDisplayMode = usePivotStore((s) => s.secondaryDisplayMode);
@@ -236,16 +236,16 @@ export default function ChartView({ chartConfig, cubeResults, config, fields, di
       let chartData, layout;
 
       if (chartConfig.chartType === 'scatter') {
-        const result = transformScatterChart(preparedData, chartConfig);
+        const result = transformScatterChart(preparedData, chartConfig, locale);
         chartData = result.traces;
         layout = result.layout;
       } else if (chartConfig.chartType === 'treemap') {
-        const result = transformTreemapChart(preparedData, chartConfig);
+        const result = transformTreemapChart(preparedData, chartConfig, locale);
         chartData = result.traces;
         layout = result.layout;
       } else {
         // Default: bar-line
-        const result = transformBarLineChart(preparedData, chartConfig);
+        const result = transformBarLineChart(preparedData, chartConfig, locale);
         chartData = result.traces;
         layout = result.layout;
       }
@@ -290,7 +290,7 @@ export default function ChartView({ chartConfig, cubeResults, config, fields, di
         plotlyRef.current.purge(chartRef.current);
       }
     }
-  }, [chartConfig, cubeResults, config, plotlyLoaded, themeVersion]);
+  }, [chartConfig, cubeResults, config, plotlyLoaded, themeVersion, locale]);
 
   // Cleanup on unmount
   useEffect(() => {

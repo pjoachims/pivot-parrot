@@ -9,60 +9,42 @@ import { buildRowTree } from './rowBuilder';
 import { populateNodeValues } from './valuePopulator';
 import { buildCubeIndex, createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
 import { profiler } from '../query/utils/profiler';
+import { SIGMA_VALUES_ID } from '../models/types';
 
 /**
- * Sort row tree recursively by a value field
- * Each level is sorted independently based on its values
- *
- * @param {Array<Object>} nodes - Row tree nodes
- * @param {Object} sortConfig - { valueKey: string, direction: 'asc' | 'desc' }
- * @param {Array<Object>} columnOutline - Column outline to find value index
- * @param {Object} dtypes - Column name → engine type name mapping
+ * Sort each level of the row tree by one value, in place. `sortValue` gives a
+ * node's total for that value (all columns aggregated). The level of metric rows
+ * (Σ Values in rows, `metricDepth`) keeps the order of the Values zone.
  */
-function sortRowTree(nodes, sortConfig, columnOutline, dtypes = {}) {
-  const { valueKey, direction } = sortConfig;
+function sortRowTree(nodes, direction, sortValue, metricDepth) {
+  if (nodes.length > 0 && nodes[0].depth !== metricDepth) {
+    nodes.sort((a, b) => {
+      const aVal = sortValue(a);
+      const bVal = sortValue(b);
 
-  // Find the grand total column for this value
-  // Grand total column has empty path (no dimensions)
-  const valueColIndex = columnOutline.findIndex(col =>
-    col.metric === valueKey && col.path.length === 0
-  );
+      // Missing values go to the end
+      if ((aVal === null || aVal === undefined) && (bVal === null || bVal === undefined)) return 0;
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
 
-  if (valueColIndex === -1) {
-    return;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        const diff = aVal - bVal;
+        return direction === 'asc' ? diff : -diff;
+      }
+
+      if (typeof aVal === 'bigint' && typeof bVal === 'bigint') {
+        return direction === 'asc' ? (aVal < bVal ? -1 : aVal > bVal ? 1 : 0) : (bVal < aVal ? -1 : bVal > aVal ? 1 : 0);
+      }
+
+      const strA = String(aVal);
+      const strB = String(bVal);
+      return direction === 'asc' ? strA.localeCompare(strB, undefined, { numeric: true }) : strB.localeCompare(strA, undefined, { numeric: true });
+    });
   }
 
-  // Sort nodes array in place
-  nodes.sort((a, b) => {
-    // Get the raw value for this column from each node.
-    // Use subtotals if available (for parent nodes), otherwise use values (for leaf nodes)
-    const aVal = a.subtotals?.[valueColIndex] ?? a.values?.[valueColIndex];
-    const bVal = b.subtotals?.[valueColIndex] ?? b.values?.[valueColIndex];
-
-    // Handle null/undefined values - push them to the end
-    if (aVal === null || aVal === undefined) return 1;
-    if (bVal === null || bVal === undefined) return -1;
-
-    // Direct comparison on raw values (works for numbers, BigInt, strings)
-    if (typeof aVal === 'number' && typeof bVal === 'number') {
-      const diff = aVal - bVal;
-      return direction === 'asc' ? diff : -diff;
-    }
-
-    if (typeof aVal === 'bigint' && typeof bVal === 'bigint') {
-      return direction === 'asc' ? (aVal < bVal ? -1 : aVal > bVal ? 1 : 0) : (bVal < aVal ? -1 : bVal > aVal ? 1 : 0);
-    }
-
-    // Otherwise use string comparison with numeric awareness
-    const strA = String(aVal);
-    const strB = String(bVal);
-    return direction === 'asc' ? strA.localeCompare(strB, undefined, { numeric: true }) : strB.localeCompare(strA, undefined, { numeric: true });
-  });
-
-  // Recursively sort children
   nodes.forEach(node => {
     if (node.children && node.children.length > 0) {
-      sortRowTree(node.children, sortConfig, columnOutline, dtypes);
+      sortRowTree(node.children, direction, sortValue, metricDepth);
     }
   });
 }
@@ -89,12 +71,12 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
     }
 
     // Determine where Values appear
-    const rowValuesIndex = rowFields.indexOf('Σ Values');
-    const colValuesIndex = colFields.indexOf('Σ Values');
+    const rowValuesIndex = rowFields.indexOf(SIGMA_VALUES_ID);
+    const colValuesIndex = colFields.indexOf(SIGMA_VALUES_ID);
     const valuesInRows = rowValuesIndex !== -1;
 
-    const actualRowFields = rowFields.filter(f => f !== 'Σ Values');
-    const actualColFields = colFields.filter(f => f !== 'Σ Values');
+    const actualRowFields = rowFields.filter(f => f !== SIGMA_VALUES_ID);
+    const actualColFields = colFields.filter(f => f !== SIGMA_VALUES_ID);
 
     // Build hash index for O(1) lookups (order-independent)
     const allFields = [...actualRowFields, ...actualColFields];
@@ -155,8 +137,13 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
 
     // 3b. Sort row tree if sortConfig is provided
     if (sortConfig && sortConfig.valueKey) {
+      const sortValue = node => {
+        const dimPath = valuesInRows ? node.path.filter((_, i) => i !== rowValuesIndex) : node.path;
+        const hash = createCellHash(dimPath, actualRowFields, [], actualColFields);
+        return lookupCubeValue(cubeIndex, hash, sortConfig.valueKey);
+      };
       profiler.profile('sortRowTree', () =>
-        sortRowTree(rowTree, sortConfig, columnOutline, dtypes)
+        sortRowTree(rowTree, sortConfig.direction, sortValue, rowValuesIndex)
       );
     }
 

@@ -16,6 +16,7 @@ import { buildFieldItemFilters } from './sql-builder';
 import { buildFilter } from './filters';
 import type { FieldItem } from '../../field/FieldItem';
 import { getFieldById } from '../../field/getFieldById';
+import { resolveFieldExpr } from '../../field/resolveFieldExpr';
 import { FieldKind } from '../../models/types';
 import type { PivotTableConfig } from '../../models/types';
 
@@ -49,12 +50,6 @@ export interface BuildPivotSQLOptions {
 export interface BuildPivotSQLResult {
   /** The generated SQL string */
   sql: string;
-
-  /** Whether HAVING filters are present (may affect subtotals) */
-  hasHavingFilters: boolean;
-
-  /** The enriched config used for SQL generation */
-  enrichedConfig: PivotTableConfig;
 }
 
 
@@ -112,19 +107,21 @@ function buildFilters(
 
       if (isHaving) {
         let fieldExpr: string;
+        // The metric's current formula: the filter's copy dates from when it was added.
+        const formula = fieldItem?.formula ?? f.formula;
 
-        if (f.formula) {
-          fieldExpr = f.formula;
+        if (formula) {
+          fieldExpr = formula;
         } else if (f.aggregation && f.sourceField) {
-          const quotedField = dialect.quoteIdentifier(f.sourceField);
-          fieldExpr = dialect.getAggregation(f.aggregation.toLowerCase(), quotedField);
+          fieldExpr = dialect.aggregate(f.aggregation, resolveFieldExpr(f.sourceField, availableFields, config, dialect));
         } else {
           throw new Error(`HAVING filter missing enriched data: ${JSON.stringify(f)}`);
         }
 
         const sqlExpr = buildFilter({
           ...f,
-          field: fieldExpr
+          field: fieldExpr,
+          dtype: fieldItem?.dtype
         }).toSQL(dialect, false);
 
         if (sqlExpr) {
@@ -177,12 +174,9 @@ export function buildPivotSQL(options: BuildPivotSQLOptions): BuildPivotSQLResul
     availableFields
   );
 
-  // Step 3: Create enriched config
-  const enrichedConfig = { ...config, values: enrichedValues };
-
-  // Step 4: Generate SQL
+  // Step 3: Generate SQL
   const sql = buildCubeSQL(
-    enrichedConfig,
+    { ...config, values: enrichedValues },
     whereFilters,
     detectedTypes,
     tableName,
@@ -192,11 +186,7 @@ export function buildPivotSQL(options: BuildPivotSQLOptions): BuildPivotSQLResul
     disableSubtotals
   );
 
-  return {
-    sql,
-    hasHavingFilters: havingFilters.length > 0,
-    enrichedConfig
-  };
+  return { sql };
 }
 
 /**

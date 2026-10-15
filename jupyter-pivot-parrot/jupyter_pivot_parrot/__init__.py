@@ -7,6 +7,8 @@ import uuid
 import anywidget
 from traitlets import Bool, Bytes, Dict, Int, List, Unicode
 
+from .sql_guard import ensure_safe_query
+
 
 def _table_to_arrow_bytes(table):
     """Serialize a PyArrow table to Arrow IPC stream bytes."""
@@ -84,7 +86,7 @@ def _schema_fields(table):
     return [{"name": field.name, "type": str(field.type)} for field in table.schema]
 
 
-def _build_initial_config(rows, columns, values, custom_metrics, custom_filters, custom_groupings, active_filters):
+def _build_initial_config(rows, columns, values, custom_metrics, custom_filters, custom_groupings, active_filters, field_name_overrides=None):
     """Build initial config object."""
     return {
         "config": {
@@ -95,6 +97,7 @@ def _build_initial_config(rows, columns, values, custom_metrics, custom_filters,
             "customMetrics": custom_metrics or [],
             "customFilters": custom_filters or [],
             "customGroupings": custom_groupings or [],
+            "fieldNameOverrides": field_name_overrides or {},
         }
     }
 
@@ -109,6 +112,9 @@ class PivotParrot(anywidget.AnyWidget):
         Data for local in-browser DuckDB WASM computation.
     connection : object, optional
         Remote database connection with execute_query(sql, timeout=None).
+        It only ever receives a single SELECT over the source (sql_guard);
+        outside the 'duckdb' dialect that check is textual, so connect as a
+        principal that can read the source and nothing else.
     query : str, optional
         Remote source query.
     table : str, optional
@@ -137,6 +143,10 @@ class PivotParrot(anywidget.AnyWidget):
         Initial auto-update setting. Default: True.
     auto_execute : bool, optional
         Auto-select first numeric field with sum aggregation. Default: False.
+    locale : str, optional
+        BCP 47 locale for numbers, dates and CSV export, e.g. 'de-DE'. Default: 'en-US'.
+    field_name_overrides : dict of str to str, optional
+        Display names by field id, e.g. {'revenue': 'Umsatz'}. Default: none.
     """
 
     _esm = pathlib.Path(__file__).parent / "static" / "widget.js"
@@ -151,6 +161,7 @@ class PivotParrot(anywidget.AnyWidget):
     auto_execute = Bool(False).tag(sync=True)
     enable_sql_playground = Bool(True).tag(sync=True)
     dialect = Unicode("duckdb").tag(sync=True)
+    locale = Unicode("en-US").tag(sync=True)
     mode = Unicode("local").tag(sync=True)
     fields = List(Dict(), default_value=[]).tag(sync=True)
     sample_data = Bytes(b"").tag(sync=True)
@@ -170,6 +181,7 @@ class PivotParrot(anywidget.AnyWidget):
         custom_filters=None,
         custom_groupings=None,
         active_filters=None,
+        field_name_overrides=None,
         pivot_timeout=60,
         **kwargs,
     ):
@@ -189,12 +201,15 @@ class PivotParrot(anywidget.AnyWidget):
             custom_filters,
             custom_groupings,
             active_filters,
+            field_name_overrides,
         )
         kwargs.setdefault("config", kwargs["initial_config"]["config"])
         kwargs["pivot_timeout"] = pivot_timeout
 
         self._connection = None
         self._base_query = None
+        # The dialect traitlet syncs from the browser; the guard must not trust it
+        self._guard_dialect = kwargs.get("dialect", "duckdb")
 
         if is_local:
             kwargs["mode"] = "local"
@@ -243,7 +258,9 @@ class PivotParrot(anywidget.AnyWidget):
             if self._connection is None or self._base_query is None:
                 raise ValueError("Remote connection is not configured")
 
-            sql = _wrap_pivot_data_query(content.get("sql", ""), self._base_query)
+            sql = content.get("sql", "")
+            ensure_safe_query(sql, self._guard_dialect)
+            sql = _wrap_pivot_data_query(sql, self._base_query)
             result = _execute_query(self._connection, sql, timeout=content.get("timeout"))
             self.send(
                 {"type": "query_result", "requestId": request_id, "status": "success"},

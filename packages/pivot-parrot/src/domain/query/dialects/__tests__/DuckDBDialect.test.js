@@ -75,8 +75,8 @@ describe('DuckDBDialect', () => {
   });
 
   describe('DuckDB-Specific Operators', () => {
-    it('should use REGEXP_MATCHES for regex operator', () => {
-      expect(dialect.operators.regex).toBe('REGEXP_MATCHES');
+    it('should use regexp_matches() for regex', () => {
+      expect(dialect.getFunction('regex_match', 'r', "'^A'")).toBe("regexp_matches(r, '^A')");
     });
   });
 
@@ -138,7 +138,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (status = 'deleted')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status = 'deleted') OR status IS NULL)");
     });
 
     it('should escape single quotes in values', () => {
@@ -171,7 +171,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("status NOT IN ('cancelled', 'refunded')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status IN ('cancelled', 'refunded')) OR status IS NULL)");
     });
 
     it('should escape values with single quotes', () => {
@@ -228,7 +228,7 @@ describe('DuckDBDialect', () => {
         betweenEnd: 100
       });
 
-      expect(filter.toSQL(dialect)).toBe("price BETWEEN '10' AND '100'");
+      expect(filter.toSQL(dialect)).toBe("price BETWEEN 10 AND 100");
     });
 
     it('should quote field names with special characters using double quotes', () => {
@@ -239,7 +239,7 @@ describe('DuckDBDialect', () => {
         betweenEnd: 5000
       });
 
-      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN \'1000\' AND \'5000\'');
+      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN 1000 AND 5000');
     });
   });
 
@@ -251,7 +251,7 @@ describe('DuckDBDialect', () => {
         value: 'premium'
       });
 
-      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '!'");
     });
 
     it('should generate NOT LIKE when isNot is true', () => {
@@ -262,7 +262,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("notes NOT LIKE '%test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '!') OR notes IS NULL)");
     });
 
     it('should escape single quotes in value', () => {
@@ -272,7 +272,7 @@ describe('DuckDBDialect', () => {
         value: "it's"
       });
 
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '!'");
     });
   });
 
@@ -284,7 +284,7 @@ describe('DuckDBDialect', () => {
         value: 'John'
       });
 
-      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '!'");
     });
 
     it('should support NOT variant', () => {
@@ -295,7 +295,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("email NOT LIKE 'test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '!') OR email IS NULL)");
     });
   });
 
@@ -307,7 +307,7 @@ describe('DuckDBDialect', () => {
         value: '@example.com'
       });
 
-      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '!'");
     });
 
     it('should support NOT variant', () => {
@@ -318,7 +318,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("filename NOT LIKE '%.tmp' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '!') OR filename IS NULL)");
     });
   });
 

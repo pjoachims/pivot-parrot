@@ -5,6 +5,7 @@
 
 import { buildFieldItemFilters } from '../../domain/query/sql/sql-builder';
 import { lookupField } from '../utils/lookupField';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 export interface DimensionFilter {
   field: string;
@@ -99,7 +100,7 @@ function buildRowFilters(
 
   rowFields.forEach((field, index) => {
     const fieldName = extractFieldName(field);
-    if (fieldName === 'Σ Values' || node.path[index] === undefined) return;
+    if (fieldName === SIGMA_VALUES_ID || node.path[index] === undefined) return;
 
     const sqlExpr = getDerivedFieldSQL(fieldName, availableFields, derivedFieldsMap, config);
     const sourceField = getSourceField(fieldName, derivedFieldsMap);
@@ -134,7 +135,7 @@ function buildColumnFilters(
 
   colFields.forEach((field, index) => {
     const fieldName = extractFieldName(field);
-    if (fieldName === 'Σ Values' || leaf.path[index] === undefined) return;
+    if (fieldName === SIGMA_VALUES_ID || leaf.path[index] === undefined) return;
 
     const sqlExpr = getDerivedFieldSQL(fieldName, availableFields, derivedFieldsMap, config);
     const sourceField = getSourceField(fieldName, derivedFieldsMap);

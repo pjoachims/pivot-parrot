@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { setLevelExpansion, expandAll, collapseAll, toggleFieldLevel } from '../utils/treeOperations';
+import { setLevelExpansion, expandAll, collapseAll, toggleFieldLevel, pruneExpanded } from '../utils/treeOperations';
 
 interface TreeNode {
   children?: TreeNode[];
@@ -14,24 +14,24 @@ interface TreeNode {
 interface UseExpansionStateProps {
   data: { rowGroups: TreeNode[] };
   rowFields?: string[];
-  onToggleGroup?: (path: number[], isExpanded: boolean) => void;
 }
 
-export function useExpansionState({ data, rowFields, onToggleGroup }: UseExpansionStateProps) {
+export function useExpansionState({ data, rowFields }: UseExpansionStateProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [fieldExpanded, setFieldExpanded] = useState<Record<string, boolean>>({});
 
+  const [prevRowGroups, setPrevRowGroups] = useState(data.rowGroups);
+  if (prevRowGroups !== data.rowGroups) {
+    setPrevRowGroups(data.rowGroups);
+    setExpanded(prev => pruneExpanded(data.rowGroups, prev));
+  }
+
   /**
-   * Toggle a single node by path
+   * Toggle a single node by its row key (see rowKey)
    */
-  const toggle = useCallback((path: number[]) => {
-    const key = path.join('-');
-    setExpanded(prev => {
-      const newValue = !prev[key];
-      onToggleGroup?.(path, newValue);
-      return { ...prev, [key]: newValue };
-    });
-  }, [onToggleGroup]);
+  const toggle = useCallback((key: string) => {
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   /**
    * Toggle all nodes at a specific field level

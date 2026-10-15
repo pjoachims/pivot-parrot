@@ -9,6 +9,7 @@ import { buildChartData } from '../../src/presentation/charts/chartUtils';
 import { transformBarLineChart } from '../../src/presentation/charts/BarLineChart';
 import { buildPivotDisplayData } from '../../src/domain/pivot/index';
 import { buildPivotCSV } from '../../src/application/utils/export';
+import { computeLeafColumns } from '../../src/application/utils/columnHelpers';
 
 const CASES_DIR = join(__dirname, 'cases');
 const dialect = new DuckDBDialect();
@@ -147,13 +148,13 @@ describe('Pivot E2E', () => {
             dtypes
           );
 
-          // Get leaf columns from column outline
-          const leafCols = displayData._columnOutline || [];
+          // The leaf columns the app exports with (PivotDisplayHeader)
+          const leafCols = computeLeafColumns(displayData);
 
           const csv = buildPivotCSV(
             displayData,
             leafCols,
-            rowFields.filter((f: string) => f !== 'Σ Values'),
+            rowFields,
             false, // showRowSubtotals
             false, // showGrandTotal
             input.config

@@ -3,6 +3,10 @@
  */
 
 import { isUngrouped, isGrouped, buildCubeIndex } from '../../application/utils/cubeIndex';
+import { valueDisplayName } from '../../domain/field/fieldDisplayName';
+import { resolveFormat } from '../../application/utils/formatters';
+import type { ValueFormat } from '../../domain/models/types';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 // ==================== Type Definitions ====================
 
@@ -63,21 +67,9 @@ interface ChartConfig {
 interface ValueConfig {
   field: string;
   aggregation: string;
-  format?: MetricFormat | string;
+  format?: ValueFormat | string;
   isCustom?: boolean;
   name?: string;
-}
-
-/**
- * Metric format configuration
- */
-interface MetricFormat {
-  type?: 'numeric' | 'currency' | 'percentage' | 'auto';
-  decimals?: number;
-  currency?: string;
-  useThousandSeparator?: boolean;
-  prefix?: string;
-  suffix?: string;
 }
 
 /**
@@ -87,7 +79,7 @@ interface CustomMetric {
   id: string;
   name: string;
   expr: string;
-  format?: MetricFormat;
+  format?: ValueFormat;
 }
 
 /**
@@ -98,6 +90,7 @@ interface PivotConfig {
   columns: string[];
   values: ValueConfig[];
   customMetrics?: CustomMetric[];
+  fieldNameOverrides?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -495,7 +488,7 @@ export function buildChartData(
   // Get all pivot dimensions
   const allDimensions = [...(config.rows || []), ...(config.columns || [])]
     .map(normalizeField)
-    .filter(dim => dim !== 'Σ Values');
+    .filter(dim => dim !== SIGMA_VALUES_ID);
 
   // Build cubeIndex if not present (needed for treemap)
   let cubeIndex = (sqlRows as CubeRow[] & { _cubeIndex?: Map<string, CubeRow> })._cubeIndex;
@@ -573,52 +566,59 @@ export function getMetricLabel(field: string, config: PivotConfig): string {
     throw new Error(`Metric not found: ${field}`);
   }
 
-  if (valueConfig.isCustom) {
-    // Look up display name from customMetrics
-    const customMetric = config.customMetrics?.find(m => m.id === field);
-    return customMetric?.name || valueConfig.name || field;
-  }
-
-  return `${valueConfig.aggregation} of ${field}`;
+  return valueDisplayName(valueConfig, config);
 }
 
 /**
- * Get format string for a metric (respects custom formats)
- * Converts format object {type, decimals, currency, useThousandSeparator} to d3-format string
+ * A metric's Plotly format: a d3 format plus the literal text around the number
+ * (d3's own `$` is always a dollar, so currency symbols travel as affixes).
  */
-export function getMetricFormat(field: string, config: PivotConfig): string {
-  const valueField = config.values.find(v => v.field === field);
-  let format = valueField?.format;
+export interface PlotlyMetricFormat {
+  d3: string;
+  prefix: string;
+  suffix: string;
+}
 
-  // Check custom metrics for format
-  if (!format && config.customMetrics) {
-    format = config.customMetrics.find(m => m.id === field)?.format;
-  }
+function currencyAffixes(currency: string, locale: string): { prefix: string; suffix: string } {
+  const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(1);
+  const isNumber = (p: Intl.NumberFormatPart) => p.type === 'integer' || p.type === 'decimal' || p.type === 'fraction';
+  const first = parts.findIndex(isNumber);
+  const last = parts.length - 1 - [...parts].reverse().findIndex(isNumber);
+  const text = (ps: Intl.NumberFormatPart[]) => ps.map(p => p.value).join('');
+  return { prefix: text(parts.slice(0, first)), suffix: text(parts.slice(last + 1)) };
+}
 
-  // If format is an object, convert to d3-format string
-  if (format && typeof format === 'object') {
-    const { type, decimals = 2, currency = 'USD', useThousandSeparator = true } = format;
-    const dec = parseInt(String(decimals)) || 0;
-    const sep = useThousandSeparator ? ',' : '';
+/** Plotly layout.separators (decimal char, then group char) for a locale. */
+export function plotlySeparators(locale = 'en-US'): string {
+  // 1234567.5, not 1234.5: some locales (es-ES) don't group four-digit numbers
+  const parts = new Intl.NumberFormat(locale).formatToParts(1234567.5);
+  const char = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  return char('decimal') + char('group');
+}
 
-    switch (type) {
-      case 'numeric':
-        return `${sep}.${dec}f`;
-      case 'currency':
-        return `$${sep}.${dec}f`;
-      case 'percentage':
-        return `${sep}.${dec}%`;
-      case 'auto':
-      default:
-        return `${sep}.${dec}f`;
-    }
-  }
+/** Axis properties that show a metric's ticks in its format. */
+export function metricAxisFormat({ d3, prefix, suffix }: PlotlyMetricFormat) {
+  return { tickformat: d3, tickprefix: prefix, ticksuffix: suffix };
+}
 
-  // If format is already a string, use it as-is
-  if (typeof format === 'string') {
-    return format;
-  }
+/** A hovertemplate placeholder (e.g. `y`, `value`) rendered in a metric's format. */
+export function hoverValue(variable: string, { d3, prefix, suffix }: PlotlyMetricFormat): string {
+  return `${prefix}%{${variable}:${d3}}${suffix}`;
+}
 
-  // Default: 2 decimal places with thousand separators
-  return ',.2f';
+/**
+ * Plotly format for a metric, derived from its ValueFormat with the same defaults
+ * as the table (application/utils/formatters.ts resolveFormat).
+ */
+export function getMetricFormat(field: string, config: PivotConfig, locale = 'en-US'): PlotlyMetricFormat {
+  const format = config.values.find(v => v.field === field)?.format
+    ?? config.customMetrics?.find(m => m.id === field)?.format;
+
+  if (typeof format === 'string') return { d3: format, prefix: '', suffix: '' };
+  if (!format) return { d3: ',.2f', prefix: '', suffix: '' };
+
+  const { type, decimals, grouping, currency } = resolveFormat(format);
+  const d3 = `${grouping ? ',' : ''}.${decimals}${type === 'percentage' ? '%' : 'f'}`;
+  const affixes = type === 'currency' ? currencyAffixes(currency, locale) : { prefix: '', suffix: '' };
+  return { d3, ...affixes };
 }

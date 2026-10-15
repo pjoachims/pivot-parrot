@@ -180,3 +180,21 @@ def test_cancel_request_calls_connection_cancel():
     assert result == request
     assert rerun.call_count == 0
     wrapped_connection.cancel_query.assert_called_once_with()
+
+
+def test_locale_and_field_name_overrides_reach_the_component():
+    from streamlit_pivot_parrot import pivot_table
+
+    schema_result = {'fields': [{'name': 'region', 'type': 'string'}], 'sampleData': 'encoded-sample'}
+    calls = []
+    with patch('streamlit_pivot_parrot.remote_backend.get_schema_and_cache', return_value=schema_result), \
+         patch('streamlit_pivot_parrot._component_func', side_effect=lambda **kw: calls.append(kw)), \
+         patch('streamlit.session_state', SessionState(), create=True):
+        pivot_table(connection=MockConnection(), query='SELECT * FROM sales', key='remote',
+                    locale='de-DE', field_name_overrides={'region': 'Region'})
+        pivot_table(data=pd.DataFrame({'region': ['North']}), key='local',
+                    locale='de-DE', field_name_overrides={'region': 'Region'})
+
+    for call in calls:
+        assert call['componentConfig']['locale'] == 'de-DE'
+        assert call['initial_config']['config']['fieldNameOverrides'] == {'region': 'Region'}

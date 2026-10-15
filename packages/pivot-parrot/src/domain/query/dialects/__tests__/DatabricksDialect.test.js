@@ -73,8 +73,8 @@ describe('DatabricksDialect', () => {
   });
 
   describe('Databricks-Specific Operators', () => {
-    it('should use RLIKE for regex operator', () => {
-      expect(dialect.operators.regex).toBe('RLIKE');
+    it('should use RLIKE for regex', () => {
+      expect(dialect.getFunction('regex_match', 'r', "'^A'")).toBe("r RLIKE '^A'");
     });
   });
 
@@ -138,7 +138,7 @@ describe('DatabricksDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (status = 'deleted')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status = 'deleted') OR status IS NULL)");
     });
 
     it('should escape single quotes in values', () => {
@@ -148,7 +148,7 @@ describe('DatabricksDialect', () => {
         value: "O'Brien"
       });
 
-      expect(filter.toSQL(dialect)).toBe("name = 'O''Brien'");
+      expect(filter.toSQL(dialect)).toBe("name = 'O\\'Brien'");
     });
   });
 
@@ -171,7 +171,7 @@ describe('DatabricksDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("status NOT IN ('cancelled', 'refunded')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status IN ('cancelled', 'refunded')) OR status IS NULL)");
     });
 
     it('should escape values with single quotes', () => {
@@ -181,7 +181,7 @@ describe('DatabricksDialect', () => {
         selectedValues: ["O'Reilly", "D'Angelo"]
       });
 
-      expect(filter.toSQL(dialect)).toBe("author IN ('O''Reilly', 'D''Angelo')");
+      expect(filter.toSQL(dialect)).toBe("author IN ('O\\'Reilly', 'D\\'Angelo')");
     });
 
     it('should return null for empty selection', () => {
@@ -228,7 +228,7 @@ describe('DatabricksDialect', () => {
         betweenEnd: 100
       });
 
-      expect(filter.toSQL(dialect)).toBe("price BETWEEN '10' AND '100'");
+      expect(filter.toSQL(dialect)).toBe("price BETWEEN 10 AND 100");
     });
 
     it('should quote field names with special characters using backticks', () => {
@@ -239,7 +239,7 @@ describe('DatabricksDialect', () => {
         betweenEnd: 5000
       });
 
-      expect(filter.toSQL(dialect)).toBe("`Sales Amount` BETWEEN '1000' AND '5000'");
+      expect(filter.toSQL(dialect)).toBe("`Sales Amount` BETWEEN 1000 AND 5000");
     });
   });
 
@@ -251,7 +251,7 @@ describe('DatabricksDialect', () => {
         value: 'premium'
       });
 
-      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '!'");
     });
 
     it('should generate NOT LIKE when isNot is true', () => {
@@ -262,7 +262,7 @@ describe('DatabricksDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("notes NOT LIKE '%test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '!') OR notes IS NULL)");
     });
 
     it('should escape single quotes in value', () => {
@@ -272,7 +272,7 @@ describe('DatabricksDialect', () => {
         value: "it's"
       });
 
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%it\\'s%' ESCAPE '!'");
     });
   });
 
@@ -284,7 +284,7 @@ describe('DatabricksDialect', () => {
         value: 'John'
       });
 
-      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '!'");
     });
 
     it('should support NOT variant', () => {
@@ -295,7 +295,7 @@ describe('DatabricksDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("email NOT LIKE 'test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '!') OR email IS NULL)");
     });
   });
 
@@ -307,7 +307,7 @@ describe('DatabricksDialect', () => {
         value: '@example.com'
       });
 
-      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '!'");
     });
 
     it('should support NOT variant', () => {
@@ -318,7 +318,7 @@ describe('DatabricksDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("filename NOT LIKE '%.tmp' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '!') OR filename IS NULL)");
     });
   });
 
@@ -419,7 +419,7 @@ describe('DatabricksDialect', () => {
       });
 
       const sql = filter.toSQL(dialect);
-      expect(sql).toBe("username = ''' OR ''1''=''1'"); // Quotes escaped
+      expect(sql).toBe("username = '\\' OR \\'1\\'=\\'1'"); // Quotes escaped
     });
 
     it('should prevent injection in IN clauses', () => {
@@ -430,7 +430,7 @@ describe('DatabricksDialect', () => {
       });
 
       const sql = filter.toSQL(dialect);
-      expect(sql).toContain("''"); // Quotes escaped
+      expect(sql).toContain("\\'"); // Quotes escaped
       expect(sql).toMatch(/IN \('.*', '.*'\)/);
     });
   });
@@ -536,7 +536,7 @@ describe('DatabricksDialect', () => {
       ];
 
       const whereClause = dialect.buildWhereClause(filters);
-      expect(whereClause).toBe("(name = 'O''Reilly')");
+      expect(whereClause).toBe("(name = 'O\\'Reilly')");
     });
 
     it('should handle SQL injection attempts in drilldown filters', () => {
@@ -545,8 +545,8 @@ describe('DatabricksDialect', () => {
       ];
 
       const whereClause = dialect.buildWhereClause(filters);
-      expect(whereClause).toContain("''"); // Quotes should be escaped
-      expect(whereClause).toBe("(username = '''; DROP TABLE users--')");
+      expect(whereClause).toContain("\\'"); // Quotes should be escaped
+      expect(whereClause).toBe("(username = '\\'; DROP TABLE users--')");
     });
 
     it('should handle empty filter array', () => {

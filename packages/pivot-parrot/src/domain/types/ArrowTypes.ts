@@ -16,7 +16,7 @@ export interface ArrowTypeDefinition {
   isNumeric: boolean;
   category: 'integer' | 'float' | 'string' | 'temporal' | 'boolean' | 'complex';
   toDisplay: (val: any, params?: string | null) => any;  // params for parameterized types like decimal<35,19>
-  toSQL: (val: any) => string;
+  toSQL: (val: any, params?: string | null) => string;
 }
 
 /**
@@ -231,7 +231,7 @@ export const Arrow = {
     isNumeric: true,
     category: 'float' as const,
     toDisplay: (val: any, params?: string | null) => formatDecimalValue(val, params),
-    toSQL: (val: any) => val === null || val === undefined ? 'NULL' : String(val)
+    toSQL: (val: any, params?: string | null) => val === null || val === undefined ? 'NULL' : String(formatDecimalValue(val, params))
   },
   decimal128: {
     name: 'decimal128',
@@ -239,7 +239,7 @@ export const Arrow = {
     isNumeric: true,
     category: 'float' as const,
     toDisplay: (val: any, params?: string | null) => formatDecimalValue(val, params),
-    toSQL: (val: any) => val === null || val === undefined ? 'NULL' : String(val)
+    toSQL: (val: any, params?: string | null) => val === null || val === undefined ? 'NULL' : String(formatDecimalValue(val, params))
   },
   decimal256: {
     name: 'decimal256',
@@ -247,7 +247,7 @@ export const Arrow = {
     isNumeric: true,
     category: 'float' as const,
     toDisplay: (val: any, params?: string | null) => formatDecimalValue(val, params),
-    toSQL: (val: any) => val === null || val === undefined ? 'NULL' : String(val)
+    toSQL: (val: any, params?: string | null) => val === null || val === undefined ? 'NULL' : String(formatDecimalValue(val, params))
   },
 
   // String types

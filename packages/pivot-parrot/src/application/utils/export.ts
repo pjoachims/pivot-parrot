@@ -3,6 +3,11 @@
  */
 
 import { profiler } from '../../domain/query/utils/profiler';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
+import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
+import { decodeNumber, findValueFormat } from './formatters';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 // Escape a string for safe use inside a RegExp
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -24,33 +29,38 @@ export const replaceIdsWithNames = (header, idNamePairs) => {
   return header.replace(pattern, match => nameById.get(match) ?? match);
 };
 
-// Helper to escape CSV values
-export const escapeCSV = (val) => {
-  if (val == null) return '';
-  const str = String(val);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+/** Download CSV text as a file. The UTF-8 BOM makes Excel decode it as UTF-8. */
+export const downloadCSV = (csv: string, filename: string) => {
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
 };
 
+const today = () => new Date().toISOString().slice(0, 10);
+
+type Dtypes = Record<string, string>;
+
+/** A metric value as a CSV cell: percentages are written as percents, not fractions. */
+const metricCell = (config, raw, metricKey, dtypes: Dtypes, dialect: SQLDialect | null): CsvCell => {
+  const value = decodeNumber(raw, dtypes[metricKey], dialect);
+  return typeof value === 'number' && findValueFormat(config, metricKey)?.type === 'percentage'
+    ? { percent: value }
+    : value;
+};
+
+const GROUPING_PREFIX = '_grouping_';
+
 /**
- * Export raw SQL data to CSV with friendly column names
+ * CSV of raw CUBE rows with friendly column names. The _grouping_* columns are
+ * dropped; a dimension rolled up by the CUBE (its grouping flag is 1) is written
+ * as "Total" so it can't be mistaken for a NULL member, which stays empty.
  */
-export const exportDataCSV = (displayData, config = null) => {
-  return profiler.profile('exportDataCSV', () => {
-  let sqlData = null;
-
-  if (displayData?.cubeResults && displayData.cubeResults.length > 0) {
-    sqlData = displayData.cubeResults;
-  }
-
-  if (!sqlData || !sqlData.length) {
-    alert('No data to export');
-    return;
-  }
-
-  const headers = Object.keys(sqlData[0]);
+export const buildDataCSV = (cubeRows, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null): string => {
+  if (!cubeRows?.length) return '';
+  const headers = Object.keys(cubeRows[0]).filter(h => !h.startsWith(GROUPING_PREFIX));
 
   // Map technical IDs to friendly names for custom metrics and groupings
   // (single pass, longest id first - see replaceIdsWithNames)
@@ -58,33 +68,28 @@ export const exportDataCSV = (displayData, config = null) => {
     ...(config?.customGroupings || []),
     ...(config?.customMetrics || [])
   ];
-  const friendlyHeaders = headers.map(header => replaceIdsWithNames(header, idNamePairs));
-
-  // Build CSV with friendly headers
-  let csv = friendlyHeaders.join(',') + '\n';
-  sqlData.forEach(row => {
-    const values = headers.map(h => {
-      const val = row[h];
-      // Handle null/undefined as empty string
-      if (val === null || val === undefined) return '';
-      // Convert all other values (including false, 0, "") to string
-      const str = String(val);
-      // Escape quotes and wrap in quotes if contains comma
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    });
-    csv += values.join(',') + '\n';
+  const friendlyHeaders = headers.map(header => {
+    const name = fieldDisplayName(header, config || {});
+    return name !== header ? name : replaceIdsWithNames(header, idNamePairs);
   });
 
-  // Download
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `pivot_data_${new Date().toISOString().slice(0,10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  const rows = cubeRows.map(row => headers.map(h =>
+    Number(row[GROUPING_PREFIX + h]) === 1 ? 'Total' : metricCell(config, row[h], h, dtypes, dialect)
+  ));
+  return toCSV([friendlyHeaders, ...rows], locale);
+};
+
+/**
+ * Export raw SQL data to CSV with friendly column names
+ */
+export const exportDataCSV = (displayData, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
+  return profiler.profile('exportDataCSV', () => {
+  const csv = buildDataCSV(displayData?.cubeResults, config, locale, dtypes, dialect);
+  if (!csv) {
+    alert('No data to export');
+    return;
+  }
+  downloadCSV(csv, `pivot_data_${today()}.csv`);
   });
 };
 
@@ -96,100 +101,64 @@ export const exportDataCSV = (displayData, config = null) => {
  * @param {boolean} showRowSubtotals - Whether to show row subtotals
  * @param {boolean} showGrandTotal - Whether to show grand total
  * @param {Object} config - Pivot config for mapping custom metric names
+ * @param {string} locale - Decides delimiter and decimal mark (default: en, comma and dot)
+ * @param {Object} dtypes - Result column → engine type name, to decode raw cells
+ * @param {Object} dialect - SQL dialect that decodes them
  * @returns {string} CSV string
  */
-export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null) => {
+export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('buildPivotCSV', () => {
   if (!data || !data.rowGroups) {
     return '';
   }
 
-  // Helper to map custom metric ID to friendly name
-  const getMetricName = (metricId) => {
-    if (!metricId) return metricId;
-    if (config?.customMetrics) {
-      const metric = config.customMetrics.find(m => m.id === metricId);
-      if (metric?.name) return metric.name;
-    }
-    return metricId;
-  };
+  const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
 
-  // Helper to map custom grouping ID to friendly name
-  const getFieldName = (fieldId) => {
-    if (!fieldId) return fieldId;
-    if (config?.customGroupings) {
-      const grouping = config.customGroupings.find(g => g.id === fieldId);
-      if (grouping?.name) return grouping.name;
-    }
-    return fieldId;
-  };
-
-  const lines = [];
+  const lines: CsvCell[][] = [];
+  const valuesIndex = (rowFields || []).indexOf(SIGMA_VALUES_ID);
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
 
-  // Map custom grouping IDs to friendly names in field arrays
-  const friendlyRowFields = rowFields ? rowFields.map(getFieldName) : [];
-  const friendlyColFields = colFields.map(getFieldName);
+  // With Σ Values in rows the metric names label rows, so the header has no metric level
+  const valuesInRows = valuesIndex >= 0;
+  const metricLevel = valuesInRows ? -1 : colFields.length;
 
   if (hasColFields && leafCols && leafCols.length > 0) {
     // Build multi-row headers for column hierarchy
-    const numLevels = colFields.length + 1; // colFields + value field row
+    const numLevels = valuesInRows ? colFields.length : colFields.length + 1;
 
     for (let level = 0; level < numLevels; level++) {
       const row = level === 0 ? ['Row Labels'] : [''];
 
       leafCols.forEach(leaf => {
-        // Use the existing path array from the leaf
+        // A leaf's path holds its column members; with Σ Values in columns a
+        // regular leaf's path ends in its metric. Subtotal and grand-total
+        // leaves carry only their members and name the metric in leaf.metric.
         const path = leaf.path || [];
 
-        // For regular columns, path contains: [colField1Value, colField2Value, ..., metricName]
-        // For subtotals, path contains: [...colFieldValues, "_SUBTOTAL_metric"]
-        // For grand total, path is: ["_GRAND_TOTAL_metric"]
-
-        if (leaf.isGrandTotal) {
-          // Grand Total column
-          if (level === 0) {
-            row.push('Grand Total');
-          } else if (level === numLevels - 1) {
-            row.push(getMetricName(leaf.value) || '');
-          } else {
-            row.push('');
-          }
+        if (level === metricLevel && (leaf.isSubtotal || leaf.isGrandTotal)) {
+          row.push(getMetricName(leaf.metric) || '');
+        } else if (leaf.isGrandTotal) {
+          row.push(level === 0 ? 'Grand Total' : '');
         } else if (leaf.isSubtotal) {
-          // Subtotal column - show parent values, then "Subtotal", then metric
-          const pathWithoutSubtotal = path.slice(0, -1); // Remove _SUBTOTAL_xxx
-          const subtotalDepth = pathWithoutSubtotal.length;
-
-          if (level < subtotalDepth) {
-            const pathVal = pathWithoutSubtotal[level];
-            row.push(pathVal || '');
-          } else if (level === subtotalDepth) {
-            row.push('Subtotal');
-          } else if (level === numLevels - 1) {
-            row.push(getMetricName(leaf.value) || '');
-          } else {
-            row.push('');
-          }
+          row.push(level < path.length ? path[level] : level === path.length ? 'Subtotal' : '');
+        } else if (level < path.length) {
+          const value = path[level];
+          row.push(!valuesInRows && level === path.length - 1 ? getMetricName(leaf.metric ?? value) : value);
         } else {
-          // Regular column - path has colField values followed by metric name
-          if (level < path.length) {
-            // Last level of path is the metric name - map it to friendly name
-            const value = path[level];
-            row.push(level === path.length - 1 ? getMetricName(value) : value);
-          } else {
-            row.push('');
-          }
+          row.push('');
         }
       });
 
-      lines.push(row.map(escapeCSV).join(','));
+      lines.push(row);
     }
+  } else if (valuesInRows) {
+    lines.push(['Row Labels', ...(leafCols || []).map(leaf => leaf.isGrandTotal ? 'Grand Total' : leaf.label)]);
   } else {
     // Simple header: Row Labels + value fields (map to friendly names)
     const valueHeaders = (data.columnConfig.valueFields || []).map(getMetricName);
     const headers = ['Row Labels', ...valueHeaders];
-    lines.push(headers.map(escapeCSV).join(','));
+    lines.push(headers);
   }
 
   // Build data rows with indentation
@@ -214,19 +183,8 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
       cellValues = null;
     }
 
-    // Build value cells with raw numbers (no formatting)
-    const values = [label];
-    (leafCols || []).forEach((leaf, idx) => {
-      const rawVal = cellValues?.[idx];  // Use array index
-      // Export raw value: null/undefined → empty, all others (including false, 0, "") → string
-      if (rawVal === null || rawVal === undefined) {
-        values.push('');
-      } else {
-        values.push(String(rawVal));
-      }
-    });
-
-    lines.push(values.map(escapeCSV).join(','));
+    const rowMetric = valuesIndex >= 0 ? row.path?.[valuesIndex] : null;
+    lines.push([label, ...(leafCols || []).map((leaf, idx) => metricCell(config, cellValues?.[idx], rowMetric || leaf.metric, dtypes, dialect))]);
 
     // Recurse for children
     if (hasKids && row.children) {
@@ -238,21 +196,17 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
 
   // Add Grand Total row with raw numbers
   if (showGrandTotal && data.grandTotal) {
-    const values = ['Grand Total'];
-    (leafCols || []).forEach((leaf, idx) => {
-      const rawVal = data.grandTotal[idx];  // Use array index
-      // Export raw value: null/undefined → empty, all others (including false, 0, "") → string
-      if (rawVal === null || rawVal === undefined) {
-        values.push('');
-      } else {
-        values.push(String(rawVal));
-      }
-    });
-    lines.push(values.map(escapeCSV).join(','));
+    if (valuesInRows) {
+      // One grand-total row per metric: data.grandTotal holds {metric, metricLabel, values}
+      data.grandTotal.forEach(gt => {
+        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map((leaf, idx) => metricCell(config, gt.values?.[idx], gt.metric, dtypes, dialect))]);
+      });
+    } else {
+      lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric, dtypes, dialect))]);
+    }
   }
 
-  // Return CSV string
-  return lines.join('\n');
+  return toCSV(lines, locale);
   });
 };
 
@@ -264,22 +218,19 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
  * @param {boolean} showRowSubtotals - Whether to show row subtotals
  * @param {boolean} showGrandTotal - Whether to show grand total
  * @param {Object} config - Pivot config for mapping custom metric names
+ * @param {string} locale - Decides delimiter and decimal mark
+ * @param {Object} dtypes - Result column → engine type name, to decode raw cells
+ * @param {Object} dialect - SQL dialect that decodes them
  */
-export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null) => {
+export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('exportPivotCSV', () => {
-  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config);
+  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, locale, dtypes, dialect);
 
   if (!csv) {
     alert('No pivot data to export');
     return;
   }
 
-  // Download
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `pivot_visual_${new Date().toISOString().slice(0,10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  downloadCSV(csv, `pivot_visual_${today()}.csv`);
   });
 };

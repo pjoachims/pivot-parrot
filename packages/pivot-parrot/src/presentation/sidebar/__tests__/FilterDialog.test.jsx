@@ -48,11 +48,11 @@ describe('FilterDialog', () => {
   describe('Fetch Unique Values', () => {
     it('should display fetched values in UI after clicking button', async () => {
       // Mock the fetch to return sample values
-      defaultProps.field.getUniqueValues.mockResolvedValue([
+      defaultProps.field.getUniqueValues.mockResolvedValue({ values: [
         'Furniture',
         'Technology',
         'Office Supplies'
-      ]);
+      ], truncated: false });
 
       render(<FilterDialog {...defaultProps} />);
 
@@ -86,10 +86,10 @@ describe('FilterDialog', () => {
       expect(screen.getByText(/Office Supplies/)).toBeInTheDocument();
 
       // Verify cache was updated via store action
-      expect(mockCacheUniqueValues).toHaveBeenCalledWith(
-        'category',
-        expect.arrayContaining(['Furniture', 'Technology', 'Office Supplies'])
-      );
+      expect(mockCacheUniqueValues).toHaveBeenCalledWith('category', {
+        values: expect.arrayContaining(['Furniture', 'Technology', 'Office Supplies']),
+        truncated: false
+      });
     });
 
     it('should show loading state while fetching', async () => {
@@ -115,7 +115,7 @@ describe('FilterDialog', () => {
       });
 
       // Resolve the fetch
-      resolveFetch(['Value1', 'Value2']);
+      resolveFetch({ values: ['Value1', 'Value2'], truncated: false });
 
       // Wait for loading to complete
       await waitFor(() => {
@@ -132,7 +132,7 @@ describe('FilterDialog', () => {
       defaultProps.activeFilters = [
         { field: 'region', value: 'East', type: 'equals' }
       ];
-      defaultProps.field.getUniqueValues.mockResolvedValue(['A', 'B', 'C']);
+      defaultProps.field.getUniqueValues.mockResolvedValue({ values: ['A', 'B', 'C'], truncated: false });
 
       render(<FilterDialog {...defaultProps} />);
 
@@ -165,7 +165,7 @@ describe('FilterDialog', () => {
     it('should use cached values when available', () => {
       // Provide cached values via mock store
       mockUniqueValuesCache = {
-        category: ['Cached1', 'Cached2', 'Cached3']
+        category: { values: ['Cached1', 'Cached2', 'Cached3'], truncated: false }
       };
 
       render(<FilterDialog {...defaultProps} />);
@@ -213,7 +213,7 @@ describe('FilterDialog', () => {
     });
 
     it('should allow selecting and applying values', async () => {
-      defaultProps.field.getUniqueValues.mockResolvedValue(['A', 'B', 'C']);
+      defaultProps.field.getUniqueValues.mockResolvedValue({ values: ['A', 'B', 'C'], truncated: false });
 
       render(<FilterDialog {...defaultProps} />);
 
@@ -267,7 +267,7 @@ describe('FilterDialog', () => {
       fireEvent.click(oneOfTab);
 
       // Fetch values
-      defaultProps.field.getUniqueValues.mockResolvedValue(['Local1', 'Local2']);
+      defaultProps.field.getUniqueValues.mockResolvedValue({ values: ['Local1', 'Local2'], truncated: false });
       const fetchButton = screen.getByText(/Fetch Unique Values/i);
       fireEvent.click(fetchButton);
 
@@ -317,7 +317,7 @@ describe('FilterDialog', () => {
 
   describe('Accessibility', () => {
     it('should have accessible button labels', () => {
-      defaultProps.field.getUniqueValues.mockResolvedValue(['A', 'B']);
+      defaultProps.field.getUniqueValues.mockResolvedValue({ values: ['A', 'B'], truncated: false });
 
       render(<FilterDialog {...defaultProps} />);
 

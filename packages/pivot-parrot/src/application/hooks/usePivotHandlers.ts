@@ -4,9 +4,13 @@ import { usePivotStore } from '../state/store';
 import { computeLeafColumns } from '../utils/columnHelpers';
 import { buildPivotCSV } from '../../application/utils/export';
 import { toRows } from '../utils/columnarResult';
+import { dataToCSV } from '../../domain/query/utils/csv';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 
 interface UsePivotHandlersProps {
   calculation: any;
+  displayData: any;
+  dialect?: SQLDialect | null;
   snapshots: any;
   drilldown: any;
   sqlPlayground: any;
@@ -22,6 +26,8 @@ interface UsePivotHandlersProps {
 
 export function usePivotHandlers({
   calculation,
+  displayData,
+  dialect = null,
   snapshots,
   drilldown,
   sqlPlayground,
@@ -40,6 +46,8 @@ export function usePivotHandlers({
   const setActiveView = usePivotStore((s) => s.setActiveView);
   const setSecondaryDisplayMode = usePivotStore((s) => s.setSecondaryDisplayMode);
   const setChartConfig = usePivotStore((s) => s.setChartConfig);
+  const sortConfig = usePivotStore((s) => s.sortConfig);
+  const setSort = usePivotStore((s) => s.setSort);
 
   // ==================== SNAPSHOT HANDLERS ====================
   const handleCreateSnapshot = useCallback((customName?: string) => {
@@ -51,6 +59,7 @@ export function usePivotHandlers({
       activeView,
       secondaryDisplayMode,
       chartConfig,
+      sortConfig,
       splitPosition: splitPane.splitPosition,
       // Snapshots are serializable, so materialize the columnar drilldown
       // result into a plain rows array here (snapshot creation is an
@@ -70,7 +79,7 @@ export function usePivotHandlers({
       viewState,
       customName
     );
-  }, [executionConfig, calculation.cubeResults, calculation.dtypes, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, sqlPlayground, snapshots]);
+  }, [executionConfig, calculation.cubeResults, calculation.dtypes, activeView, secondaryDisplayMode, chartConfig, sortConfig, splitPane, drilldown, sqlPlayground, snapshots]);
 
   const handleLoadSnapshot = useCallback((snapshotId: string) => {
     const snapshot = snapshots.loadSnapshot(snapshotId);
@@ -81,9 +90,9 @@ export function usePivotHandlers({
       setActiveView(snapshot.activeView);
       setSecondaryDisplayMode(snapshot.secondaryDisplayMode);
 
-      if (snapshot.chartConfig) {
-        setChartConfig(snapshot.chartConfig);
-      }
+      setChartConfig(snapshot.chartConfig ?? null);
+      // Snapshots taken before sorting was stored were shown in query order.
+      setSort(snapshot.sortConfig ?? { valueKey: null, direction: 'desc' });
 
       if (snapshot.drilldownState) {
         drilldown.restoreDrilldown(
@@ -92,6 +101,8 @@ export function usePivotHandlers({
           snapshot.drilldownState.sql,
           snapshot.dtypes
         );
+      } else {
+        drilldown.clearDrilldown();
       }
 
       if (snapshot.sqlQuery) {
@@ -102,7 +113,7 @@ export function usePivotHandlers({
         splitPane.setSplitPosition(snapshot.splitPosition);
       }
     }
-  }, [snapshots, setConfig, commitConfig, calculation, setActiveView, setSecondaryDisplayMode, setChartConfig, drilldown, sqlPlayground, splitPane]);
+  }, [snapshots, setConfig, commitConfig, calculation, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, sqlPlayground, splitPane]);
 
   const handleDeleteSnapshot = useCallback((snapshotId: string) => {
     snapshots.deleteSnapshot(snapshotId);
@@ -175,34 +186,23 @@ export function usePivotHandlers({
 
       // 2. Add cube_results.csv
       if (calculation.cubeResults && calculation.cubeResults.length > 0) {
-        const headers = Object.keys(calculation.cubeResults[0]);
-        let cubeCSV = headers.join(',') + '\n';
-        calculation.cubeResults.forEach((row: any) => {
-          const values = headers.map(h => {
-            const val = row[h];
-            if (val === null || val === undefined) return '';
-            const str = String(val);
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-              return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-          });
-          cubeCSV += values.join(',') + '\n';
-        });
-        zip.file('cube_results.csv', cubeCSV);
+        zip.file('cube_results.csv', dataToCSV(calculation.cubeResults));
       }
 
       // 3. Add expected_output.csv
-      if (calculation.displayData) {
+      if (displayData) {
         const rowFieldNames = config.rows.map((f: any) => typeof f === 'string' ? f : f.id);
-        const leafCols = computeLeafColumns(calculation.displayData, true, true);
+        const leafCols = computeLeafColumns(displayData, true, true);
         const expectedOutputCSV = buildPivotCSV(
-          calculation.displayData,
+          displayData,
           leafCols,
           rowFieldNames,
           true,
           config.showGrandTotal !== false,
-          config
+          config,
+          undefined,
+          calculation.dtypes,
+          dialect
         );
         zip.file('expected_output.csv', expectedOutputCSV);
       }
@@ -216,7 +216,7 @@ export function usePivotHandlers({
       console.error('Error creating test fixture zip:', error);
       alert('Error creating test fixture: ' + error.message);
     }
-  }, [config, availableFields, detectedTypes, calculation]);
+  }, [config, availableFields, detectedTypes, calculation, displayData, dialect]);
 
   return {
     handleCreateSnapshot,

@@ -5,8 +5,11 @@ import Popover from '../shared/Popover';
  * Simple numeric filter dialog for HAVING filters (aggregations and custom metrics)
  * Only supports numeric comparison operators and a single value
  */
-export function HavingFilterDialog({ field, onApply, onClose, existingFilter, anchorEl }) {
-  const [operator, setOperator] = useState(existingFilter?.type || 'greater');
+export function HavingFilterDialog({ field, displayName, onApply, onClose, existingFilter, anchorEl }) {
+  // "Not equal" is a negated equal filter; no filter type of its own.
+  const [operator, setOperator] = useState(
+    existingFilter?.type === 'equal' && existingFilter.isNot ? 'not_equal' : existingFilter?.type || 'greater'
+  );
   const [value, setValue] = useState(existingFilter?.value || '');
 
   const operators = [
@@ -21,7 +24,8 @@ export function HavingFilterDialog({ field, onApply, onClose, existingFilter, an
   const handleApply = () => {
     const filter = {
       field: field.name,
-      type: operator,
+      type: operator === 'not_equal' ? 'equal' : operator,
+      isNot: operator === 'not_equal',
       value: value,
       filterType: 'having'
     };
@@ -37,7 +41,7 @@ export function HavingFilterDialog({ field, onApply, onClose, existingFilter, an
 
   return (
     <Popover
-      title={`Filter: ${field.name}`}
+      title={`Filter: ${displayName}`}
       onClose={onClose}
       position={position}
       width={350}

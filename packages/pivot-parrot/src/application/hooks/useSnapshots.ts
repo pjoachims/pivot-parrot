@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { dataToCSV } from '../../domain/query/utils/csv';
+import { buildDataCSV, downloadCSV } from '../utils/export';
+import { usePivotLocale } from '../state/store';
 import type { PivotTableConfig } from '../../domain/models/types';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import type { Snapshot, CubeRow, DimensionFilters } from '../../domain/models/types';
 
 // Type aliases for better semantic meaning (kept for backwards compatibility)
@@ -10,8 +12,9 @@ type Dtypes = Record<string, string>;
 /**
  * Custom hook to manage pivot snapshots (session storage only)
  */
-export function useSnapshots() {
+export function useSnapshots(dialect: SQLDialect | null = null) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const locale = usePivotLocale();
 
   function createSnapshot(
     executionConfig: PivotTableConfig,
@@ -21,6 +24,7 @@ export function useSnapshots() {
       activeView: 'chart' | 'drilldown' | 'sql' | null;
       secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
       chartConfig?: unknown;
+      sortConfig?: Snapshot['sortConfig'];
       drilldownState?: { data: CubeRow[]; filters: DimensionFilters; sql: string };
       sqlQuery?: string;
       splitPosition?: number;
@@ -38,6 +42,7 @@ export function useSnapshots() {
       activeView: viewState.activeView,
       secondaryDisplayMode: viewState.secondaryDisplayMode,
       chartConfig: viewState.chartConfig,
+      sortConfig: viewState.sortConfig,
       drilldownState: viewState.drilldownState,
       sqlQuery: viewState.sqlQuery,
       splitPosition: viewState.splitPosition
@@ -62,16 +67,8 @@ export function useSnapshots() {
     }
 
     snapshots.forEach((snapshot) => {
-      const csv = dataToCSV(snapshot.cubeResults || []);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(snapshot.name || snapshot.id).replace(/\s+/g, '_')}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const csv = buildDataCSV(snapshot.cubeResults, snapshot.config, locale, snapshot.dtypes, dialect);
+      downloadCSV(csv, `${(snapshot.name || snapshot.id).replace(/\s+/g, '_')}.csv`);
     });
   }
 

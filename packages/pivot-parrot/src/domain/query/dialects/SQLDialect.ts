@@ -1,5 +1,6 @@
 import type { ArrowTypeDefinition } from '../../types/ArrowTypes';
 import { Arrow, uint32ArrayToNumber } from '../../types/ArrowTypes';
+import { AGGREGATION_SQL_NAMES } from '../sql/aggregations';
 
 /**
  * SQLDialect - Base class for SQL dialect abstraction
@@ -12,18 +13,22 @@ import { Arrow, uint32ArrayToNumber } from '../../types/ArrowTypes';
  * Registries:
  * - types: Arrow type name → ArrowTypeDefinition (with toDisplay, toSQL)
  * - aggregations: Aggregation name → SQL generator function
- * - operators: Operator name → SQL operator string
  * - functions: Function name → SQL generator function
  */
 export class SQLDialect {
   public types: Record<string, ArrowTypeDefinition>;
   public aggregations: Record<string, (field: string, options?: any) => string>;
-  public operators: Record<string, string>;
   public functions: Record<string, (...args: any[]) => string>;
 
   constructor() {
     // Use Arrow types as base - all data comes from Arrow Tables
     this.types = { ...Arrow };
+    // String literals go through escapeValue, so a dialect's escaping rule covers typed drilldown values too.
+    for (const [name, type] of Object.entries(this.types)) {
+      if (type.category === 'string') {
+        this.types[name] = { ...type, toSQL: (val) => val === null || val === undefined ? 'NULL' : `'${this.escapeValue(val)}'` };
+      }
+    }
 
     // Aggregation registry: agg name → generator function
     this.aggregations = {
@@ -40,11 +45,6 @@ export class SQLDialect {
       // approx_count_distinct not included - not universal
     };
 
-    // Operator registry: operator name → SQL operator string
-    this.operators = {
-      // regex not included - not universal
-    };
-
     // Function registry: function name → generator function
     // Only includes SQL standard functions (SQL-92/SQL-99)
     this.functions = {
@@ -54,6 +54,7 @@ export class SQLDialect {
       'cast_to_string': (expr) => `CAST(${expr} AS VARCHAR)`,
       'lpad': (expr, len, char) => `LPAD(CAST(${expr} AS VARCHAR), ${len}, '${char}')`,
       // unix_timestamp and from_unixtime removed - MySQL/Databricks-specific
+      // regex_match(field, patternLiteral) not included - not universal
       // Subclasses should add database-specific functions as needed
     };
   }
@@ -75,17 +76,22 @@ export class SQLDialect {
    * @returns {any} Formatted value for display
    */
   toDisplay(value: any, typeName: string): any {
-    // Parse parameterized types: "decimal<35,19>" → baseType="decimal", params="35,19"
-    const idx = typeName.indexOf('<');
-    const baseType = idx === -1 ? typeName : typeName.slice(0, idx);
-    const params = idx === -1 ? null : typeName.slice(idx + 1, -1);
-
-    const type = this.types[baseType];
+    const { baseType, type, params } = this.parseTypeName(typeName);
     if (!type) {
       console.warn(`Unknown type: ${baseType}, returning raw value`);
       return value;
     }
     return type.toDisplay(value, params);
+  }
+
+  /**
+   * Split a parameterized type name ("decimal<35,19>") into its registry entry and params ("35,19").
+   */
+  parseTypeName(typeName: string): { baseType: string; type: ArrowTypeDefinition | undefined; params: string | null } {
+    const idx = typeName.indexOf('<');
+    const baseType = idx === -1 ? typeName : typeName.slice(0, idx);
+    const params = idx === -1 ? null : typeName.slice(idx + 1, -1);
+    return { baseType, type: this.types[baseType], params };
   }
 
   /**
@@ -137,12 +143,12 @@ export class SQLDialect {
    * @returns {string} SQL literal
    */
   toSQL(value: any, typeName: string): string {
-    const type = this.types[typeName];
+    const { type, params } = this.parseTypeName(typeName);
     if (!type) {
       console.warn(`Unknown type: ${typeName}, returning NULL`);
       return 'NULL';
     }
-    return type.toSQL(value);
+    return type.toSQL(value, params);
   }
 
   /**
@@ -218,41 +224,24 @@ export class SQLDialect {
   }
 
   /**
-   * Quote and escape value for SQL based on type
-   * @param {any} value - Value to quote
-   * @returns {string} Properly quoted SQL literal
+   * Quote a filter value as an SQL literal.
+   * A JS string is a string literal, except that a numeric string on a numeric
+   * field (a number typed into a filter dialog) is emitted as a number. The
+   * string's content alone never decides: '01234' on a string field stays '01234'.
+   * @param value - Filter value
+   * @param dtype - Arrow type name of the filtered field, when known
    */
-  quoteValue(value: any): string {
-    // Handle null/undefined
-    if (value === null || value === undefined) {
-      return 'NULL';
+  quoteValue(value: any, dtype?: string | null): string {
+    if (value === null || value === undefined) return 'NULL';
+    if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+    if (typeof value === 'number' || typeof value === 'bigint') return String(value);
+    if (value instanceof Date) return `'${value.toISOString()}'`;
+
+    const str = String(value);
+    if (dtype && this.parseTypeName(dtype).type?.isNumeric && /^\s*-?\d+(\.\d+)?\s*$/.test(str)) {
+      return str.trim();
     }
-
-    // Handle boolean
-    if (typeof value === 'boolean') {
-      return value ? 'TRUE' : 'FALSE';
-    }
-
-    // Handle numbers (including BigInt)
-    if (typeof value === 'number' || typeof value === 'bigint') {
-      return String(value);
-    }
-
-    // Handle Date objects
-    if (value instanceof Date) {
-      return `'${value.toISOString()}'`;
-    }
-
-    // Handle strings - check if it looks like a date/timestamp
-    const strValue = String(value);
-
-    // Check if it's a number string
-    if (/^-?\d+(\.\d+)?$/.test(strValue)) {
-      return strValue;
-    }
-
-    // Default: treat as string, escape and wrap in quotes
-    return `'${this.escapeValue(strValue)}'`;
+    return `'${this.escapeValue(str)}'`;
   }
 
   // ==================== AGGREGATION REGISTRY ====================
@@ -276,36 +265,25 @@ export class SQLDialect {
   }
 
   /**
-   * Build complete aggregation expression from field name and aggregation type
-   * Handles quoting and dialect-specific SQL generation
-   * @param {string} fieldName - Raw field name (will be quoted)
-   * @param {string} aggregation - Aggregation type (e.g., 'sum', 'count', 'count_distinct')
-   * @returns {string} Complete SQL aggregation expression
+   * Aggregate an SQL expression by the aggregation's UI name ('Sum', 'Count Distinct', 'Std Dev')
+   * @param {string} aggregation - Aggregation name as the config stores it
+   * @param {string} fieldExpr - SQL expression to aggregate (already quoted/resolved)
    */
-  buildAggregation(fieldName: string, aggregation: string): string {
-    const quotedField = this.quoteIdentifier(fieldName);
-    const aggKey = aggregation.toLowerCase().replace(/\s+/g, '_');
-    return this.getAggregation(aggKey, quotedField);
+  aggregate(aggregation: string, fieldExpr: string): string {
+    const aggKey = AGGREGATION_SQL_NAMES[aggregation.trim().toUpperCase()];
+    if (!aggKey) {
+      throw new Error(`Unknown aggregation type: ${aggregation}`);
+    }
+    return this.getAggregation(aggKey, fieldExpr);
   }
 
-  // ==================== OPERATOR REGISTRY ====================
-
   /**
-   * Get SQL operator string
-   * @param {string} opName - Operator name (regex, etc.)
-   * @param {boolean} isNot - Whether to negate (NOT operator)
-   * @returns {string} SQL operator
-   * @throws {Error} If operator not supported by this dialect
+   * Build complete aggregation expression from a raw field name and aggregation name
+   * @param {string} fieldName - Raw field name (will be quoted)
+   * @param {string} aggregation - Aggregation name (e.g., 'Sum', 'Count Distinct')
    */
-  getOperator(opName: string, isNot: boolean = false): string {
-    const op = this.operators[opName];
-    if (!op) {
-      throw new Error(
-        `Operator '${opName}' is not supported by ${this.name} dialect. ` +
-        `Available: ${Object.keys(this.operators).join(', ') || 'none'}`
-      );
-    }
-    return isNot ? `NOT ${op}` : op;
+  buildAggregation(fieldName: string, aggregation: string): string {
+    return this.aggregate(aggregation, this.quoteIdentifier(fieldName));
   }
 
   // ==================== FUNCTION REGISTRY ====================
@@ -348,7 +326,7 @@ export class SQLDialect {
 
   /**
    * Check if this dialect supports a specific feature
-   * @param {string} type - Registry type ('aggregation', 'operator', 'type', 'function')
+   * @param {string} type - Registry type ('aggregation', 'type', 'function')
    * @param {string} name - Feature name
    * @returns {boolean}
    */
@@ -356,8 +334,6 @@ export class SQLDialect {
     switch (type) {
       case 'aggregation':
         return name in this.aggregations;
-      case 'operator':
-        return name in this.operators;
       case 'type':
         return name in this.types;
       case 'function':

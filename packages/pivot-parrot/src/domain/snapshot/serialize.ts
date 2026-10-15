@@ -44,6 +44,7 @@ export async function serializeSnapshot(snapshot: Snapshot): Promise<Blob> {
     activeView: snapshot.activeView,
     secondaryDisplayMode: snapshot.secondaryDisplayMode,
     chartConfig: snapshot.chartConfig,
+    sortConfig: snapshot.sortConfig,
     sqlQuery: snapshot.sqlQuery,
     splitPosition: snapshot.splitPosition
   }, null, 2));
@@ -91,6 +92,7 @@ export async function deserializeSnapshot(blob: Blob): Promise<Snapshot> {
     activeView: meta.activeView,
     secondaryDisplayMode: meta.secondaryDisplayMode,
     chartConfig: meta.chartConfig,
+    sortConfig: meta.sortConfig,
     sqlQuery: meta.sqlQuery,
     splitPosition: meta.splitPosition,
     drilldownState

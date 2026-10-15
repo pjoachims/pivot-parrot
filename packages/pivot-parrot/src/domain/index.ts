@@ -25,6 +25,7 @@ export {
   isDimension
 } from './field/FieldItem';
 export * from './field/getFieldById';
+export * from './field/fieldDisplayName';
 export * from './field/derived-field-resolver-v2';
 export * from './field/metric-resolver';
 

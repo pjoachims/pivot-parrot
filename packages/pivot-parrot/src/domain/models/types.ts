@@ -32,6 +32,9 @@ export enum FieldKind {
   SIGMA_VALUES = 'sigma_values'        // The "Σ Values" placeholder for pivot layout
 }
 
+/** Id of the Σ Values placeholder in config.rows / config.columns: where the metrics sit in the layout. */
+export const SIGMA_VALUES_ID = 'Σ Values';
+
 export type FieldItem = PivotFieldItem;
 
 // Field reference can be string ID or full object
@@ -52,15 +55,17 @@ export interface DerivedField {
  * Value configuration for aggregation
  * Note: UI uses capitalized aggregations (Sum, Count) but they're normalized to lowercase in SQL generation
  */
+export interface ValueFormat {
+  type?: 'number' | 'currency' | 'percentage';
+  decimals?: number;
+  currency?: string;              // ISO code for type 'currency', default 'USD'
+  useThousandSeparator?: boolean; // default: true for 'currency', false otherwise
+}
+
 export interface ValueConfig {
   field: string;
   aggregation: 'Sum' | 'Count' | 'Avg' | 'Min' | 'Max' | 'Count_distinct' | 'sum' | 'count' | 'avg' | 'min' | 'max' | 'count_distinct' | 'median' | 'std' | 'var' | 'custom';
-  format?: {
-    type?: 'number' | 'currency' | 'percent';
-    decimals?: number;
-    prefix?: string;
-    suffix?: string;
-  };
+  format?: ValueFormat;
   isCustom?: boolean;
 }
 
@@ -92,12 +97,7 @@ export interface CustomMetric {
   id: string;
   name: string;
   expr: string;
-  format?: {
-    type?: 'number' | 'currency' | 'percent';
-    decimals?: number;
-    prefix?: string;
-    suffix?: string;
-  };
+  format?: ValueFormat;
 }
 
 /**
@@ -221,7 +221,12 @@ export interface PivotConfig {
   data?: DataInput;         // Arrow bytes, CSV, JSON, etc.
   mode?: 'local' | 'remote';
 
-  // Pivot Configuration (can be direct config or extended format with metadata)
+  /**
+   * The view to start from (direct config or extended format with metadata). It is
+   * applied on the first init and again whenever its content changes, so an equal
+   * object passed on every render keeps the user's edits; pass different content
+   * to load a new view.
+   */
   initialConfig?: PivotTableConfig | ExtendedPivotTableConfig;
 
   // UI Settings
@@ -270,6 +275,7 @@ export interface Snapshot {
   activeView: 'chart' | 'drilldown' | 'sql' | null;
   secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
   chartConfig?: unknown;
+  sortConfig?: { valueKey: string | null; direction: 'asc' | 'desc' };
   splitPosition?: number;
   drilldownState?: {
     data: DrilldownRow[];

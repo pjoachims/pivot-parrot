@@ -295,6 +295,15 @@ describe('chartUtils', () => {
     it('should return name for custom metric', () => {
       expect(getMetricLabel('custom_metric', config)).toBe('My Custom Metric');
     });
+
+    it('should use field name overrides', () => {
+      const overridden = {
+        ...config,
+        fieldNameOverrides: { sales: 'Umsatz', custom_metric: 'Meine Kennzahl' }
+      };
+      expect(getMetricLabel('sales', overridden)).toBe('sum of Umsatz');
+      expect(getMetricLabel('custom_metric', overridden)).toBe('Meine Kennzahl');
+    });
   });
 
   describe('detectAxisType', () => {

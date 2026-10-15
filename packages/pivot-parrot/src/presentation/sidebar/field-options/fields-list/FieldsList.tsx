@@ -7,6 +7,7 @@ import { CustomGroupingsSection } from './CustomGroupingsSection';
 import { ActiveAggregationsSection } from './ActiveAggregationsSection';
 import FieldRenameDialog from '../../dialogs/FieldRenameDialog';
 import { filterAvailableFields, filterCustomMetrics } from '../../../../application/utils/fieldUtils';
+import { fieldDisplayName } from '../../../../domain/field/fieldDisplayName';
 
 /**
  * FieldsList component - Refactored orchestrator
@@ -48,11 +49,6 @@ export default function FieldsList() {
   const customFilters = filterCustomMetrics(config.customFilters || [], searchQuery);
   const customGroupings = filterCustomMetrics(config.customGroupings || [], searchQuery);
 
-  // Get display name for a field (override or original)
-  const getFieldDisplayName = (fieldId: string) => {
-    return config.fieldNameOverrides?.[fieldId] || fieldId;
-  };
-
   return (
     <div className="flex-1 overflow-y-auto bg-white">
       <div className="px-3 py-2">
@@ -69,7 +65,7 @@ export default function FieldsList() {
           checkedFields={checkedFields}
           derivedFieldsMap={derivedFieldsMap}
           detectedTypes={detectedTypes}
-          fieldNameOverrides={config.fieldNameOverrides || {}}
+          config={config}
           onToggleField={handleFieldCheckboxChange}
           onMoveToZone={handleMoveFieldToZone}
           onDragStart={handleDragStart}
@@ -131,7 +127,7 @@ export default function FieldsList() {
       {renameDialog && (
         <FieldRenameDialog
           field={renameDialog.field}
-          currentName={getFieldDisplayName(renameDialog.field.id)}
+          currentName={fieldDisplayName(renameDialog.field.id, config, availableFields)}
           onApply={handleFieldRename}
           onClose={() => setRenameDialog(null)}
           anchorEl={renameDialog.anchorEl}

@@ -1,10 +1,13 @@
 import React from 'react';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
   sanitizeFieldName,
   getMetricLabel,
   getMetricFormat,
-  formatValueForDisplay
+  formatValueForDisplay,
+  hoverValue,
+  plotlySeparators
 } from './chartUtils';
 import { createCellHash, lookupCubeValue, safeStringify } from '../../application/utils/cubeIndex';
 import { TreemapTrace } from './types';
@@ -50,6 +53,7 @@ function normalizeValue(value) {
 
 export default function TreemapChartConfig({
   dimensions,
+  dimensionLabel,
   valueFields,
   metric,
   setMetric,
@@ -107,7 +111,7 @@ export default function TreemapChartConfig({
             style={styles.select}
           >
             {dimensions.map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -120,7 +124,7 @@ export default function TreemapChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== level1 && dim !== level3).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -133,7 +137,7 @@ export default function TreemapChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== level1 && dim !== level2 && level2).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -338,14 +342,14 @@ export function buildTreemapNodes(rows, rawRows, cubeIndex, levels, allDimension
   return nodes;
 }
 
-export function transformTreemapChart(chartData, chartConfig) {
+export function transformTreemapChart(chartData, chartConfig, locale = 'en-US') {
   const { rows, rawRows, cubeIndex, dimensions: levels, allDimensions, dtypes, config } = chartData;
   const { metric, colorMetric, colorScheme = 'Viridis' } = chartConfig;
 
   // Get metric column names, labels, and formats
   const metricColumn = sanitizeFieldName(metric, config);
   const metricLabel = getMetricLabel(metric, config);
-  const metricFormat = getMetricFormat(metric, config);
+  const metricFormat = getMetricFormat(metric, config, locale);
 
   // Get color metric (if specified)
   const useColorMetric = !!colorMetric;
@@ -354,7 +358,7 @@ export function transformTreemapChart(chartData, chartConfig) {
   if (useColorMetric) {
     colorMetricColumn = sanitizeFieldName(colorMetric, config);
     colorMetricLabel = getMetricLabel(colorMetric, config);
-    colorMetricFormat = getMetricFormat(colorMetric, config);
+    colorMetricFormat = getMetricFormat(colorMetric, config, locale);
   }
 
   // Build nodes using extracted function (testable!)
@@ -420,8 +424,8 @@ export function transformTreemapChart(chartData, chartConfig) {
       }
     },
     hovertemplate: '<b>%{currentPath}</b><br>' +
-      metricLabel + ': %{value:' + metricFormat + '}' +
-      (useColorMetric && colorMetric !== metric ? '<br>' + colorMetricLabel + ': %{color:' + colorMetricFormat + '}' : '') +
+      metricLabel + ': ' + hoverValue('value', metricFormat) +
+      (useColorMetric && colorMetric !== metric ? '<br>' + colorMetricLabel + ': ' + hoverValue('color', colorMetricFormat) : '') +
       '<extra></extra>'
   };
 
@@ -443,7 +447,7 @@ export function transformTreemapChart(chartData, chartConfig) {
   }
 
   // Build title: "Metric by Level1, Level2, Level3"
-  const hierarchyPath = levels.join(', ');
+  const hierarchyPath = levels.map(level => fieldDisplayName(level, config)).join(', ');
   const title = `${metricLabel} by ${hierarchyPath}`;
 
   const layout = {
@@ -459,6 +463,7 @@ export function transformTreemapChart(chartData, chartConfig) {
     },
     margin: { l: 10, r: 10, t: 50, b: 30 },
     autosize: true,
+    separators: plotlySeparators(locale),
     font: {
       family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       size: 12,

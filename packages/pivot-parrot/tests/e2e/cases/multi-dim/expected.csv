@@ -1,6 +1,6 @@
-Row Labels,2023,2023,2023,2023,2023,2023,Subtotal,Subtotal,Subtotal,2024,2024,2024,2024,2024,2024,Subtotal,Subtotal,Subtotal,Subtotal,Subtotal,Subtotal
-,Online,Online,Online,Retail,Retail,Retail,,,,Online,Online,Online,Retail,Retail,Retail,,,,,,
-,,,,,,,Sum_revenue,Sum_quantity,Avg_price,,,,,,,Sum_revenue,Sum_quantity,Avg_price,Sum_revenue,Sum_quantity,Avg_price
+Row Labels,2023,2023,2023,2023,2023,2023,2023,2023,2023,2024,2024,2024,2024,2024,2024,2024,2024,2024,Grand Total,Grand Total,Grand Total
+,Online,Online,Online,Retail,Retail,Retail,Subtotal,Subtotal,Subtotal,Online,Online,Online,Retail,Retail,Retail,Subtotal,Subtotal,Subtotal,,,
+,sum_revenue,sum_quantity,avg_price,sum_revenue,sum_quantity,avg_price,sum_revenue,sum_quantity,avg_price,sum_revenue,sum_quantity,avg_price,sum_revenue,sum_quantity,avg_price,sum_revenue,sum_quantity,avg_price,sum_revenue,sum_quantity,avg_price
 North,,,,,,,,,,,,,,,,,,,,,
     Gadget,200,8,25,175,7,25,375,15,25,250,10,25,225,9,25,475,19,25,850,34,25
     Widget,100,10,10,80,8,10,180,18,10,150,12,12.5,120,10,12,270,22,12.25,450,40,11.125

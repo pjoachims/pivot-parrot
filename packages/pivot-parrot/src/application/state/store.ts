@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
-import type { PivotTableConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, DrilldownRow, DimensionFilters, SavedViewStates, DerivedField } from '../../domain/models/types';
+import type { PivotTableConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
 import { FieldKind } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
@@ -18,6 +18,12 @@ import {
 } from './actions';
 import { autoManageValuesField } from '../../application/utils/fieldUtils';
 import { getFieldById } from '../../application/utils/getFieldById';
+
+/** A field's fetched unique values; truncated when the fetch hit its cap. */
+export interface UniqueValues {
+  values: (string | number | boolean | null)[];
+  truncated: boolean;
+}
 
 export interface SortConfig {
   valueKey: string | null;
@@ -42,9 +48,11 @@ interface PivotStore {
   dataHash: string | null;
   dataLoading: boolean;
   initComplete: boolean;
+  /** Changes when init completes on a different engine or dataset, so the committed config runs again. */
+  dataVersion: number;
   availableFields: FieldItem[];
   detectedTypes: Record<string, string | number>;
-  uniqueValuesCache: Record<string, (string | number | boolean | null)[]>;
+  uniqueValuesCache: Record<string, UniqueValues>;
   dialect: any | null;
 
   // ==================== Display State ====================
@@ -83,7 +91,7 @@ interface PivotStore {
     anchorEl: HTMLElement;
   } | null;
   havingFilterDialog: {
-    field: { name: string; displayName: string };
+    field: { name: string };
     existingFilter: Filter | null;
     anchorEl: HTMLElement;
   } | null;
@@ -99,9 +107,6 @@ interface PivotStore {
   sqlQuery: string;
 
   // ==================== Drilldown State ====================
-  drilldownData: DrilldownRow[] | null;
-  drilldownFilters: DimensionFilters | null;
-  drilldownSQL: string | null;
   drilldownSelectedColumns: Record<string, boolean>;
 
   // ==================== Query Progress State ====================
@@ -129,7 +134,7 @@ interface PivotStore {
 
   // ==================== Data Actions ====================
   setDataLoading: (loading: boolean) => void;
-  setInitComplete: (complete: boolean) => void;
+  setInitComplete: (complete: boolean, dataChanged?: boolean) => void;
   setDataLoaded: (data: {
     hash: string;
     fields: FieldItem[];
@@ -138,7 +143,7 @@ interface PivotStore {
   setAvailableFields: (fields: FieldItem[]) => void;
   setDetectedTypes: (types: Record<string, string | number>) => void;
   setDialect: (dialect: any) => void;
-  cacheUniqueValues: (field: string, values: (string | number | boolean | null)[]) => void;
+  cacheUniqueValues: (field: string, unique: UniqueValues) => void;
   clearUniqueValuesCache: () => void;
 
   // ==================== Display Actions ====================
@@ -180,11 +185,7 @@ interface PivotStore {
   setSQLQuery: (query: string) => void;
 
   // ==================== Drilldown Actions ====================
-  setDrilldownData: (data: DrilldownRow[] | null) => void;
-  setDrilldownFilters: (filters: DimensionFilters | null) => void;
-  setDrilldownSQL: (sql: string | null) => void;
   setDrilldownSelectedColumns: (columns: Record<string, boolean>) => void;
-  clearDrilldown: () => void;
 
   // ==================== Query Progress Actions ====================
   setQueryProgress: (progress: { sql?: string; elapsed: number; type: 'pivot' | 'uniqueValues' | 'drilldown' | 'query' } | null) => void;
@@ -230,6 +231,7 @@ const initialState = {
   dataHash: null,
   dataLoading: false,
   initComplete: false,
+  dataVersion: 0,
   availableFields: [],
   detectedTypes: {},
   uniqueValuesCache: {},
@@ -275,9 +277,6 @@ const initialState = {
   sqlQuery: '',
 
   // Drilldown
-  drilldownData: null,
-  drilldownFilters: null,
-  drilldownSQL: null,
   drilldownSelectedColumns: {},
 
   // Query Progress
@@ -302,6 +301,7 @@ type PivotContextValue = {
     subscribe: (listener: (state: PivotStore) => void) => () => void;
   };
   instanceKey: string;
+  locale?: string;
 };
 
 /**
@@ -351,8 +351,12 @@ export function createPivotStore(instanceKey: string = 'default') {
       setDataLoading: (loading) =>
         set({ dataLoading: loading }, false, 'setDataLoading'),
 
-      setInitComplete: (complete) =>
-        set({ initComplete: complete }, false, 'setInitComplete'),
+      setInitComplete: (complete, dataChanged = false) =>
+        set(
+          (state) => ({ initComplete: complete, dataVersion: state.dataVersion + (dataChanged ? 1 : 0) }),
+          false,
+          'setInitComplete'
+        ),
 
       setDataLoaded: ({ hash, fields, types }) =>
         set(
@@ -375,12 +379,12 @@ export function createPivotStore(instanceKey: string = 'default') {
       setDialect: (dialect) =>
         set({ dialect }, false, 'setDialect'),
 
-      cacheUniqueValues: (field, values) =>
+      cacheUniqueValues: (field, unique) =>
         set(
           (state) => ({
             uniqueValuesCache: {
               ...state.uniqueValuesCache,
-              [field]: values
+              [field]: unique
             }
           }),
           false,
@@ -488,24 +492,8 @@ export function createPivotStore(instanceKey: string = 'default') {
         set({ sqlQuery: query }, false, 'setSQLQuery'),
 
       // ==================== Drilldown Actions ====================
-      setDrilldownData: (data) =>
-        set({ drilldownData: data }, false, 'setDrilldownData'),
-
-      setDrilldownFilters: (filters) =>
-        set({ drilldownFilters: filters }, false, 'setDrilldownFilters'),
-
-      setDrilldownSQL: (sql) =>
-        set({ drilldownSQL: sql }, false, 'setDrilldownSQL'),
-
       setDrilldownSelectedColumns: (columns) =>
         set({ drilldownSelectedColumns: columns }, false, 'setDrilldownSelectedColumns'),
-
-      clearDrilldown: () =>
-        set(
-          { drilldownData: null, drilldownFilters: null, drilldownSQL: null },
-          false,
-          'clearDrilldown'
-        ),
 
       // ==================== Query Progress Actions ====================
       setQueryProgress: (progress) =>
@@ -729,7 +717,7 @@ export function createPivotStore(instanceKey: string = 'default') {
           // Explicitly NOT persisted:
           // - config (comes from Streamlit/props)
           // - dataHash, dataLoading, availableFields, detectedTypes (derived from data)
-          // - cubeResults, drilldownData, sqlQuery (ephemeral query results)
+          // - cubeResults, sqlQuery (ephemeral query results)
           // - queryProgress, isDragging, showChartDialog (runtime UI state)
           // - chartConfig (depends on current data)
         }),
@@ -766,6 +754,11 @@ export function usePivotInstanceKey(): string {
     throw new Error('usePivotInstanceKey must be used within a Pivot component');
   }
   return context.instanceKey;
+}
+
+/** The pivot's settings.locale, for components the locale prop does not reach. */
+export function usePivotLocale(): string {
+  return useContext(PivotStoreContext)?.locale ?? 'en-US';
 }
 
 /**

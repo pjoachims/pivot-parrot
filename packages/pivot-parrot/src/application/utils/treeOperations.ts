@@ -3,6 +3,8 @@
  * Eliminates duplicate traversal logic from PivotDisplay
  */
 
+import { safeStringify } from './cubeIndex';
+
 interface TreeNode {
   children?: TreeNode[];
   [key: string]: any;
@@ -11,27 +13,42 @@ interface TreeNode {
 type ExpandedState = Record<string, boolean>;
 
 /**
+ * Expansion key of a row: its member-value path, so the state follows the
+ * member through sorting, filtering and refetches instead of a position.
+ */
+export function rowKey(node: TreeNode): string {
+  return safeStringify(node.path);
+}
+
+/**
  * Generic tree traversal that processes nodes at a specific depth
  */
 function traverseTree(
   nodes: TreeNode[],
-  callback: (pathKey: string, currentDepth: number) => void,
+  callback: (key: string, currentDepth: number) => void,
   targetDepth?: number,
-  currentPath: number[] = [],
   currentDepth = 0
 ): void {
-  nodes.forEach((node, idx) => {
-    const path = [...currentPath, idx];
-    const pathKey = path.join('-');
-
+  nodes.forEach(node => {
     if (targetDepth === undefined || currentDepth === targetDepth) {
-      callback(pathKey, currentDepth);
+      callback(rowKey(node), currentDepth);
     }
 
     if (node.children && node.children.length > 0) {
-      traverseTree(node.children, callback, targetDepth, path, currentDepth + 1);
+      traverseTree(node.children, callback, targetDepth, currentDepth + 1);
     }
   });
+}
+
+/**
+ * Drop the expansion state of rows that are no longer in the tree
+ */
+export function pruneExpanded(nodes: TreeNode[], currentExpanded: ExpandedState): ExpandedState {
+  const kept: ExpandedState = {};
+  traverseTree(nodes, key => {
+    if (key in currentExpanded) kept[key] = currentExpanded[key];
+  });
+  return kept;
 }
 
 /**
@@ -45,9 +62,9 @@ export function setLevelExpansion(
 ): ExpandedState {
   const newExpanded = { ...currentExpanded };
 
-  traverseTree(nodes, (pathKey, currentDepth) => {
+  traverseTree(nodes, (key, currentDepth) => {
     if (currentDepth === depth) {
-      newExpanded[pathKey] = isExpanded;
+      newExpanded[key] = isExpanded;
     }
   }, depth);
 
@@ -60,8 +77,8 @@ export function setLevelExpansion(
 export function expandAll(nodes: TreeNode[]): ExpandedState {
   const newExpanded: ExpandedState = {};
 
-  traverseTree(nodes, (pathKey) => {
-    newExpanded[pathKey] = true;
+  traverseTree(nodes, (key) => {
+    newExpanded[key] = true;
   });
 
   return newExpanded;

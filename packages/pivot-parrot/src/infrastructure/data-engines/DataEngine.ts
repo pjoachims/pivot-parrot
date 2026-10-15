@@ -269,15 +269,15 @@ export class DataEngine {
    * @param {string} fieldName - Field name to get unique values for
    * @param {string} tableName - Table name
    * @param {string} whereClause - Optional WHERE clause for filtering
-   * @param {number} limit - Optional limit on number of unique values
+   * @param {number} limit - Maximum number of values to return
    * @param {number} timeout - Optional query timeout in milliseconds
    * @param {string} expression - Optional SQL expression (for custom groupings)
    * @param {string} dtype - Optional data type for display conversion
-   * @returns {Promise<Array>} Array of unique values
+   * @returns {Promise<{values: Array, truncated: boolean}>} The first `limit`
+   *   unique values, and whether the field has more
    */
-  async getUniqueValues(fieldName, tableName = this.defaultTable, whereClause = '', limit = null, timeout = null, expression = null, dtype = null) {
+  async getUniqueValues(fieldName, tableName = this.defaultTable, whereClause = '', limit = 1000, timeout = null, expression = null, dtype = null): Promise<{ values: any[]; truncated: boolean }> {
     const dialect = this.getDialect();
-    const limitClause = limit !== null ? `LIMIT ${limit}` : '';
 
     // Use expression if provided (for custom groupings), otherwise quote the field name
     const selectExpr = expression || dialect.quoteIdentifier(fieldName);
@@ -296,7 +296,7 @@ export class DataEngine {
       FROM ${tableName}
       ${whereSQL}
       ORDER BY _value
-      ${limitClause}
+      LIMIT ${limit + 1}
     `.trim().replace(/\s+/g, ' ');
 
     const result = await this.executeQuery(sql, false, 'uniqueValues', { timeout });
@@ -306,12 +306,13 @@ export class DataEngine {
 
     // Since we alias to _value, always extract from that column
     // Use dialect.toDisplay to convert values (handles BigInt, dates, etc.)
-    return result.data.map(row => {
+    const values = result.data.slice(0, limit).map(row => {
       const val = row['_value'] !== undefined
         ? row['_value']
         : (Object.values(row)[0] ?? null);
       return valueDtype ? dialect.toDisplay(val, valueDtype) : val;
     });
+    return { values, truncated: result.data.length > limit };
   }
 
   /**

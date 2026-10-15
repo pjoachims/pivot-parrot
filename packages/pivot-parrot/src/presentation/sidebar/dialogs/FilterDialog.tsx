@@ -11,11 +11,11 @@ export function FilterDialog({
   onClose,
   existingFilter,
   anchorEl,
-  activeFilters = []
+  activeFilters = [],
+  displayName
 }) {
   // Field identification: use id for FieldItem, name for plain objects
   const fieldId = field.id || field.name;
-  const fieldDisplayName = field.name || field.id;
 
   // Read from store
   const uniqueValuesCache = usePivotStore(s => s.uniqueValuesCache);
@@ -51,7 +51,7 @@ export function FilterDialog({
   const [selectedValues, setSelectedValues] = useState(existingFilter?.selectedValues || []);
   const [loadingValues, setLoadingValues] = useState(false);
   const [betweenStart, setBetweenStart] = useState(existingFilter?.betweenStart || '');
-  const [fetchedValues, setFetchedValues] = useState(null); // Local state for fetched values
+  const [fetched, setFetched] = useState(null); // This dialog's own fetch, {values, truncated}
   const [betweenEnd, setBetweenEnd] = useState(existingFilter?.betweenEnd || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [abortController, setAbortController] = useState(null);
@@ -65,8 +65,9 @@ export function FilterDialog({
   });
 
   // Get unique values from cache or local fetched values
-  const uniqueValues = fetchedValues || uniqueValuesCache[fieldId] || [];
-  const hasCache = !!fetchedValues || !!uniqueValuesCache[fieldId];
+  const shown = fetched || uniqueValuesCache[fieldId];
+  const uniqueValues = shown?.values || [];
+  const hasCache = !!shown;
 
   // Get applicable filters
   const applicableFilters = activeFilters.filter(f => f.field !== fieldId);
@@ -99,25 +100,25 @@ export function FilterDialog({
 
     try {
       const filtersToApply = applicableFilters.filter(f => selectedFiltersForFetch.includes(f.field));
-      const values = await field.getUniqueValues(filtersToApply);
+      const { values, truncated } = await field.getUniqueValues(filtersToApply);
 
       if (controller.signal.aborted) {
         return;
       }
 
-      const sortedValues = values.sort();
+      const unique = { values: values.sort(), truncated };
 
       // Update local state immediately for UI display
-      setFetchedValues(sortedValues);
+      setFetched(unique);
 
       // Also update store cache for future use
-      cacheUniqueValues(fieldId, sortedValues);
+      cacheUniqueValues(fieldId, unique);
 
       setLoadingValues(false);
       setShowFilterSelection(false);
     } catch (err) {
       if (!controller.signal.aborted) {
-        console.error('Failed to load unique values for', fieldDisplayName, ':', err);
+        console.error('Failed to load unique values for', fieldId, ':', err);
         setFetchError(`Failed to load values: ${err.message}`);
         setLoadingValues(false);
       }
@@ -595,6 +596,12 @@ export function FilterDialog({
               placeholder="Search..."
               style={styles.searchInput}
             />
+            {shown?.truncated && (
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '4px 0' }}>
+                Only the first {uniqueValues.length} values were fetched, and search looks only at these.
+                Add a missing value above, or narrow the fetch with other filters.
+              </div>
+            )}
 
             {/* Value List - with selected items at top */}
             <div style={styles.valueListContainer}>
@@ -682,7 +689,7 @@ export function FilterDialog({
 
   return (
     <Popover
-      title={`Filter: ${fieldDisplayName}`}
+      title={`Filter: ${displayName}`}
       onClose={onClose}
       position={position}
       width={400}

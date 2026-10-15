@@ -1,7 +1,9 @@
 import { resolveMetricReferences } from '../../field/metric-resolver';
 import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../field/derived-field-resolver-v2';
-import { getFieldById } from '../../field/getFieldById';
-import { FieldKind } from '../../models/types';
+import { resolveFieldExpr } from '../../field/resolveFieldExpr';
+import { buildWhereCondition } from './sql-builder';
+import { AGGREGATION_SQL_NAMES } from './aggregations';
+import { SIGMA_VALUES_ID } from '../../models/types';
 
 /**
  * Build CUBE SQL query from pivot configuration
@@ -24,16 +26,6 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
 
   // Build context-aware reference lookups for {{}} syntax resolution
 
-  // For WHERE filters and custom groupings: Can reference derived fields, custom groupings, custom filters
-  // (but NOT custom metrics - those are aggregations)
-  const dimensionLookup = buildReferenceLookup({
-    availableFields,
-    customGroupings: config.customGroupings || [],
-    customFilters: config.customFilters || [],
-    customMetrics: config.customMetrics || [],
-    includeMetrics: false  // Dimensions can't reference aggregations
-  });
-
   // For custom metrics: Can reference everything (derived fields, groupings, filters, other metrics)
   const metricLookup = buildReferenceLookup({
     availableFields,
@@ -43,23 +35,23 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     includeMetrics: true  // Metrics can reference other metrics for composition
   });
 
-  // Resolve references in filter expressions (use dimension lookup)
-  const resolvedWhereFilters = (whereFilters || []).map(f => ({
-    ...f,
-    sqlExpr: f.sqlExpr ? resolveDerivedFieldsInExpressionV2(f.sqlExpr, dimensionLookup) : f.sqlExpr
+  const customMetrics = (config.customMetrics || []).map(m => ({
+    name: m.name,
+    expr: m.expr
   }));
 
-  // HAVING filters could potentially reference metrics, but typically reference aggregations
-  // For now, use dimension lookup (most HAVING filters are on SUM_field etc, not custom metrics)
+  // A custom metric resolves {{}} references (derived fields, groupings, filters,
+  // other metrics), then metric references; a HAVING filter on one resolves the same way.
+  const resolveMetricExpr = (expr) => resolveMetricReferences(resolveDerivedFieldsInExpressionV2(expr, metricLookup), customMetrics);
+
   const resolvedHavingFilters = (havingFilters || []).map(f => ({
     ...f,
-    sqlExpr: f.sqlExpr ? resolveDerivedFieldsInExpressionV2(f.sqlExpr, dimensionLookup) : f.sqlExpr
+    sqlExpr: f.sqlExpr ? resolveMetricExpr(f.sqlExpr) : f.sqlExpr
   }));
 
   // Build WHERE and HAVING clauses from filter objects
-  const whereClause = resolvedWhereFilters.length > 0
-    ? 'WHERE ' + dialect.buildWhereClause(resolvedWhereFilters)
-    : '';
+  const whereCondition = buildWhereCondition(whereFilters || [], dialect, availableFields, config);
+  const whereClause = whereCondition ? `WHERE ${whereCondition}` : '';
 
   const havingClause = resolvedHavingFilters.length > 0
     ? 'HAVING ' + dialect.buildWhereClause(resolvedHavingFilters)
@@ -71,127 +63,39 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
   // Use dialect for identifier quoting
   const quoteIdentifier = (id) => dialect.quoteIdentifier(id);
 
-  const customGroupings = config.customGroupings || [];
-
-  // Build dimension expressions for SELECT and GROUP BY using getFieldById
   const buildDimensionExpr = (fieldId) => {
-    // Get field metadata
-    const fieldItem = getFieldById(fieldId, availableFields, config);
-
-    if (!fieldItem) {
-      // Field not found - treat as regular column
-      const quoted = quoteIdentifier(fieldId);
-      return {
-        expr: quoted,
-        alias: quoted,
-        forGroupBy: quoted
-      };
-    }
-
-    // Handle different field kinds
-    if (fieldItem.kind === FieldKind.CUSTOM_GROUPING && fieldItem.formula) {
-      // Custom grouping - resolve {{}} references
-      const resolvedExpr = resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
-      return {
-        expr: resolvedExpr,
-        alias: quoteIdentifier(fieldId),
-        forGroupBy: resolvedExpr
-      };
-    }
-
-    if (fieldItem.kind === FieldKind.DERIVED_FIELD && fieldItem.formula) {
-      // Derived field - use formula as SQL expression
-      return {
-        expr: fieldItem.formula,
-        alias: quoteIdentifier(fieldId),
-        forGroupBy: fieldItem.formula
-      };
-    }
-
-    // Base field - use quoted identifier
-    const quoted = quoteIdentifier(fieldId);
-    return {
-      expr: quoted,
-      alias: quoted,
-      forGroupBy: quoted
-    };
+    const expr = resolveFieldExpr(fieldId, availableFields, config, dialect);
+    return { id: fieldId, expr, alias: quoteIdentifier(fieldId), forGroupBy: expr };
   };
 
   // Filter out 'Σ Values' placeholder - it's not an actual column
   const rowDimensions = (config.rows || [])
-    .filter(r => getFieldId(r) !== 'Σ Values')
+    .filter(r => getFieldId(r) !== SIGMA_VALUES_ID)
     .map(r => buildDimensionExpr(getFieldId(r)));
 
   const colDimensions = (config.columns || [])
-    .filter(c => getFieldId(c) !== 'Σ Values')
+    .filter(c => getFieldId(c) !== SIGMA_VALUES_ID)
     .map(c => buildDimensionExpr(getFieldId(c)));
 
   const allDimensions = [...rowDimensions, ...colDimensions];
   const groupBy = allDimensions.map(d => d.forGroupBy);
 
-  // Extract custom metrics for reference resolution
-  const customMetrics = (config.customMetrics || []).map(m => ({
-    name: m.name,
-    expr: m.expr
-  }));
-
-  // Map UI aggregation names to dialect registry keys
-  const aggNameMap = {
-    'SUM': 'sum',
-    'AVG': 'avg',
-    'COUNT': 'count',
-    'MIN': 'min',
-    'MAX': 'max',
-    'COUNT DISTINCT': 'count_distinct',
-    'APPROX COUNT DISTINCT': 'approx_count_distinct',
-    'MEDIAN': 'median',
-    'MODE': 'mode',
-    'STD DEV': 'stddev',
-    'VARIANCE': 'variance',
-  };
-
-  // Helper: resolve field to its SQL expression (for custom groupings, derived fields, etc.)
-  const resolveFieldExpr = (fieldId) => {
-    const fieldItem = getFieldById(fieldId, availableFields, config);
-
-    if (!fieldItem) {
-      // Field not found - treat as regular column
-      return quoteIdentifier(fieldId);
-    }
-
-    // Custom grouping - resolve {{}} references and return the expression
-    if (fieldItem.kind === FieldKind.CUSTOM_GROUPING && fieldItem.formula) {
-      return resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
-    }
-
-    // Derived field - use formula as SQL expression
-    if (fieldItem.kind === FieldKind.DERIVED_FIELD && fieldItem.formula) {
-      return resolveDerivedFieldsInExpressionV2(fieldItem.formula, dimensionLookup);
-    }
-
-    // Base field - use quoted identifier
-    return quoteIdentifier(fieldId);
-  };
+  const aggNameMap = AGGREGATION_SQL_NAMES;
 
   // Build aggregation expressions
   // Combine visible values and hidden values for SQL generation
   const allValues = [...(config.values || []), ...(config.hiddenValues || [])];
   const aggs = allValues.map(v => {
     if (v.isCustom) {
-      // Custom metrics: resolve {{}} references, then metric references, no casting
-      // User is responsible for writing engine-compatible SQL and knows the return type
-      // Step 1: Resolve {{}} syntax (derived fields, groupings, filters, other metrics)
-      const exprWithReferences = resolveDerivedFieldsInExpressionV2(v.expr, metricLookup);
-      // Step 2: Resolve metric references (SUM_field -> SUM(...))
-      const resolvedExpr = resolveMetricReferences(exprWithReferences, customMetrics);
-      return `${resolvedExpr} AS ${quoteIdentifier(v.field)}`;
+      // No casting: the user writes engine-compatible SQL and knows the return type
+      return `${resolveMetricExpr(v.expr)} AS ${quoteIdentifier(v.field)}`;
     }
 
     const fieldType = fieldTypes[v.field];
     const aggUpper = v.aggregation.toUpperCase().trim();
     const aggAlias = v.aggregation.toLowerCase().replace(/\s+/g, '_'); // Lowercase for consistency
     // Resolve field to its expression (handles custom groupings, derived fields)
-    const fieldExpr = resolveFieldExpr(v.field);
+    const fieldExpr = resolveFieldExpr(v.field, availableFields, config, dialect);
 
     // Validate: numeric aggregations (SUM, AVG) work on numeric and boolean fields
     const numericAggs = ['SUM', 'AVG'];
@@ -208,7 +112,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     if (numericAggs.includes(aggUpper) && !isNumericType) {
       // Fallback to COUNT
       const countExpr = dialect.getAggregation('count', fieldExpr);
-      return `${dialect.cast(countExpr, 'bigint')} AS count_${v.field}`;
+      return `${dialect.cast(countExpr, 'bigint')} AS ${quoteIdentifier(`count_${v.field}`)}`;
     }
 
     // Get aggregation name for dialect registry
@@ -227,7 +131,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
 
     // Generate aggregation expression using dialect
     const aggExpr = dialect.getAggregation(aggKey, fieldExpr);
-    return `${aggExpr} AS ${aggAlias}_${v.field}`;
+    return `${aggExpr} AS ${quoteIdentifier(`${aggAlias}_${v.field}`)}`;
   }).join(', ');
 
   // Generate SQL based on configuration
@@ -246,18 +150,32 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     // e.g., "grouping_123" NULLS LAST, "region" NULLS LAST
     const orderBy = allDimensions.map(d => `${d.alias} NULLS LAST`).join(', ');
 
-    // Use CUBE unless explicitly disabled (typically when HAVING filters would make subtotals confusing)
+    // Use CUBE unless explicitly disabled
     const useCube = !disableSubtotals;
 
     if (useCube) {
       // Use CUBE to generate subtotals and grand totals
       // Build GROUPING columns using raw expressions
-      // e.g., GROUPING(YEAR(date)) AS _grouping_grouping_123, GROUPING("region") AS _grouping_region
+      // e.g., GROUPING(YEAR(date)) AS _grouping_grouping_123, GROUPING("region") AS "_grouping_region"
       const groupingCols = allDimensions.map(d =>
-        `CAST(GROUPING(${d.forGroupBy}) AS INTEGER) AS _grouping_${d.alias.replace(/"/g, '')}`
+        `CAST(GROUPING(${d.forGroupBy}) AS INTEGER) AS ${quoteIdentifier(`_grouping_${d.id}`)}`
       ).join(', ');
 
-      sql = `SELECT ${dimensionSelects}, ${groupingCols}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY CUBE(${groupBy.join(', ')}) ${havingClause} ORDER BY ${orderBy}`;
+      // HAVING picks leaf groups (an Excel value filter): subtotals and totals
+      // must aggregate only the surviving leaves, so the CUBE runs over the
+      // base rows of those leaves. The leaf query keeps the aggregate aliases
+      // so a HAVING on an alias still resolves; only its keys leave it, so the
+      // correlated dimension expressions below can bind to the outer row.
+      let cubeWhereClause = whereClause;
+      if (havingClause) {
+        const keys = allDimensions.map((d, i) => `_pp_k${i}`);
+        const leafGroups = `SELECT ${allDimensions.map((d, i) => `${d.forGroupBy} AS ${keys[i]}`).join(', ')}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY ${groupBy.join(', ')} ${havingClause}`;
+        const sameLeaf = allDimensions.map((d, i) => `_pp_leaves.${keys[i]} IS NOT DISTINCT FROM ${d.forGroupBy}`).join(' AND ');
+        const survives = `EXISTS (SELECT 1 FROM (SELECT ${keys.join(', ')} FROM (${leafGroups}) _pp_groups) _pp_leaves WHERE ${sameLeaf})`;
+        cubeWhereClause = whereCondition ? `WHERE (${whereCondition}) AND ${survives}` : `WHERE ${survives}`;
+      }
+
+      sql = `SELECT ${dimensionSelects}, ${groupingCols}, ${aggs} FROM ${tableName} ${cubeWhereClause} GROUP BY CUBE(${groupBy.join(', ')}) ORDER BY ${orderBy}`;
     } else {
       // Regular GROUP BY without subtotals
       sql = `SELECT ${dimensionSelects}, ${aggs} FROM ${tableName} ${whereClause} GROUP BY ${groupBy.join(', ')} ${havingClause} ORDER BY ${orderBy}`;

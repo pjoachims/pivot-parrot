@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef, useRef, useContext } from 'react';
 import { DuckDBWASMEngine } from '../../infrastructure/data-engines/DuckDBWASMEngine';
 import { hashData } from '../../domain/query/utils/cache';
 import { dataToCSV } from '../../domain/query/utils/csv';
@@ -59,10 +59,19 @@ const getNotificationStyle = (level = 'info') => ({
 const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotConfig }, ref) => {
   // Normalize config with defaults (useMemo because it's derived from props, not internal state)
   const cfg = useMemo(() => new NormalizedPivotConfig(pivotConfig), [pivotConfig]);
+  // Hosts often pass an inline config object, so `cfg` changes on every parent
+  // render. Effects that must not re-run then (init, callbacks) read it from here.
+  const cfgRef = useRef(cfg);
+  cfgRef.current = cfg;
+  // initialConfig is applied when its content differs from the last one applied,
+  // so an equal object re-created on every render leaves the user's edits alone.
+  const appliedInitialConfigRef = useRef<string | null>(null);
+  const initialConfigKey = useMemo(() => JSON.stringify(cfg.getPivotTableConfig()), [pivotConfig.initialConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ==================== ZUSTAND STATE ====================
   // Get instance key from context
   const instanceKey = usePivotInstanceKey();
+  const storeApi = useContext(PivotStoreContext)!.store;
 
   // Get state from store
   const config = usePivotStore((s) => s.config);
@@ -73,7 +82,6 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   const dataLoading = usePivotStore((s) => s.dataLoading);
   const initComplete = usePivotStore((s) => s.initComplete);
-  const uniqueValuesCache = usePivotStore((s) => s.uniqueValuesCache);
   const sidebarCollapsed = usePivotStore((s) => s.sidebarCollapsed);
   const activeView = usePivotStore((s) => s.activeView);
   const secondaryDisplayMode = usePivotStore((s) => s.secondaryDisplayMode);
@@ -94,7 +102,6 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   const setDialect = usePivotStore((s) => s.setDialect);
   const setInitComplete = usePivotStore((s) => s.setInitComplete);
   const setDataLoading = usePivotStore((s) => s.setDataLoading);
-  const setUniqueValuesCache = usePivotStore((s) => s.cacheUniqueValues);
   const setSidebarCollapsed = usePivotStore((s) => s.setSidebarCollapsed);
   const setActiveView = usePivotStore((s) => s.setActiveView);
   const setSecondaryDisplayMode = usePivotStore((s) => s.setSecondaryDisplayMode);
@@ -146,10 +153,14 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Custom hooks
   const splitPane = useSplitPane(activeView, secondaryDisplayMode);
-  const snapshots = useSnapshots();
+  const snapshots = useSnapshots(dataEngine?.getDialect() ?? null);
   // Pivot calculation - executes queries
+  const dataVersion = usePivotStore((s) => s.dataVersion);
+  // The engine and dataset of the last completed init: a new one re-runs the committed config.
+  const readyDataRef = useRef<{ engine: unknown; dataHash: string | null } | null>(null);
   const calculation = usePivotCalculation({
     executionConfig,
+    dataVersion,
     engine: queryEngine || dataEngine,
     isRemoteMode: isRemoteConnection,
     onExecutionComplete: (executedCfg, cubeResults) => {
@@ -179,6 +190,8 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // Pivot handlers - extracted into custom hook
   const handlers = usePivotHandlers({
     calculation,
+    displayData,
+    dialect: dataEngine?.getDialect() ?? null,
     snapshots,
     drilldown,
     sqlPlayground,
@@ -222,10 +235,8 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Notify parent of config changes
   useEffect(() => {
-    if (cfg.onConfigChange) {
-      cfg.onConfigChange(config);
-    }
-  }, [config, cfg.onConfigChange]);
+    cfgRef.current.onConfigChange?.(config);
+  }, [config]);
 
   // Auto-commit config to executionConfig when autoUpdate is enabled
   // Only commit if initialization is complete (guards execution boundary)
@@ -274,6 +285,19 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // Extract setError from calculation to avoid dependency on entire calculation object
   const setCalculationError = calculation.setError;
 
+  function applyInitialConfig() {
+    const initialConfig = cfgRef.current.getPivotTableConfig();
+    const key = JSON.stringify(initialConfig);
+    if (!initialConfig || key === appliedInitialConfigRef.current) return;
+    appliedInitialConfigRef.current = key;
+    setConfig(initialConfig);
+  }
+
+  // A new initialConfig after init loads that view.
+  useEffect(() => {
+    if (initComplete) applyInitialConfig();
+  }, [initialConfigKey, initComplete]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Initialize engine based on mode
   // Initialization sequence:
   // 0) Display empty app skeleton (component already rendered)
@@ -282,6 +306,15 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // 3) Apply config (custom metrics validated against base fields)
   // 4) Set initComplete = true → queries can execute
   useEffect(() => {
+    const cfg = cfgRef.current;
+
+    function markReady() {
+      const ready = { engine: queryEngine || dataEngine, dataHash: storeApi.getState().dataHash };
+      const dataChanged = ready.engine !== readyDataRef.current?.engine || ready.dataHash !== readyDataRef.current?.dataHash;
+      readyDataRef.current = ready;
+      setInitComplete(true, dataChanged);
+    }
+
     async function _initLocalMode() {
       logger.debug('Starting local mode initialization', {
         hasData: !!cfg.data,
@@ -301,19 +334,10 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
         logger.debug('Data loaded successfully');
 
         // Step 3: Apply config now that base fields are available
-        const initialConfig = cfg.getPivotTableConfig();
-        logger.debug('Initial config from cfg', {
-          hasInitialConfig: !!initialConfig,
-          initialConfig
-        });
-        if (initialConfig) {
-          setConfig(initialConfig);
-          logger.debug('Config applied');
-        }
+        applyInitialConfig();
 
         // Step 4: Ready to execute queries (fields + config loaded)
-        logger.debug('Setting initComplete = true');
-        setInitComplete(true);
+        markReady();
       } catch (err: any) {
         logger.error('Error during initialization', { error: err.message });
         setCalculationError?.(err.message);
@@ -362,18 +386,10 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
           // derivedFieldsMap is now computed automatically from availableFields via useMemo
 
           // Step 3: Apply config now that base fields are available
-          const initialConfig = cfg.getPivotTableConfig();
-          logger.debug('Initial config from cfg', {
-            hasInitialConfig: !!initialConfig,
-            initialConfig
-          });
-          if (initialConfig) {
-            setConfig(initialConfig);
-          }
+          applyInitialConfig();
 
           // Step 4: Ready to execute queries
-          logger.debug('Setting initComplete = true');
-          setInitComplete(true);
+          markReady();
         } else {
           logger.warn('Missing fields or types - NOT setting initComplete', {
             hasFields: !!fields,
@@ -401,7 +417,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
     } else {
       logger.warn('No initialization path - missing engines');
     }
-  }, [cfg.data, dataEngine, queryEngine, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig, cfg]);
+  }, [cfg.data, dataEngine, queryEngine, storeApi, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig]);
 
 
   // Chart gracefully handles config changes via error handling in ChartView
@@ -524,7 +540,7 @@ const Pivot = forwardRef(({ config: pivotConfig = {}, children }: { config?: Piv
   }
 
   return (
-    <PivotStoreContext.Provider value={{ store: storeRef.current, instanceKey }}>
+    <PivotStoreContext.Provider value={{ store: storeRef.current, instanceKey, locale: pivotConfig.settings?.locale }}>
       <PivotInner config={pivotConfig} ref={ref} />
       {children}
     </PivotStoreContext.Provider>

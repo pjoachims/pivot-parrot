@@ -4,7 +4,7 @@
  */
 
 import type { PivotTableConfig, Filter, ValueConfig, DerivedField } from '../../domain/models/types';
-import { FieldKind } from '../../domain/models/types';
+import { FieldKind, SIGMA_VALUES_ID } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
 import { getArrowType } from '../../domain/types/ArrowTypes';
 import {
@@ -21,7 +21,7 @@ import { getFieldById } from '../utils/getFieldById';
  */
 function getFieldKind(fieldName: string, config: PivotTableConfig, availableFields: FieldItem[]): FieldKind {
   // Special case
-  if (fieldName === 'Σ Values') return FieldKind.SIGMA_VALUES;
+  if (fieldName === SIGMA_VALUES_ID) return FieldKind.SIGMA_VALUES;
 
   // Check active aggregations (e.g., SUM_sales)
   for (const valueConfig of config.values || []) {
@@ -60,6 +60,51 @@ function matchesValueConfig(fieldName: string, valueConfig: ValueConfig): boolea
     return valueConfig.field === fieldName;
   }
   return getAggregationId(valueConfig) === fieldName;
+}
+
+function sameValue(a: ValueConfig, b: ValueConfig): boolean {
+  return a.field === b.field
+    && a.aggregation.toUpperCase() === b.aggregation.toUpperCase()
+    && Boolean(a.isCustom) === Boolean(b.isCustom);
+}
+
+/**
+ * Insert `item` at `index` after removing every entry `isSame` matches. `index`
+ * is a drop position counted in `items` as the user saw them, removed entries included.
+ */
+function insertOnce<T>(items: T[], item: T, index: number, isSame: (entry: T, position: number) => boolean): T[] {
+  const removedBefore = items.slice(0, index).filter(isSame).length;
+  const kept = items.filter((entry, position) => !isSame(entry, position));
+  kept.splice(index - removedBefore, 0, item);
+  return kept;
+}
+
+function isNumericType(typeName: string | number | undefined): boolean {
+  return typeof typeName === 'string' && Boolean(getArrowType(typeName)?.isNumeric);
+}
+
+export type CheckboxZone = 'rows' | 'values' | 'filters';
+
+const CHECKBOX_ZONE_BY_KIND: Partial<Record<FieldKind, CheckboxZone>> = {
+  [FieldKind.AGGREGATION]: 'values',
+  [FieldKind.CUSTOM_METRIC]: 'values',
+  [FieldKind.CUSTOM_FILTER]: 'filters'
+};
+
+/**
+ * Zone a field lands in when its checkbox is ticked (Excel-like): measures and
+ * numeric base fields go to Values, custom filters to Filters, everything else to Rows.
+ */
+export function checkboxTargetZone(
+  fieldName: string,
+  config: PivotTableConfig,
+  availableFields: FieldItem[],
+  detectedTypes: Record<string, string | number>
+): CheckboxZone {
+  const kind = getFieldKind(fieldName, config, availableFields);
+  const zone = CHECKBOX_ZONE_BY_KIND[kind];
+  if (zone) return zone;
+  return kind === FieldKind.BASE_FIELD && isNumericType(detectedTypes[fieldName]) ? 'values' : 'rows';
 }
 
 export function buildHandleDrop(
@@ -111,34 +156,26 @@ export function buildHandleDrop(
       if (isMeasure) {
         return { config, shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
       }
-      const targetArray = targetZone === 'rows' ? [...newConfig.rows] : [...newConfig.columns];
-      targetArray.splice(insertAt, 0, fieldName);
-      if (targetZone === 'rows') newConfig.rows = targetArray;
-      else newConfig.columns = targetArray;
+      // A dimension sits on one axis once; dropping it again moves it.
+      const otherZone = targetZone === 'rows' ? 'columns' : 'rows';
+      newConfig[otherZone] = newConfig[otherZone].filter(f => f !== fieldName);
+      newConfig[targetZone] = insertOnce(config[targetZone], fieldName, insertAt, f => f === fieldName);
 
     } else if (targetZone === 'values') {
-      const targetArray = [...newConfig.values];
-
-      // Check if this is a custom metric
+      let valueConfig: ValueConfig;
       if (kind === FieldKind.CUSTOM_METRIC) {
-        // Custom metrics use isCustom: true and aggregation: 'custom'
-        targetArray.splice(insertAt, 0, { field: fieldName, aggregation: 'custom', isCustom: true });
+        valueConfig = { field: fieldName, aggregation: 'custom', isCustom: true };
       } else if (kind === FieldKind.AGGREGATION && draggedValueConfig) {
-        targetArray.splice(insertAt, 0, { ...draggedValueConfig });
+        valueConfig = { ...draggedValueConfig };
       } else {
-        // Regular fields get default aggregation based on type
-        const fieldTypeName = detectedTypes[fieldName]; // e.g., 'int64', 'decimal<35,19>'
-        const fieldTypeInfo = typeof fieldTypeName === 'string'
-          ? getArrowType(fieldTypeName)
-          : null; // Handles parameterized types
-        const defaultAgg = fieldTypeInfo?.isNumeric ? 'Sum' : 'Count';
-        targetArray.splice(insertAt, 0, { field: fieldName, aggregation: defaultAgg });
+        const defaultAgg = isNumericType(detectedTypes[fieldName]) ? 'Sum' : 'Count';
+        valueConfig = { field: fieldName, aggregation: defaultAgg };
       }
-      newConfig.values = targetArray;
+      // A field may sit in Values with several aggregations (and in Rows too), but not twice with the same one.
+      newConfig.values = insertOnce(config.values, valueConfig, insertAt,
+        (v, position) => sameValue(v, valueConfig) || (sourceZone === 'values' && position === sourceIndex));
 
     } else if (targetZone === 'filters') {
-      const targetArray = [...(newConfig.filters || [])];
-
       // Enrich filter with info from FieldItem for HAVING clause generation
       const fieldItem = getFieldById(fieldName, availableFields, config);
 
@@ -168,8 +205,9 @@ export function buildHandleDrop(
         }
       }
 
-      targetArray.splice(insertAt, 0, filterItem);
-      newConfig.filters = targetArray;
+      const filters = config.filters || [];
+      const placed = filters.find(f => f.field === fieldName) ?? filterItem;
+      newConfig.filters = insertOnce(filters, placed, insertAt, f => f.field === fieldName);
 
       // Auto-open dialog (unless custom filter or reordering)
       const isReordering = sourceZone === 'filters';

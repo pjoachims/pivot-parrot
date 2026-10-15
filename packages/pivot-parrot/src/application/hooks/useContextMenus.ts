@@ -24,7 +24,6 @@ interface ChevronContextMenu {
   depth: number;
   fieldName: string;
   isOpen: boolean;
-  path: number[];
 }
 
 interface UseContextMenusProps {
@@ -84,7 +83,7 @@ export function useContextMenus({
    */
   const handleChevronContextMenu = useCallback((
     e: React.MouseEvent,
-    { depth, fieldName, isOpen, path }: Omit<ChevronContextMenu, 'x' | 'y'>
+    { depth, fieldName, isOpen }: Omit<ChevronContextMenu, 'x' | 'y'>
   ) => {
     e.preventDefault();
     setChevronContextMenu({
@@ -92,8 +91,7 @@ export function useContextMenus({
       y: e.clientY,
       depth,
       fieldName,
-      isOpen,
-      path
+      isOpen
     });
   }, []);
 

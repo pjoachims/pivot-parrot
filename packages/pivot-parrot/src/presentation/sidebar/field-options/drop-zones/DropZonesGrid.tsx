@@ -6,6 +6,7 @@ import FieldItem from '../fields-list/FieldItem';
 import ValueItem from './ValueItem';
 import { enrichValuesWithMetrics } from '../../../../application/utils/fieldUtils';
 import { getFieldById } from '../../../../application/utils/getFieldById';
+import { fieldDisplayName, valueDisplayName } from '../../../../domain/field/fieldDisplayName';
 
 /**
  * DropZonesGrid component
@@ -52,7 +53,7 @@ export default function DropZonesGrid() {
 
       if (type === 'having') {
         setHavingFilterDialog({
-          field: { name: fieldItem.id, displayName: fieldItem.name },
+          field: { name: fieldItem.id },
           existingFilter: null,
           anchorEl
         });
@@ -157,7 +158,7 @@ export default function DropZonesGrid() {
         // HAVING filter
         console.log('[handleFilterClick] Opening HavingFilterDialog');
         setHavingFilterDialog({
-          field: { name: fieldItem.id, displayName: fieldItem.name },
+          field: { name: fieldItem.id },
           existingFilter,
           anchorEl
         });
@@ -219,6 +220,7 @@ export default function DropZonesGrid() {
             <div key={fieldId} className="relative" data-filter-field={fieldId}>
               <FieldItem
                 field={fieldItem}
+                label={fieldDisplayName(fieldId, config, availableFields)}
                 zone="filters"
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
@@ -258,6 +260,7 @@ export default function DropZonesGrid() {
             <FieldItem
               key={fieldId}
               field={fieldItem}
+              label={fieldDisplayName(fieldId, config, availableFields)}
               zone="columns"
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
@@ -295,6 +298,7 @@ export default function DropZonesGrid() {
             <FieldItem
               key={fieldId}
               field={fieldItem}
+              label={fieldDisplayName(fieldId, config, availableFields)}
               zone="rows"
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
@@ -328,6 +332,8 @@ export default function DropZonesGrid() {
           <ValueItem
             key={`${valueField.field}-${valueField.aggregation}-${index}`}
             valueField={valueField}
+            label={valueDisplayName(valueField, config, availableFields)}
+            fieldLabel={fieldDisplayName(valueField.field, config, availableFields)}
             index={index}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}

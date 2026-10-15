@@ -1,4 +1,5 @@
 import React from 'react';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
   selectChartData,
@@ -7,7 +8,10 @@ import {
   getMetricLabel,
   getColor,
   detectAxisType,
-  getPlotlyFormat
+  getPlotlyFormat,
+  getMetricFormat,
+  metricAxisFormat,
+  plotlySeparators
 } from './chartUtils';
 
 // ============================================================================
@@ -16,6 +20,7 @@ import {
 
 export default function ScatterChartConfig({
   dimensions,
+  dimensionLabel,
   valueFields,
   pointLevel,
   setPointLevel,
@@ -39,7 +44,7 @@ export default function ScatterChartConfig({
           style={styles.select}
         >
           {dimensions.map(dim => (
-            <option key={dim} value={dim}>{dim}</option>
+            <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
           ))}
         </select>
       </div>
@@ -96,7 +101,7 @@ export default function ScatterChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== pointLevel).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -143,7 +148,7 @@ const styles: Record<string, React.CSSProperties> = {
 // Data Transformation & Rendering
 // ============================================================================
 
-export function transformScatterChart(chartData, chartConfig) {
+export function transformScatterChart(chartData, chartConfig, locale = 'en-US') {
   const { rows, dtypes, config } = chartData;
   const { pointLevel, xMetric, yMetric, colorBy, sizeBy } = chartConfig;
 
@@ -176,7 +181,7 @@ export function transformScatterChart(chartData, chartConfig) {
     }
 
     return {
-      name: colorBy ? groupName : pointLevelField,
+      name: colorBy ? groupName : fieldDisplayName(pointLevelField, config),
       x: rows.map(row => row[xColumn]),
       y: rows.map(row => row[yColumn]),
       text: rows.map(row => row[pointLevelField]),
@@ -197,27 +202,32 @@ export function transformScatterChart(chartData, chartConfig) {
   const yAxisDtype = dtypes ? dtypes[yColumn] : null;
   const xPlotlyFormat = getPlotlyFormat(xAxisDtype);
   const yPlotlyFormat = getPlotlyFormat(yAxisDtype);
+  const xMetricAxis = metricAxisFormat(getMetricFormat(xMetric, config, locale));
+  const yMetricAxis = metricAxisFormat(getMetricFormat(yMetric, config, locale));
 
   const layout = {
     title: '',
     xaxis: {
       title: xLabel,
       type: xAxisType,
-      tickformat: xPlotlyFormat.tick,
-      hoverformat: xPlotlyFormat.hover,
+      ...xMetricAxis,
+      tickformat: xPlotlyFormat.tick ?? xMetricAxis.tickformat,
+      hoverformat: xPlotlyFormat.hover ?? xMetricAxis.tickformat,
       automargin: true
     },
     yaxis: {
       title: yLabel,
       type: yAxisType,
-      tickformat: yPlotlyFormat.tick,
-      hoverformat: yPlotlyFormat.hover
+      ...yMetricAxis,
+      tickformat: yPlotlyFormat.tick ?? yMetricAxis.tickformat,
+      hoverformat: yPlotlyFormat.hover ?? yMetricAxis.tickformat
     },
     showlegend: colorBy ? true : false,
     legend: { x: 1.1, y: 1 },
     margin: { l: 60, r: 60, t: 40, b: 60 },
     hovermode: 'closest',
-    autosize: true
+    autosize: true,
+    separators: plotlySeparators(locale)
   };
 
   return { traces, layout };

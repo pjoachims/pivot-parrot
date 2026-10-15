@@ -87,7 +87,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("status NOT IN ('cancelled', 'refunded')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status IN ('cancelled', 'refunded')) OR status IS NULL)");
       expect(filter.getLabel()).toBe('NOT 2 selected');
     });
 
@@ -129,7 +129,7 @@ describe('Filter Classes', () => {
         betweenEnd: 100
       });
 
-      expect(filter.toSQL(dialect)).toBe("price BETWEEN '10' AND '100'");
+      expect(filter.toSQL(dialect)).toBe("price BETWEEN 10 AND 100");
       expect(filter.getLabel()).toBe('10 - 100');
     });
 
@@ -140,7 +140,7 @@ describe('Filter Classes', () => {
         betweenEnd: 5000
       });
 
-      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN \'1000\' AND \'5000\'');
+      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN 1000 AND 5000');
     });
   });
 
@@ -162,7 +162,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (status = 'deleted')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status = 'deleted') OR status IS NULL)");
       expect(filter.getLabel()).toBe('≠ deleted');
     });
 
@@ -183,7 +183,7 @@ describe('Filter Classes', () => {
         value: 'premium'
       });
 
-      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '!'");
       expect(filter.getLabel()).toBe('contains "premium"');
     });
 
@@ -194,7 +194,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("notes NOT LIKE '%test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '!') OR notes IS NULL)");
       expect(filter.getLabel()).toBe('not contains "test"');
     });
 
@@ -204,7 +204,7 @@ describe('Filter Classes', () => {
         value: "it's"
       });
 
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '!'");
     });
 
     it('should handle LIKE wildcards in user input', () => {
@@ -215,7 +215,7 @@ describe('Filter Classes', () => {
       });
 
       // The % and _ in the value are escaped with backslash
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%a\\%b\\_c%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%a!%b!_c%' ESCAPE '!'");
     });
   });
 
@@ -226,7 +226,7 @@ describe('Filter Classes', () => {
         value: 'John'
       });
 
-      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '!'");
       expect(filter.getLabel()).toBe('starts with "John"');
     });
 
@@ -237,7 +237,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("email NOT LIKE 'test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '!') OR email IS NULL)");
     });
   });
 
@@ -248,7 +248,7 @@ describe('Filter Classes', () => {
         value: '@example.com'
       });
 
-      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '!'");
       expect(filter.getLabel()).toBe('ends with "@example.com"');
     });
 
@@ -259,7 +259,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("filename NOT LIKE '%.tmp' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '!') OR filename IS NULL)");
     });
   });
 
@@ -310,7 +310,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (score > 100)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (score > 100) OR score IS NULL)");
     });
   });
 

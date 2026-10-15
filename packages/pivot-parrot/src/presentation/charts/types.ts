@@ -67,6 +67,8 @@ export interface PlotlyAxis {
   title?: string | { text?: string; hovertext?: string };
   type?: 'linear' | 'log' | 'date' | 'category';
   tickformat?: string;
+  tickprefix?: string;
+  ticksuffix?: string;
   hoverformat?: string;
   side?: 'left' | 'right';
   overlaying?: string;
@@ -105,6 +107,7 @@ export interface PlotlyLayout {
     b?: number;
   };
   autosize?: boolean;
+  separators?: string;
   height?: number;
   width?: number;
 }

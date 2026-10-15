@@ -1,12 +1,14 @@
 import React from 'react';
 import { styles } from './styles';
 import { formatExample } from './validation';
+import { usePivotLocale } from '../../../../application/state/store';
 
 /**
  * Format configuration section for custom metrics
  * Allows user to set number format, decimals, currency, and thousand separator
  */
 export function FormatSection({ formatType, setFormatType, decimals, setDecimals, currency, setCurrency, useThousandSeparator, setUseThousandSeparator }) {
+  const locale = usePivotLocale();
   return (
     <div style={styles.formatSection}>
       <div style={styles.formatLabel}>Display Format</div>
@@ -70,14 +72,14 @@ export function FormatSection({ formatType, setFormatType, decimals, setDecimals
               onChange={(e) => setUseThousandSeparator(e.target.checked)}
               style={{marginRight: '6px', cursor: 'pointer'}}
             />
-            Use thousand separator (e.g., 1,234.56)
+            Use thousand separator (e.g., {formatExample(1234.56, 'number', 2, currency, true, locale)})
           </label>
         </div>
       )}
 
       {/* Format Preview */}
       <div style={styles.formatPreview}>
-        Preview: {formatExample(1234.5678, formatType, decimals, currency, useThousandSeparator)}
+        Preview: {formatExample(1234.5678, formatType, decimals, currency, useThousandSeparator, locale)}
       </div>
     </div>
   );

@@ -26,6 +26,7 @@ export type {
   PivotEngineSettings,
   PivotCallbacks,
   ValueConfig,
+  ValueFormat,
   Filter,
   CustomMetric,
   CustomFilter,

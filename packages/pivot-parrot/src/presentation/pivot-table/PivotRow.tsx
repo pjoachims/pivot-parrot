@@ -1,4 +1,5 @@
 import React from 'react';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 /**
  * Render data cells for a row
@@ -68,7 +69,6 @@ export function renderCells(vals, leafColumns, styles, formatValue, rowMetric = 
  */
 export function PivotRow({
   node,
-  path,
   depth,
   rowKey,
   expanded,
@@ -90,14 +90,9 @@ export function PivotRow({
   const isLeaf = node.values && !hasKids;
   const isGrand = node.groupLabel === 'Grand Total';
 
-  const valuesInRows = rowFields && rowFields.some(f => f === 'Σ Values');
-  const valuesIndex = rowFields ? rowFields.indexOf('Σ Values') : -1;
-  const isTrueSubtotal = node.subtotals && hasKids && (
-    !valuesInRows ||
-    valuesIndex === 0 ||
-    depth < valuesIndex
-  );
-  const isSubtotalRow = isTrueSubtotal;
+  const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
+  const valuesIndex = rowFields ? rowFields.indexOf(SIGMA_VALUES_ID) : -1;
+  const isSubtotalRow = node.subtotals && hasKids;
 
   const fieldName = rowFields && rowFields[depth] ? rowFields[depth] : null;
   // For metric rows (at valuesIndex), use groupLabel (friendly name)
@@ -147,13 +142,13 @@ export function PivotRow({
             style={styles.expandButton}
             onClick={(e) => {
               e.stopPropagation();
-              toggle(path);
+              toggle(rowKey);
             }}
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
               if (onChevronContextMenu) {
-                onChevronContextMenu(e, { depth, fieldName, isOpen, path });
+                onChevronContextMenu(e, { depth, fieldName, isOpen });
               }
             }}
             aria-label={isOpen ? `Collapse ${displayLabel}` : `Expand ${displayLabel}`}

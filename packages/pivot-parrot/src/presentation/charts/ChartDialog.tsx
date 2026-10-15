@@ -4,6 +4,8 @@ import BarLineChartConfig from './BarLineChart';
 import ScatterChartConfig from './ScatterChart';
 import TreemapChartConfig from './TreemapChart';
 import { usePivotStore } from '../../application/state/store';
+import { fieldDisplayName, valueDisplayName } from '../../domain/field/fieldDisplayName';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 interface ChartDialogProps {
   config: any;
@@ -72,25 +74,21 @@ const TreemapIcon = () => (
 );
 
 export default function ChartDialog({ config, fields, chartDisplayMode = 'full', initialChartConfig = null, onGenerate, onCancel }: ChartDialogProps) {
-  const getFieldById = usePivotStore((s) => s.getFieldById);
+  const availableFields = usePivotStore((s) => s.availableFields);
+  const dimensionLabel = (dim: string) => fieldDisplayName(dim, config, availableFields);
 
   // Get available dimensions (rows + columns)
   // Handle both string field names and FieldItem objects
   // Filter out "Σ Values" dimension
   const dimensions = [...config.rows, ...config.columns]
     .map(dim => typeof dim === 'string' ? dim : dim.id)
-    .filter(dim => dim !== 'Σ Values');
+    .filter(dim => dim !== SIGMA_VALUES_ID);
 
   // Get available value fields with aggregation in label
-  const valueFields = config.values.map(v => {
-    const fieldItem = getFieldById(v.field, config);
-    const fieldName = fieldItem?.name || v.field;
-    const label = v.isCustom ? fieldName : `${v.aggregation} of ${fieldName}`;
-    return {
-      field: v.field,
-      label
-    };
-  });
+  const valueFields = config.values.map(v => ({
+    field: v.field,
+    label: valueDisplayName(v, config, availableFields)
+  }));
 
   // Validate initialChartConfig - return null if any dimension/metric is invalid
   const validateConfig = (cfg) => {
@@ -275,6 +273,7 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
       {chartType === 'bar-line' && (
         <BarLineChartConfig
           dimensions={dimensions}
+          dimensionLabel={dimensionLabel}
           valueFields={valueFields}
           xAxis={xAxis}
           setXAxis={setXAxis}
@@ -291,6 +290,7 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
       {chartType === 'scatter' && (
         <ScatterChartConfig
           dimensions={dimensions}
+          dimensionLabel={dimensionLabel}
           valueFields={valueFields}
           pointLevel={scatterPointLevel}
           setPointLevel={setScatterPointLevel}
@@ -309,6 +309,7 @@ export default function ChartDialog({ config, fields, chartDisplayMode = 'full',
       {chartType === 'treemap' && (
         <TreemapChartConfig
           dimensions={dimensions}
+          dimensionLabel={dimensionLabel}
           valueFields={valueFields}
           metric={treemapMetric}
           setMetric={setTreemapMetric}

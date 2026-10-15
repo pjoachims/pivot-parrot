@@ -45,6 +45,7 @@ export default function SecondaryView({
         fields={fields}
         dialect={dialect}
         dtypes={dtypes}
+        locale={locale}
       />
     );
   }
@@ -72,6 +73,7 @@ export default function SecondaryView({
         onExecuteSQL={onExecuteSQL}
         sqlPlaygroundDisplayMode={sqlPlaygroundDisplayMode}
         onSQLPlaygroundDisplayModeChange={onSQLPlaygroundDisplayModeChange}
+        locale={locale}
       />
     );
   }

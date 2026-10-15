@@ -1,0 +1,22 @@
+{
+  "config": {
+    "rows": ["Kategorie 1"],
+    "columns": ["Sales Region"],
+    "values": [
+      { "field": "Net Revenue", "aggregation": "Sum" },
+      { "field": "Kategorie 1", "aggregation": "Count" }
+    ]
+  },
+  "schema": {
+    "Kategorie 1": "string",
+    "Sales Region": "string",
+    "Net Revenue": "int32"
+  },
+  "pivotDisplay": true,
+  "data": [
+    { "Kategorie 1": "Bier", "Sales Region": "Nord", "Net Revenue": 100 },
+    { "Kategorie 1": "Bier", "Sales Region": "Süd", "Net Revenue": 80 },
+    { "Kategorie 1": "Wasser", "Sales Region": "Nord", "Net Revenue": 50 },
+    { "Kategorie 1": "Wasser", "Sales Region": "Süd", "Net Revenue": 70 }
+  ]
+}

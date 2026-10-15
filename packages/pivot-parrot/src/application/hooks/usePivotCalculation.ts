@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { buildPivotSQL } from '../../domain/query/sql/buildPivotSQL';
-import { hashPivotConfig, getPivotConfigSignature } from '../../domain/query/utils/cache';
 import { buildCubeIndex } from '../utils/cubeIndex';
 import { createLogger } from '../utils/logger';
 import { usePivotStore } from '../state/store';
+import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 const logger = createLogger('PivotCalculation');
 
@@ -12,12 +12,14 @@ const logger = createLogger('PivotCalculation');
  * Handles SQL generation, caching, and display data building
  *
  * @param executionConfig - The committed config to execute (from execution boundary)
+ * @param dataVersion - Changes when the engine or its data does: re-runs executionConfig
  * @param engine - The execution engine (queryEngine || dataEngine from parent)
  * @param isRemoteMode - Whether running in remote mode (no local dataHash needed)
  * @param onExecutionComplete - Optional callback when execution finishes (for commitConfig)
  */
 export function usePivotCalculation({
   executionConfig,
+  dataVersion = 0,
   engine,
   isRemoteMode = false,
   onExecutionComplete
@@ -32,10 +34,8 @@ export function usePivotCalculation({
   const [dtypes, setDtypes] = useState({});
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState(null);
-  const [cubeCache] = useState(() => new Map());
   const abortControllerRef = useRef(null);
   const [calculationStartTime, setCalculationStartTime] = useState(null);
-  const maxCacheSize = 5;
 
   // Query result: atomically consistent snapshot of config + data + dtypes + fieldsHash
   const [queryResult, setQueryResult] = useState(null);
@@ -60,8 +60,8 @@ export function usePivotCalculation({
    */
   const computeFieldsHash = useCallback((config) => {
     return [
-      ...config.rows.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== 'Σ Values'),
-      ...config.columns.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== 'Σ Values')
+      ...config.rows.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== SIGMA_VALUES_ID),
+      ...config.columns.map(f => typeof f === 'string' ? f : f.id).filter(f => f !== SIGMA_VALUES_ID)
     ].sort().join(',');
   }, []);
 
@@ -71,7 +71,7 @@ export function usePivotCalculation({
   const buildIndex = useCallback((data, config) => {
     const rowFieldNames = config.rows.map(f => typeof f === 'string' ? f : f.id);
     const colFieldNames = config.columns.map(f => typeof f === 'string' ? f : f.id);
-    const allFieldNames = [...rowFieldNames, ...colFieldNames].filter(f => f !== 'Σ Values');
+    const allFieldNames = [...rowFieldNames, ...colFieldNames].filter(f => f !== SIGMA_VALUES_ID);
     return buildCubeIndex(data, allFieldNames);
   }, []);
 
@@ -162,8 +162,7 @@ export function usePivotCalculation({
 
       const dialect = engine.getDialect();
 
-      // Build SQL using domain function (first pass to check for HAVING filters)
-      const { sql, hasHavingFilters, enrichedConfig } = buildPivotSQL({
+      const { sql } = buildPivotSQL({
         config: configToUse,
         dialect,
         availableFields,
@@ -186,27 +185,13 @@ export function usePivotCalculation({
         return;
       }
 
-      // Check cache
-      const configHash = hashPivotConfig(enrichedConfig, '');
-      const configSignature = getPivotConfigSignature(enrichedConfig, '');
-      const cached = cubeCache.get(configHash);
-
-      // hashPivotConfig is a 32-bit hash, so different configs can collide on
-      // the same key - verify against the stored canonical signature before
-      // trusting the hit, otherwise treat it as a miss.
-      if (cached && cached.signature === configSignature) {
-        logger.debug('Cache hit', { rowCount: cached.cubeResults.length });
-        setResultWithIndex(executionConfig, cached.cubeResults, cached.dtypes || {});
-        setCalculating(false);
-        onExecutionComplete?.(executionConfig, cached.cubeResults);
-        return;
-      }
-
       // Execute query
       if (controller?.signal.aborted) {
         throw new Error('Calculation cancelled');
       }
 
+      // The engine caches by SQL, which carries every expression behind the
+      // config, and drops its cache when its data changes.
       const result = await engine.executeQuery(finalSQL, true, 'pivot');
 
       if (controller?.signal.aborted) {
@@ -230,13 +215,6 @@ export function usePivotCalculation({
       // Set result
       setResultWithIndex(executionConfig, result.data, result.dtypes || {});
 
-      // Update cache
-      if (cubeCache.size >= maxCacheSize) {
-        const firstKey = cubeCache.keys().next().value;
-        cubeCache.delete(firstKey);
-      }
-      cubeCache.set(configHash, { cubeResults: result.data, dtypes: result.dtypes, sql: finalSQL, signature: configSignature });
-
       onExecutionComplete?.(executionConfig, result.data);
 
     } catch (err) {
@@ -250,7 +228,7 @@ export function usePivotCalculation({
         abortControllerRef.current = null;
       }
     }
-  }, [dataHash, executionConfig, engine, isRemoteMode, detectedTypes, availableFields, cubeCache, setResultWithIndex, addToSqlHistory, onExecutionComplete]);
+  }, [dataHash, executionConfig, engine, isRemoteMode, detectedTypes, availableFields, setResultWithIndex, addToSqlHistory, onExecutionComplete]);
 
   // Auto-calculate when executionConfig changes
   useEffect(() => {
@@ -261,7 +239,7 @@ export function usePivotCalculation({
     logger.info('Auto-executing pivot query');
     calculatePivot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [executionConfig]); // Intentionally omit calculatePivot to prevent infinite loop
+  }, [executionConfig, dataVersion]); // Intentionally omit calculatePivot to prevent infinite loop
 
   // Restore from cached snapshot data (no SQL execution)
   const restoreFromCache = useCallback((restoredConfig, cachedCubeResults, cachedDtypes = {}) => {

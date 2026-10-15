@@ -7,9 +7,9 @@ import { HavingFilterDialog } from './HavingFilterDialog';
 import Popover from '../shared/Popover';
 import SnapshotNameDialog from '../snapshots/SnapshotNameDialog';
 import { filterCustomMetrics } from '../../../application/utils/fieldUtils';
-import { buildWhereClauses } from '../../../domain/query/sql/sql-builder';
-import { FieldKind } from '../../../domain/models/types';
-import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../../domain/field/derived-field-resolver-v2';
+import { buildFieldItemFilters, buildWhereCondition } from '../../../domain/query/sql/sql-builder';
+import { fieldDisplayName } from '../../../domain/field/fieldDisplayName';
+import { resolveFieldExpr } from '../../../domain/field/resolveFieldExpr';
 
 /**
  * DialogsManager Component
@@ -105,6 +105,7 @@ export function DialogsManager({
       {derivedFieldDialog && (
         <DerivedFieldsDialog
           fieldName={derivedFieldDialog.fieldName}
+          displayName={fieldDisplayName(derivedFieldDialog.fieldName, config, availableFields)}
           fieldType={derivedFieldDialog.fieldType}
           existingDerived={derivedFieldDialog.existingDerivedFields}
           position={derivedFieldDialog.position}
@@ -122,52 +123,33 @@ export function DialogsManager({
           : {
               ...filterDialog.field,
               getUniqueValues: async (filtersToApply = []) => {
-                if (!dataEngine) return [];
+                if (!dataEngine) return { values: [], truncated: false };
                 try {
-                  // Build WHERE clause from filters
-                  let whereClause = '';
                   const dialect = dataEngine.getDialect();
-                  if (filtersToApply.length > 0) {
-                    const { whereClause: where } = buildWhereClauses(
-                      filtersToApply,
-                      config.customFilters || [],
-                      dialect,
-                      config.values || [],
-                      config.customMetrics || [],
-                      config.hiddenValues || []
-                    );
-                    whereClause = where.replace(/^WHERE\s+/i, '');
-                  }
+                  const whereClause = buildWhereCondition(
+                    buildFieldItemFilters(filtersToApply, dialect, availableFields, config),
+                    dialect,
+                    availableFields,
+                    config
+                  );
 
                   // Use field.id if available (FieldItem), otherwise field.name
                   const fieldId = filterDialog.field.id || filterDialog.field.name;
 
-                  // For custom groupings, resolve the expression
-                  let expression = null;
-                  if (filterDialog.field.kind === FieldKind.CUSTOM_GROUPING && filterDialog.field.formula) {
-                    const referenceLookup = buildReferenceLookup({
-                      availableFields,
-                      customGroupings: config.customGroupings || [],
-                      customMetrics: config.customMetrics || [],
-                      values: config.values || [],
-                      hiddenValues: config.hiddenValues || [],
-                      dialect
-                    });
-                    expression = resolveDerivedFieldsInExpressionV2(filterDialog.field.formula, referenceLookup);
-                  }
+                  const expression = resolveFieldExpr(fieldId, availableFields, config, dialect);
 
                   return await dataEngine.getUniqueValues(
                     fieldId,
                     undefined, // tableName
                     whereClause,
-                    null, // limit
+                    undefined, // limit: the engine's default cap
                     null, // timeout
-                    expression, // resolved expression for custom groupings
+                    expression,
                     filterDialog.field.dtype // dtype for display conversion
                   );
                 } catch (err) {
                   console.error('Failed to load unique values:', err);
-                  return [];
+                  return { values: [], truncated: false };
                 }
               }
             };
@@ -179,6 +161,7 @@ export function DialogsManager({
         return (
           <FilterDialog
             field={enrichedField}
+            displayName={fieldDisplayName(enrichedField.id || enrichedField.name, config, availableFields)}
             fieldType={arrowType}
             existingFilter={filterDialog.existingFilter}
             anchorEl={filterDialog.anchorEl}
@@ -193,6 +176,7 @@ export function DialogsManager({
       {havingFilterDialog && (
         <HavingFilterDialog
           field={havingFilterDialog.field}
+          displayName={fieldDisplayName(havingFilterDialog.field.name, config, availableFields)}
           existingFilter={havingFilterDialog.existingFilter}
           anchorEl={havingFilterDialog.anchorEl}
           onApply={handleApplyFilter}

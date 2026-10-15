@@ -1,5 +1,6 @@
 import { FieldItem } from './FieldItem';
 import { FieldKind, PivotTableConfig } from '../models/types';
+import { fieldDisplayName } from './fieldDisplayName';
 
 /**
  * Lookup a field by ID across all possible sources and return a FieldItem.
@@ -36,13 +37,10 @@ export function getFieldById(
     const aggId = `${valueConfig.aggregation.toUpperCase()}_${valueConfig.field}`;
     if (aggId === fieldId) {
       const sourceField = availableFields.find(f => f.id === valueConfig.field);
-      const displayName = sourceField
-        ? `${valueConfig.aggregation.toUpperCase()}(${sourceField.name})`
-        : aggId;
 
       return {
         id: aggId,
-        name: displayName,
+        name: fieldDisplayName(aggId, config, availableFields),
         dtype: sourceField?.dtype || 'double',
         originalType: null,
         kind: FieldKind.AGGREGATION,
