@@ -142,12 +142,12 @@ export class SQLDialect {
    * @returns {string} SQL literal
    */
   toSQL(value: any, typeName: string): string {
-    const type = this.types[typeName];
+    const { type, params } = this.parseTypeName(typeName);
     if (!type) {
       console.warn(`Unknown type: ${typeName}, returning NULL`);
       return 'NULL';
     }
-    return type.toSQL(value);
+    return type.toSQL(value, params);
   }
 
   /**

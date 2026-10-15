@@ -66,3 +66,15 @@ describe('filter values are quoted by type, not by content', () => {
     expect(rows.map(r => r.region).sort()).toEqual(['B', null]);
   });
 });
+
+describe('drilldown on a decimal dimension', () => {
+  it('matches a number value', async () => {
+    const where = dialect.buildWhereClause([{ field: 'price', value: 10.5, typeName: 'decimal<10,2>' }]);
+    expect(await select('zip', where)).toEqual(['01234']);
+  });
+
+  it('matches an Arrow Decimal128 value (Uint32Array, scaled by 10^2)', async () => {
+    const where = dialect.buildWhereClause([{ field: 'price', value: new Uint32Array([1050, 0, 0, 0]), typeName: 'decimal<10,2>' }]);
+    expect(await select('zip', where)).toEqual(['01234']);
+  });
+});
