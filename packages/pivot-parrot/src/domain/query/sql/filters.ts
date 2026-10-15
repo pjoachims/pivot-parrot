@@ -19,9 +19,12 @@ function escapeLikeWildcards(value: string): string {
  */
 class Filter {
   public field: string;
+  /** Arrow type of the filtered field, when known: decides how a typed-in value is quoted. */
+  public dtype?: string | null;
 
-  constructor({ field }: { field: string }) {
+  constructor({ field, dtype }: { field: string; dtype?: string | null }) {
     this.field = field;
+    this.dtype = dtype;
   }
 
   /**
@@ -46,8 +49,8 @@ class DateRangeFilter extends Filter {
   public start: any;
   public end: any;
 
-  constructor({ field, start, end, betweenStart, betweenEnd }: any) {
-    super({ field });
+  constructor({ field, dtype, start, end, betweenStart, betweenEnd }: any) {
+    super({ field, dtype });
     // Support both naming conventions
     this.start = start || betweenStart;
     this.end = end || betweenEnd;
@@ -72,8 +75,8 @@ class OneOfFilter extends Filter {
   public selectedValues: any[];
   public isNot: boolean;
 
-  constructor({ field, selectedValues, isNot = false }: any) {
-    super({ field });
+  constructor({ field, dtype, selectedValues, isNot = false }: any) {
+    super({ field, dtype });
     this.selectedValues = selectedValues || [];
     this.isNot = isNot;
   }
@@ -81,8 +84,7 @@ class OneOfFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true): string | null {
     if (!this.selectedValues || this.selectedValues.length === 0) return null;
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    // dialect.quoteValue handles type detection (BigInt, number, string) and quoting
-    const quotedValues = this.selectedValues.map(v => dialect.quoteValue(v));
+    const quotedValues = this.selectedValues.map(v => dialect.quoteValue(v, this.dtype));
     const not = this.isNot ? 'NOT ' : '';
     return `${field} ${not}IN (${quotedValues.join(', ')})`;
   }
@@ -100,17 +102,17 @@ class BetweenFilter extends Filter {
   public start: any;
   public end: any;
 
-  constructor({ field, betweenStart, betweenEnd }) {
-    super({ field });
+  constructor({ field, dtype, betweenStart, betweenEnd }) {
+    super({ field, dtype });
     this.start = betweenStart;
     this.end = betweenEnd;
   }
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const start = dialect.escapeValue(this.start);
-    const end = dialect.escapeValue(this.end);
-    return `${field} BETWEEN '${start}' AND '${end}'`;
+    const start = dialect.quoteValue(this.start, this.dtype);
+    const end = dialect.quoteValue(this.end, this.dtype);
+    return `${field} BETWEEN ${start} AND ${end}`;
   }
 
   getLabel() {
@@ -125,15 +127,15 @@ class EqualFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = dialect.quoteValue(this.value);
+    const value = dialect.quoteValue(this.value, this.dtype);
     if (this.isNot) {
       return `NOT (${field} = ${value})`;
     }
@@ -153,8 +155,8 @@ class ContainsFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
@@ -179,8 +181,8 @@ class StartsWithFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
@@ -205,8 +207,8 @@ class EndsWithFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
@@ -231,8 +233,8 @@ class RegexFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
@@ -256,8 +258,8 @@ class RegexFilter extends Filter {
 class NullFilter extends Filter {
   public isNot: boolean;
 
-  constructor({ field, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, isNot = false }) {
+    super({ field, dtype });
     this.isNot = isNot;
   }
 
@@ -278,15 +280,15 @@ class GreaterFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = dialect.quoteValue(this.value);
+    const value = dialect.quoteValue(this.value, this.dtype);
     if (this.isNot) {
       return `NOT (${field} > ${value})`;
     }
@@ -305,15 +307,15 @@ class LessFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = dialect.quoteValue(this.value);
+    const value = dialect.quoteValue(this.value, this.dtype);
     if (this.isNot) {
       return `NOT (${field} < ${value})`;
     }
@@ -332,15 +334,15 @@ class GreaterEqualFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = dialect.quoteValue(this.value);
+    const value = dialect.quoteValue(this.value, this.dtype);
     if (this.isNot) {
       return `NOT (${field} >= ${value})`;
     }
@@ -359,15 +361,15 @@ class LessEqualFilter extends Filter {
   public value: any;
   public isNot: boolean;
 
-  constructor({ field, value, isNot = false }) {
-    super({ field });
+  constructor({ field, dtype, value, isNot = false }) {
+    super({ field, dtype });
     this.value = value;
     this.isNot = isNot;
   }
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = dialect.quoteValue(this.value);
+    const value = dialect.quoteValue(this.value, this.dtype);
     if (this.isNot) {
       return `NOT (${field} <= ${value})`;
     }
@@ -388,8 +390,8 @@ class CustomFilterExpression extends Filter {
   public name: string;
   public isCustom: boolean;
 
-  constructor({ field, expr, name, isCustom }) {
-    super({ field });
+  constructor({ field, dtype, expr, name, isCustom }) {
+    super({ field, dtype });
     this.expr = expr;
     this.name = name;
     this.isCustom = isCustom;

@@ -124,7 +124,8 @@ function buildFilters(
 
         const sqlExpr = buildFilter({
           ...f,
-          field: fieldExpr
+          field: fieldExpr,
+          dtype: fieldItem?.dtype
         }).toSQL(dialect, false);
 
         if (sqlExpr) {

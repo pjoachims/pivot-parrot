@@ -149,11 +149,12 @@ export function buildFieldItemFilters(activeFilters, dialect, availableFields = 
       } else {
         filterSQL = buildFilter({
           ...f,
-          field: groupingExpr
+          field: groupingExpr,
+          dtype: fieldItem.dtype
         }).toSQL(dialect, false); // Don't quote since it's an expression
       }
     } else {
-      filterSQL = buildFilter(f).toSQL(dialect);
+      filterSQL = buildFilter({ ...f, dtype: fieldItem?.dtype }).toSQL(dialect);
     }
 
     if (!filterSQL) return;

@@ -228,7 +228,7 @@ describe('DuckDBDialect', () => {
         betweenEnd: 100
       });
 
-      expect(filter.toSQL(dialect)).toBe("price BETWEEN '10' AND '100'");
+      expect(filter.toSQL(dialect)).toBe("price BETWEEN 10 AND 100");
     });
 
     it('should quote field names with special characters using double quotes', () => {
@@ -239,7 +239,7 @@ describe('DuckDBDialect', () => {
         betweenEnd: 5000
       });
 
-      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN \'1000\' AND \'5000\'');
+      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN 1000 AND 5000');
     });
   });
 

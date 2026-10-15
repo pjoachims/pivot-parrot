@@ -75,17 +75,22 @@ export class SQLDialect {
    * @returns {any} Formatted value for display
    */
   toDisplay(value: any, typeName: string): any {
-    // Parse parameterized types: "decimal<35,19>" → baseType="decimal", params="35,19"
-    const idx = typeName.indexOf('<');
-    const baseType = idx === -1 ? typeName : typeName.slice(0, idx);
-    const params = idx === -1 ? null : typeName.slice(idx + 1, -1);
-
-    const type = this.types[baseType];
+    const { baseType, type, params } = this.parseTypeName(typeName);
     if (!type) {
       console.warn(`Unknown type: ${baseType}, returning raw value`);
       return value;
     }
     return type.toDisplay(value, params);
+  }
+
+  /**
+   * Split a parameterized type name ("decimal<35,19>") into its registry entry and params ("35,19").
+   */
+  parseTypeName(typeName: string): { baseType: string; type: ArrowTypeDefinition | undefined; params: string | null } {
+    const idx = typeName.indexOf('<');
+    const baseType = idx === -1 ? typeName : typeName.slice(0, idx);
+    const params = idx === -1 ? null : typeName.slice(idx + 1, -1);
+    return { baseType, type: this.types[baseType], params };
   }
 
   /**
@@ -218,41 +223,24 @@ export class SQLDialect {
   }
 
   /**
-   * Quote and escape value for SQL based on type
-   * @param {any} value - Value to quote
-   * @returns {string} Properly quoted SQL literal
+   * Quote a filter value as an SQL literal.
+   * A JS string is a string literal, except that a numeric string on a numeric
+   * field (a number typed into a filter dialog) is emitted as a number. The
+   * string's content alone never decides: '01234' on a string field stays '01234'.
+   * @param value - Filter value
+   * @param dtype - Arrow type name of the filtered field, when known
    */
-  quoteValue(value: any): string {
-    // Handle null/undefined
-    if (value === null || value === undefined) {
-      return 'NULL';
+  quoteValue(value: any, dtype?: string | null): string {
+    if (value === null || value === undefined) return 'NULL';
+    if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+    if (typeof value === 'number' || typeof value === 'bigint') return String(value);
+    if (value instanceof Date) return `'${value.toISOString()}'`;
+
+    const str = String(value);
+    if (dtype && this.parseTypeName(dtype).type?.isNumeric && /^\s*-?\d+(\.\d+)?\s*$/.test(str)) {
+      return str.trim();
     }
-
-    // Handle boolean
-    if (typeof value === 'boolean') {
-      return value ? 'TRUE' : 'FALSE';
-    }
-
-    // Handle numbers (including BigInt)
-    if (typeof value === 'number' || typeof value === 'bigint') {
-      return String(value);
-    }
-
-    // Handle Date objects
-    if (value instanceof Date) {
-      return `'${value.toISOString()}'`;
-    }
-
-    // Handle strings - check if it looks like a date/timestamp
-    const strValue = String(value);
-
-    // Check if it's a number string
-    if (/^-?\d+(\.\d+)?$/.test(strValue)) {
-      return strValue;
-    }
-
-    // Default: treat as string, escape and wrap in quotes
-    return `'${this.escapeValue(strValue)}'`;
+    return `'${this.escapeValue(str)}'`;
   }
 
   // ==================== AGGREGATION REGISTRY ====================

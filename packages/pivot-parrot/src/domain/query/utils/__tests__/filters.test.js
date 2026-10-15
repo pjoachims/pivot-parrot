@@ -129,7 +129,7 @@ describe('Filter Classes', () => {
         betweenEnd: 100
       });
 
-      expect(filter.toSQL(dialect)).toBe("price BETWEEN '10' AND '100'");
+      expect(filter.toSQL(dialect)).toBe("price BETWEEN 10 AND 100");
       expect(filter.getLabel()).toBe('10 - 100');
     });
 
@@ -140,7 +140,7 @@ describe('Filter Classes', () => {
         betweenEnd: 5000
       });
 
-      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN \'1000\' AND \'5000\'');
+      expect(filter.toSQL(dialect)).toBe('"Sales Amount" BETWEEN 1000 AND 5000');
     });
   });
 
