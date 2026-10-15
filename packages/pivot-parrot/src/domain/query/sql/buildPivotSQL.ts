@@ -107,9 +107,11 @@ function buildFilters(
 
       if (isHaving) {
         let fieldExpr: string;
+        // The metric's current formula: the filter's copy dates from when it was added.
+        const formula = fieldItem?.formula ?? f.formula;
 
-        if (f.formula) {
-          fieldExpr = f.formula;
+        if (formula) {
+          fieldExpr = formula;
         } else if (f.aggregation && f.sourceField) {
           fieldExpr = dialect.aggregate(f.aggregation, resolveFieldExpr(f.sourceField, availableFields, config, dialect));
         } else {

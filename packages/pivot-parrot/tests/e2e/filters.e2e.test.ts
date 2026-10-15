@@ -175,6 +175,27 @@ describe('HAVING on multi-word aggregations', () => {
   });
 });
 
+describe('HAVING on a custom metric', () => {
+  const customMetrics = [
+    { id: 'm_qty', name: 'Qty', expr: 'sum(qty)' },
+    { id: 'm_double', name: 'Double', expr: '{{ m_qty }} * 2' },
+  ];
+  const havingOnDouble = (formula: string) => pivot({
+    rows: ['region'],
+    values: [{ field: 'm_double', aggregation: 'custom', isCustom: true, expr: customMetrics[1].expr }],
+    customMetrics,
+    filters: [{ field: 'm_double', filterType: 'having', formula, type: 'greater', value: 100 }],
+  });
+
+  it('resolves a reference to another metric as the SELECT does', async () => {
+    expect((await havingOnDouble(customMetrics[1].expr)).map(r => r.region)).toEqual(['B']);
+  });
+
+  it('uses the metric as it is now, not as it was when the filter was added', async () => {
+    expect((await havingOnDouble('{{ m_qty }} * 1000')).map(r => r.region)).toEqual(['B']);
+  });
+});
+
 describe('derived fields and custom groupings as filters', () => {
   const year = createDerived({ id: 'order_date_year', name: 'Year', dtype: 'int32', sourceField: 'order_date', formula: 'YEAR("order_date")' });
   const withYear = [...fields, year];

@@ -26,16 +26,6 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
 
   // Build context-aware reference lookups for {{}} syntax resolution
 
-  // For WHERE filters and custom groupings: Can reference derived fields, custom groupings, custom filters
-  // (but NOT custom metrics - those are aggregations)
-  const dimensionLookup = buildReferenceLookup({
-    availableFields,
-    customGroupings: config.customGroupings || [],
-    customFilters: config.customFilters || [],
-    customMetrics: config.customMetrics || [],
-    includeMetrics: false  // Dimensions can't reference aggregations
-  });
-
   // For custom metrics: Can reference everything (derived fields, groupings, filters, other metrics)
   const metricLookup = buildReferenceLookup({
     availableFields,
@@ -45,11 +35,18 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     includeMetrics: true  // Metrics can reference other metrics for composition
   });
 
-  // HAVING filters could potentially reference metrics, but typically reference aggregations
-  // For now, use dimension lookup (most HAVING filters are on SUM_field etc, not custom metrics)
+  const customMetrics = (config.customMetrics || []).map(m => ({
+    name: m.name,
+    expr: m.expr
+  }));
+
+  // A custom metric resolves {{}} references (derived fields, groupings, filters,
+  // other metrics), then metric references; a HAVING filter on one resolves the same way.
+  const resolveMetricExpr = (expr) => resolveMetricReferences(resolveDerivedFieldsInExpressionV2(expr, metricLookup), customMetrics);
+
   const resolvedHavingFilters = (havingFilters || []).map(f => ({
     ...f,
-    sqlExpr: f.sqlExpr ? resolveDerivedFieldsInExpressionV2(f.sqlExpr, dimensionLookup) : f.sqlExpr
+    sqlExpr: f.sqlExpr ? resolveMetricExpr(f.sqlExpr) : f.sqlExpr
   }));
 
   // Build WHERE and HAVING clauses from filter objects
@@ -83,12 +80,6 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
   const allDimensions = [...rowDimensions, ...colDimensions];
   const groupBy = allDimensions.map(d => d.forGroupBy);
 
-  // Extract custom metrics for reference resolution
-  const customMetrics = (config.customMetrics || []).map(m => ({
-    name: m.name,
-    expr: m.expr
-  }));
-
   const aggNameMap = AGGREGATION_SQL_NAMES;
 
   // Build aggregation expressions
@@ -96,13 +87,8 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
   const allValues = [...(config.values || []), ...(config.hiddenValues || [])];
   const aggs = allValues.map(v => {
     if (v.isCustom) {
-      // Custom metrics: resolve {{}} references, then metric references, no casting
-      // User is responsible for writing engine-compatible SQL and knows the return type
-      // Step 1: Resolve {{}} syntax (derived fields, groupings, filters, other metrics)
-      const exprWithReferences = resolveDerivedFieldsInExpressionV2(v.expr, metricLookup);
-      // Step 2: Resolve metric references (SUM_field -> SUM(...))
-      const resolvedExpr = resolveMetricReferences(exprWithReferences, customMetrics);
-      return `${resolvedExpr} AS ${quoteIdentifier(v.field)}`;
+      // No casting: the user writes engine-compatible SQL and knows the return type
+      return `${resolveMetricExpr(v.expr)} AS ${quoteIdentifier(v.field)}`;
     }
 
     const fieldType = fieldTypes[v.field];
