@@ -2,14 +2,12 @@ import React, { useState, useRef, useMemo, memo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { styles } from './styles';
 import { createFormatValue, createFormatRowLabel } from '../../application/utils/formatters';
-import { SubtotalsMenu, ValuesFormatMenu, RowsOptionsMenu, SortMenu } from './PivotMenus';
 import { ColumnHeaders } from './ColumnHeaders';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { PivotRow, renderCells } from './PivotRow';
 import PivotDisplayHeader from './PivotDisplayHeader';
 import { ContextMenu } from '../shared/ContextMenu';
 import { ChevronContextMenu } from '../shared/ChevronContextMenu';
-import { useClickOutside } from '../shared/useClickOutside';
 import { useExpansionState } from '../../application/hooks/useExpansionState';
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
@@ -38,22 +36,14 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     // Read display state from store (everything PivotDisplay needs is here now)
     // No more prop drilling for display state!
     const parentRef = useRef(null);
-    const [showFieldMenu, setShowFieldMenu] = useState(null);
-    const [showValuesMenu, setShowValuesMenu] = useState(false);
-    const [showRowsMenu, setShowRowsMenu] = useState(false);
-    const [showExportMenu, setShowExportMenu] = useState(false);
     const [showDebug, setShowDebug] = useState(false);
 
     // Use config values for subtotals and grand totals (default to 'both' if not set)
     const subtotalsConfig = config.subtotals || 'both';
     const grandTotalsConfig = config.grandTotals || 'both';
 
-    // Format configurations - default to 'number' for values, 'text' for rows
-    const [valueFormats, setValueFormats] = useState({});
-    const [rowFormats, setRowFormats] = useState({});
-
     // Expansion state management
-    const { expanded, fieldExpanded, toggle, toggleField, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({
+    const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({
         data,
         rowFields
     });
@@ -90,30 +80,14 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       };
     }, []);
 
-    // Close popovers when clicking outside any of them
-    useClickOutside(['.pivot-menu-btn', '.pivot-gear-btn', '.pivot-popover-menu'], () => {
-      setShowValuesMenu(false);
-      setShowRowsMenu(false);
-      setShowExportMenu(false);
-      setShowFieldMenu(null);
-    });
-
     if (!data || !data.columnConfig || !data.rowGroups) {
       return <div style={styles.empty}>No data to display</div>;
     }
 
-    const handleValueFormatChange = (valueKey, format) => {
-      setValueFormats(prev => ({ ...prev, [valueKey]: format }));
-    };
-
-    const handleRowFormatChange = (rowField, format) => {
-      setRowFormats(prev => ({ ...prev, [rowField]: format }));
-    };
-
     // Initialize formatters with current config and locale
     const dialect = dataEngine?.getDialect();
     const formatValue = useMemo(() => createFormatValue(config, locale, dtypes, dialect), [config, locale, dtypes, dialect]);
-    const formatRowLabel = useMemo(() => createFormatRowLabel(rowFormats, detectedTypes, dtypes, dialect), [rowFormats, detectedTypes, dtypes, dialect]);
+    const formatRowLabel = useMemo(() => createFormatRowLabel(null, detectedTypes, dtypes, dialect), [detectedTypes, dtypes, dialect]);
 
     // Determine what subtotals to show based on config
     const showColSubtotals = subtotalsConfig === 'col' || subtotalsConfig === 'both';
