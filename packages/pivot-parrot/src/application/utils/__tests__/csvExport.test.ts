@@ -195,3 +195,10 @@ describe('non-finite numbers in CSV', () => {
     expect(toCSV([[Infinity, -Infinity, NaN, { percent: Infinity }, 1.5]], 'de-DE')).toBe(';;;;1,5');
   });
 });
+
+describe('toCSV dates', () => {
+  it('writes a date as ISO YYYY-MM-DD and a timestamp as ISO date and time', () => {
+    const csv = toCSV([[new Date(Date.UTC(2026, 9, 15)), new Date(Date.UTC(2026, 9, 15, 8, 9, 58))]], 'de-DE');
+    expect(csv).toBe('2026-10-15;2026-10-15 08:09:58');
+  });
+});

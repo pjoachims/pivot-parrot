@@ -31,6 +31,12 @@ export function toCSV(rows: CsvCell[][], locale?: string): string {
     // A non-finite number (inf from 1/0) is written like null.
     if (v == null || (typeof v === 'number' && !Number.isFinite(v))) return '';
     if (typeof v === 'number' || typeof v === 'bigint') return number(v);
+    // Engine dates and timestamps arrive as UTC instants; local toString() would shift and spell them out.
+    if (v instanceof Date) {
+      if (isNaN(v.getTime())) return '';
+      const iso = v.toISOString();
+      return iso.endsWith('T00:00:00.000Z') ? iso.slice(0, 10) : iso.slice(0, 19).replace('T', ' ');
+    }
     if (typeof v === 'object' && 'percent' in v) {
       return Number.isFinite(v.percent) ? `${number(Number((v.percent * 100).toPrecision(15)))}%` : '';
     }
