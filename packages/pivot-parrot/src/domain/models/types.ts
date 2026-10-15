@@ -221,7 +221,12 @@ export interface PivotConfig {
   data?: DataInput;         // Arrow bytes, CSV, JSON, etc.
   mode?: 'local' | 'remote';
 
-  // Pivot Configuration (can be direct config or extended format with metadata)
+  /**
+   * The view to start from (direct config or extended format with metadata). It is
+   * applied on the first init and again whenever its content changes, so an equal
+   * object passed on every render keeps the user's edits; pass different content
+   * to load a new view.
+   */
   initialConfig?: PivotTableConfig | ExtendedPivotTableConfig;
 
   // UI Settings

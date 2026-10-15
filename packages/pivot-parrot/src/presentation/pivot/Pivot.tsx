@@ -63,7 +63,10 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // render. Effects that must not re-run then (init, callbacks) read it from here.
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
-  const initialConfigAppliedRef = useRef(false);
+  // initialConfig is applied when its content differs from the last one applied,
+  // so an equal object re-created on every render leaves the user's edits alone.
+  const appliedInitialConfigRef = useRef<string | null>(null);
+  const initialConfigKey = useMemo(() => JSON.stringify(cfg.getPivotTableConfig()), [pivotConfig.initialConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ==================== ZUSTAND STATE ====================
   // Get instance key from context
@@ -282,6 +285,19 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // Extract setError from calculation to avoid dependency on entire calculation object
   const setCalculationError = calculation.setError;
 
+  function applyInitialConfig() {
+    const initialConfig = cfgRef.current.getPivotTableConfig();
+    const key = JSON.stringify(initialConfig);
+    if (!initialConfig || key === appliedInitialConfigRef.current) return;
+    appliedInitialConfigRef.current = key;
+    setConfig(initialConfig);
+  }
+
+  // A new initialConfig after init loads that view.
+  useEffect(() => {
+    if (initComplete) applyInitialConfig();
+  }, [initialConfigKey, initComplete]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Initialize engine based on mode
   // Initialization sequence:
   // 0) Display empty app skeleton (component already rendered)
@@ -291,17 +307,6 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // 4) Set initComplete = true → queries can execute
   useEffect(() => {
     const cfg = cfgRef.current;
-
-    // initialConfig seeds the first init only; a later engine or data change keeps the user's edits.
-    function applyInitialConfig() {
-      if (initialConfigAppliedRef.current) return;
-      initialConfigAppliedRef.current = true;
-      const initialConfig = cfg.getPivotTableConfig();
-      logger.debug('Initial config from cfg', { hasInitialConfig: !!initialConfig, initialConfig });
-      if (initialConfig) {
-        setConfig(initialConfig);
-      }
-    }
 
     function markReady() {
       const ready = { engine: queryEngine || dataEngine, dataHash: storeApi.getState().dataHash };

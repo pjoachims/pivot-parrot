@@ -70,3 +70,57 @@ it('a host that stores the config from onConfigChange does not loop', async () =
   expect(onConfigChange.mock.calls.length).toBeLessThanOrEqual(3);
   expect(onConfigChange.mock.lastCall?.[0].rows).toEqual(['region']);
 }, 10000);
+
+it('a changed initialConfig loads the new view, an equal one keeps the user edits', async () => {
+  const { engine } = remoteEngine();
+  const cfg = (initialConfig: any): any => ({ instanceKey: 'init-changed', mode: 'remote', dataEngine: engine, initialConfig, settings: { autoUpdate: false } });
+  const store: any = {};
+  function Probe() {
+    store.config = usePivotStore(s => s.config);
+    store.setConfig = usePivotStore(s => s.setConfig);
+    return null;
+  }
+
+  const view = render(<Pivot config={cfg({ rows: ['region'], columns: [], values: [], filters: [] })}><Probe /></Pivot>);
+  await settle();
+  act(() => store.setConfig({ ...store.config, rows: ['city'] }));
+
+  view.rerender(<Pivot config={cfg({ rows: ['region'], columns: [], values: [], filters: [] })}><Probe /></Pivot>);
+  await settle();
+  expect(store.config.rows).toEqual(['city']);
+
+  view.rerender(<Pivot config={cfg({ rows: [], columns: ['region'], values: [], filters: [], fieldNameOverrides: { region: 'Area' } })}><Probe /></Pivot>);
+  await settle();
+  expect(store.config.rows).toEqual([]);
+  expect(store.config.columns).toEqual(['region']);
+  expect(store.config.fieldNameOverrides).toEqual({ region: 'Area' });
+});
+
+it('a host that feeds onConfigChange back into initialConfig settles', async () => {
+  const { engine } = remoteEngine();
+  const onConfigChange = vi.fn();
+  const store: any = {};
+  function Probe() {
+    store.config = usePivotStore(s => s.config);
+    store.setConfig = usePivotStore(s => s.setConfig);
+    return null;
+  }
+  function Host() {
+    const [saved, setSaved] = useState<any>({ rows: ['region'], columns: [], values: [], filters: [] });
+    return (
+      <Pivot config={{
+        instanceKey: 'init-feedback', mode: 'remote', dataEngine: engine, initialConfig: saved,
+        settings: { autoUpdate: false },
+        callbacks: { onConfigChange: (c: any) => { onConfigChange(c); if (onConfigChange.mock.calls.length < 100) setSaved({ ...c }); } }
+      } as any}><Probe /></Pivot>
+    );
+  }
+
+  render(<Host />);
+  await settle();
+  act(() => store.setConfig({ ...store.config, rows: ['city'] }));
+  await act(async () => { await new Promise(res => setTimeout(res, 300)); });
+
+  expect(store.config.rows).toEqual(['city']);
+  expect(onConfigChange.mock.calls.length).toBeLessThanOrEqual(6);
+}, 10000);
