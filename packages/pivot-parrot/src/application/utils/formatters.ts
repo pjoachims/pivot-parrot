@@ -162,20 +162,3 @@ export const createFormatRowLabel = (rowFormats, detectedTypes, dtypes = {}, dia
   // Convert to string
   return String(label);
 };
-
-/**
- * Simple number formatter (fallback)
- * No thousand separators by default - matches formatValue default behavior
- * NOTE: This is a legacy formatter. Prefer using createFormatValue with dtypes and dialect.
- */
-export const fmt = (n) => {
-  if (n === null || n === undefined || n === '') return '';
-
-  // If it's already a number, convert to string
-  if (typeof n === 'number') {
-    return String(n);
-  }
-
-  // Otherwise return as-is (let the caller handle it)
-  return String(n);
-};

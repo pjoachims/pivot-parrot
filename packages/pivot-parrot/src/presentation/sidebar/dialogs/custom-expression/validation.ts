@@ -3,6 +3,7 @@
  */
 
 import { extractMetricReferences, resolveMetricReferences } from '../../../../domain/field/metric-resolver';
+import { formatNumber } from '../../../../application/utils/formatters';
 
 interface ValidationOptions {
   referenceLookup?: Record<string, { name?: string; label?: string }>;
@@ -101,30 +102,7 @@ export function validateCustomMetric(name: string, formula: string, availableMet
 /**
  * Format example value for preview
  */
-export function formatExample(value, type, decimals, currency, useThousandSeparator) {
-  const dec = parseInt(decimals) || 0;
-  // Default to true for currency, false otherwise (unless explicitly set)
-  const useSeparator = useThousandSeparator ?? (type === 'currency');
-
-  switch (type) {
-    case 'auto':
-      return 'Engine will decide based on data type';
-    case 'percentage':
-      const pctValue = value * 100;
-      const pctStr = useSeparator
-        ? pctValue.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })
-        : pctValue.toFixed(dec);
-      return `${pctStr}%`;
-    case 'currency':
-      const symbols = { USD: '$', EUR: '€', GBP: '£', JPY: '¥' };
-      const currStr = useSeparator
-        ? value.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })
-        : value.toFixed(dec);
-      return `${symbols[currency]}${currStr}`;
-    case 'number':
-    default:
-      return useSeparator
-        ? value.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })
-        : value.toFixed(dec);
-  }
+export function formatExample(value, type, decimals, currency, useThousandSeparator, locale = 'en-US') {
+  if (type === 'auto') return 'Engine will decide based on data type';
+  return formatNumber(value, { type, decimals, currency, useThousandSeparator }, locale);
 }

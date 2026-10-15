@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, memo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { styles } from './styles';
-import { createFormatValue, createFormatRowLabel, fmt } from '../../application/utils/formatters';
+import { createFormatValue, createFormatRowLabel } from '../../application/utils/formatters';
 import { exportDataCSV, exportPivotCSV } from '../../application/utils/export';
 import { SubtotalsMenu, ValuesFormatMenu, RowsOptionsMenu, ExportMenu, SortMenu } from './PivotMenus';
 import { ColumnHeaders } from './ColumnHeaders';

@@ -525,7 +525,7 @@ const Pivot = forwardRef(({ config: pivotConfig = {}, children }: { config?: Piv
   }
 
   return (
-    <PivotStoreContext.Provider value={{ store: storeRef.current, instanceKey }}>
+    <PivotStoreContext.Provider value={{ store: storeRef.current, instanceKey, locale: pivotConfig.settings?.locale }}>
       <PivotInner config={pivotConfig} ref={ref} />
       {children}
     </PivotStoreContext.Provider>

@@ -302,6 +302,7 @@ type PivotContextValue = {
     subscribe: (listener: (state: PivotStore) => void) => () => void;
   };
   instanceKey: string;
+  locale?: string;
 };
 
 /**
@@ -766,6 +767,11 @@ export function usePivotInstanceKey(): string {
     throw new Error('usePivotInstanceKey must be used within a Pivot component');
   }
   return context.instanceKey;
+}
+
+/** The pivot's settings.locale, for components the locale prop does not reach. */
+export function usePivotLocale(): string {
+  return useContext(PivotStoreContext)?.locale ?? 'en-US';
 }
 
 /**
