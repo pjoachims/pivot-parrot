@@ -6,6 +6,17 @@
 import { toMetricKey, toMetricLabel } from './utils';
 import { isGrouped, safeStringify } from '../../application/utils/cubeIndex';
 
+const isNumeric = (v: unknown): v is number | bigint => typeof v === 'number' || typeof v === 'bigint';
+
+/** Column member order: numbers and dates by value, text alphabetically, null (subtotal) last. */
+function compareMembers(a: unknown, b: unknown): number {
+  if (a === null || a === undefined) return 1;
+  if (b === null || b === undefined) return -1;
+  if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
+  if (isNumeric(a) && isNumeric(b)) return a < b ? -1 : a > b ? 1 : 0;
+  return String(a).localeCompare(String(b));
+}
+
 /**
  * Build ordered column outline (flat list of all columns including subtotals)
  *
@@ -130,13 +141,7 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
     });
 
     // Sort group keys for deterministic ordering
-    const sortedGroupKeys = Array.from(childGroups.keys()).sort((a, b) => {
-      // Handle null values (subtotals)
-      if (a === null || a === undefined) return 1;
-      if (b === null || b === undefined) return -1;
-      // String comparison for other values
-      return String(a).localeCompare(String(b));
-    });
+    const sortedGroupKeys = Array.from(childGroups.keys()).sort(compareMembers);
 
     // For each group, recursively add children, then add subtotal for that group
     sortedGroupKeys.forEach(groupValue => {
@@ -183,13 +188,7 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
     // Get all nodes with depth 1, sorted for deterministic ordering
     const topLevelNodes = Array.from(tree.values())
       .filter(n => n.depth === 1)
-      .sort((a, b) => {
-        const aVal = a.path[0];
-        const bVal = b.path[0];
-        if (aVal === null || aVal === undefined) return 1;
-        if (bVal === null || bVal === undefined) return -1;
-        return String(aVal).localeCompare(String(bVal));
-      });
+      .sort((a, b) => compareMembers(a.path[0], b.path[0]));
     topLevelNodes.forEach(node => {
       flattenNode(node, pathsInOrder);
       if (node.isSubtotal) {
