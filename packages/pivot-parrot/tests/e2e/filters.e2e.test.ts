@@ -184,3 +184,55 @@ describe('HAVING on multi-word aggregations', () => {
     expect(reader.getRows().map(r => r[0])).toEqual(['A', 'B', null]);
   });
 });
+
+describe('derived fields and custom groupings as filters', () => {
+  const year = createDerived({ id: 'order_date_year', name: 'Year', dtype: 'int32', sourceField: 'order_date', formula: 'YEAR("order_date")' });
+  const withYear = [...fields, year];
+  const regions = (rows: Record<string, unknown>[]) => rows.map(r => r.region).sort();
+
+  it('WHERE on a derived field uses its formula', async () => {
+    const rows = await pivot({
+      rows: ['region'],
+      values: [{ field: 'qty', aggregation: 'Sum' }],
+      filters: [{ field: 'order_date_year', type: 'one_of', selectedValues: [2024] }],
+    }, withYear);
+    expect(regions(rows)).toEqual(['A']);
+  });
+
+  it('a typed-in number on a derived field compares as a number', async () => {
+    const rows = await pivot({
+      rows: ['region'],
+      values: [{ field: 'qty', aggregation: 'Sum' }],
+      filters: [{ field: 'order_date_year', type: 'greater', value: '2024' }],
+    }, withYear);
+    expect(regions(rows)).toEqual(['B', null]);
+  });
+
+  it('a custom expression on a derived field substitutes {{field}}', async () => {
+    const rows = await pivot({
+      rows: ['region'],
+      values: [{ field: 'qty', aggregation: 'Sum' }],
+      filters: [{ field: 'order_date_year', type: 'custom_expr', value: '{{field}} = 2024' }],
+    }, withYear);
+    expect(regions(rows)).toEqual(['A']);
+  });
+
+  it('WHERE on a custom grouping that references a derived field', async () => {
+    const rows = await pivot({
+      rows: ['region'],
+      values: [{ field: 'qty', aggregation: 'Sum' }],
+      customGroupings: [{ id: 'era', name: 'Era', expr: "CASE WHEN {{order_date_year}} < 2025 THEN 'old' ELSE 'new' END" }],
+      filters: [{ field: 'era', type: 'equal', value: 'new' }],
+    }, withYear);
+    expect(regions(rows)).toEqual(['B', null]);
+  });
+
+  it('HAVING on an aggregate of a derived field uses its formula', async () => {
+    const rows = await pivot({
+      rows: ['region'],
+      values: [{ field: 'order_date_year', aggregation: 'Max' }],
+      filters: [{ field: 'MAX_order_date_year', filterType: 'having', aggregation: 'Max', sourceField: 'order_date_year', type: 'greater', value: 2024 }],
+    }, withYear);
+    expect(regions(rows)).toEqual(['B', null]);
+  });
+});

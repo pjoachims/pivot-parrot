@@ -5,6 +5,7 @@
 
 import { buildFilter } from './filters';
 import { getFieldById } from '../../field/getFieldById';
+import { resolveFieldExpr } from '../../field/resolveFieldExpr';
 import { FieldKind } from '../../models/types';
 
 /**
@@ -137,22 +138,13 @@ export function buildFieldItemFilters(activeFilters, dialect, availableFields = 
           name: fieldItem.name
         }).toSQL(dialect);
       }
-    } else if (fieldItem?.kind === FieldKind.CUSTOM_GROUPING && fieldItem.formula) {
-      // Custom grouping used as filter - replace field with the expression
-      const groupingExpr = `(${fieldItem.formula})`;
-      if (f.type === 'custom_expr' && f.value) {
-        // Replace {{field}} placeholder with the resolved expression
-        const resolvedExpr = f.value.replace(/\{\{field\}\}/g, groupingExpr);
-        filterSQL = `(${resolvedExpr})`;
-      } else {
-        filterSQL = buildFilter({
-          ...f,
-          field: groupingExpr,
-          dtype: fieldItem.dtype
-        }).toSQL(dialect, false); // Don't quote since it's an expression
-      }
     } else {
-      filterSQL = buildFilter({ ...f, dtype: fieldItem?.dtype }).toSQL(dialect);
+      const fieldExpr = resolveFieldExpr(f.field, availableFields, config, dialect);
+      if (f.type === 'custom_expr' && f.value) {
+        filterSQL = `(${f.value.replace(/\{\{field\}\}/g, fieldExpr)})`;
+      } else {
+        filterSQL = buildFilter({ ...f, field: fieldExpr, dtype: fieldItem?.dtype }).toSQL(dialect, false);
+      }
     }
 
     if (!filterSQL) return;

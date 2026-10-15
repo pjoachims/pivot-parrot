@@ -16,6 +16,7 @@ import { buildFieldItemFilters } from './sql-builder';
 import { buildFilter } from './filters';
 import type { FieldItem } from '../../field/FieldItem';
 import { getFieldById } from '../../field/getFieldById';
+import { resolveFieldExpr } from '../../field/resolveFieldExpr';
 import { FieldKind } from '../../models/types';
 import type { PivotTableConfig } from '../../models/types';
 
@@ -116,8 +117,7 @@ function buildFilters(
         if (f.formula) {
           fieldExpr = f.formula;
         } else if (f.aggregation && f.sourceField) {
-          const quotedField = dialect.quoteIdentifier(f.sourceField);
-          fieldExpr = dialect.aggregate(f.aggregation, quotedField);
+          fieldExpr = dialect.aggregate(f.aggregation, resolveFieldExpr(f.sourceField, availableFields, config, dialect));
         } else {
           throw new Error(`HAVING filter missing enriched data: ${JSON.stringify(f)}`);
         }
