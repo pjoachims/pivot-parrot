@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ErrorBanner from '../shared/ErrorBanner';
-import { getArrowType } from '../../domain/types/ArrowTypes';
-import { adaptQueryResult, toRows, convertForGrid, type ColumnarResult } from '../../application/utils/columnarResult';
+import { gridColumnDef } from '../shared/gridColumn';
+import { adaptQueryResult, toRows, type ColumnarResult } from '../../application/utils/columnarResult';
 
 /**
  * SQLPlayground Component
@@ -17,7 +17,8 @@ export default function SQLPlayground({
   onSQLChange,
   onExecuteSQL,
   sqlPlaygroundDisplayMode,
-  onSQLPlaygroundDisplayModeChange
+  onSQLPlaygroundDisplayModeChange,
+  locale = 'en-US'
 }) {
   const [results, setResults] = useState<ColumnarResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,42 +59,8 @@ export default function SQLPlayground({
   const columnDefs = useMemo(() => {
     if (!results || results.numRows === 0) return [];
 
-    return results.columnNames.map(key => {
-      const arrowType = getArrowType(results.dtypes[key]);
-
-      const colDef: any = {
-        field: key,
-        headerName: key,
-        sortable: true,
-        filter: true,
-        resizable: true,
-        minWidth: 100,
-        valueGetter: (params) => convertForGrid(results.getValue(params.data.__row, key), arrowType)
-      };
-
-      // Set appropriate filter based on Arrow type category
-      if (arrowType?.category === 'temporal') {
-        colDef.filter = 'agDateColumnFilter';
-        colDef.valueFormatter = (params) => {
-          if (!params.value) return '';
-          if (params.value instanceof Date) {
-            return arrowType.name === 'timestamp'
-              ? params.value.toLocaleString()
-              : params.value.toLocaleDateString();
-          }
-          return params.value;
-        };
-      } else if (arrowType?.isNumeric) {
-        colDef.filter = 'agNumberColumnFilter';
-      } else if (arrowType?.category === 'boolean') {
-        colDef.filter = 'agSetColumnFilter';
-      } else {
-        colDef.filter = 'agTextColumnFilter';
-      }
-
-      return colDef;
-    });
-  }, [results]);
+    return results.columnNames.map(key => gridColumnDef(key, key, results.dtypes[key], locale, row => results.getValue(row, key)));
+  }, [results, locale]);
 
   // Default column configuration
   const defaultColDef = useMemo(() => ({

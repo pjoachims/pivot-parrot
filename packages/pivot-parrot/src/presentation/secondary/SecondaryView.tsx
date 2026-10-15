@@ -73,6 +73,7 @@ export default function SecondaryView({
         onExecuteSQL={onExecuteSQL}
         sqlPlaygroundDisplayMode={sqlPlaygroundDisplayMode}
         onSQLPlaygroundDisplayModeChange={onSQLPlaygroundDisplayModeChange}
+        locale={locale}
       />
     );
   }

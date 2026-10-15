@@ -47,6 +47,13 @@ function numberFormatFor(format: ValueFormat, locale: string): Intl.NumberFormat
   return nf;
 }
 
+/** The format of a value nobody configured one for, by its engine type's category; none for text. */
+export function defaultFormat(category: string | undefined): ValueFormat | undefined {
+  if (category === 'float') return { type: 'number', decimals: 2, useThousandSeparator: false };
+  if (category === 'integer') return { type: 'number', decimals: 0, useThousandSeparator: false };
+  return undefined;
+}
+
 /** Format a number for display. Percentages take a fraction (0.123 → 12.3%). */
 export function formatNumber(value: number, format: ValueFormat, locale = 'en-US'): string {
   const nf = numberFormatFor(format, locale);
@@ -92,15 +99,8 @@ export const createFormatValue = (config, locale = 'en-US', dtypes = {}, dialect
       ? typeName.slice(0, typeName.indexOf('<'))
       : typeName;
     const typeInfo = baseTypeName && dialect?.types?.[baseTypeName];
-    const category = typeInfo?.category;
-
-    if (category === 'float') {
-      format = { type: 'number', decimals: 2, useThousandSeparator: false };
-    } else if (category === 'integer') {
-      format = { type: 'number', decimals: 0, useThousandSeparator: false };
-    } else {
-      return String(n);
-    }
+    format = defaultFormat(typeInfo?.category);
+    if (!format) return String(n);
   }
 
   // Handle BigInt that wasn't converted by toDisplay (fallback safety)

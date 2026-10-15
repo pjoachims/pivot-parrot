@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { getArrowType } from '../../domain/types/ArrowTypes';
 import { usePivotStore } from '../../application/state/store';
-import { convertForGrid } from '../../application/utils/columnarResult';
+import { gridColumnDef } from '../shared/gridColumn';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 
 // Constants
@@ -89,42 +88,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
     return availableColumns
       .filter(key => selectedColumns[key] !== false)
-      .map(key => {
-        const arrowType = getArrowType(dtypes[key]);
-
-        const colDef: any = {
-          field: key,
-          headerName: fieldDisplayName(key, config, availableFields),
-          sortable: true,
-          filter: true,
-          resizable: true,
-          minWidth: 100,
-          valueGetter: (params) => convertForGrid(result.getValue(params.data.__row, key), arrowType)
-        };
-
-        // Set appropriate filter based on Arrow type category
-        if (arrowType?.category === 'temporal') {
-          colDef.filter = 'agDateColumnFilter';
-          colDef.valueFormatter = (params) => {
-            if (!params.value) return '';
-            if (params.value instanceof Date) {
-              // Use toLocaleDateString for date types, toLocaleString for timestamps
-              return arrowType.name === 'timestamp'
-                ? params.value.toLocaleString(locale)
-                : params.value.toLocaleDateString(locale);
-            }
-            return params.value;
-          };
-        } else if (arrowType?.isNumeric) {
-          colDef.filter = 'agNumberColumnFilter';
-        } else if (arrowType?.category === 'boolean') {
-          colDef.filter = 'agSetColumnFilter';
-        } else {
-          colDef.filter = 'agTextColumnFilter';
-        }
-
-        return colDef;
-      });
+      .map(key => gridColumnDef(key, fieldDisplayName(key, config, availableFields), dtypes[key], locale, row => result.getValue(row, key)));
   }, [result, availableColumns, selectedColumns, dtypes, locale, config, availableFields]);
 
   // Default column configuration
