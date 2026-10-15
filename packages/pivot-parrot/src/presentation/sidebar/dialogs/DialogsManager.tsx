@@ -124,7 +124,7 @@ export function DialogsManager({
           : {
               ...filterDialog.field,
               getUniqueValues: async (filtersToApply = []) => {
-                if (!dataEngine) return [];
+                if (!dataEngine) return { values: [], truncated: false };
                 try {
                   // Build WHERE clause from filters
                   let whereClause = '';
@@ -144,9 +144,10 @@ export function DialogsManager({
                   // Use field.id if available (FieldItem), otherwise field.name
                   const fieldId = filterDialog.field.id || filterDialog.field.name;
 
-                  // For custom groupings, resolve the expression
+                  // Custom groupings and derived fields are expressions, not columns
                   let expression = null;
-                  if (filterDialog.field.kind === FieldKind.CUSTOM_GROUPING && filterDialog.field.formula) {
+                  const { kind, formula } = filterDialog.field;
+                  if ((kind === FieldKind.CUSTOM_GROUPING || kind === FieldKind.DERIVED_FIELD) && formula) {
                     const referenceLookup = buildReferenceLookup({
                       availableFields,
                       customGroupings: config.customGroupings || [],
@@ -155,21 +156,21 @@ export function DialogsManager({
                       hiddenValues: config.hiddenValues || [],
                       dialect
                     });
-                    expression = resolveDerivedFieldsInExpressionV2(filterDialog.field.formula, referenceLookup);
+                    expression = resolveDerivedFieldsInExpressionV2(formula, referenceLookup);
                   }
 
                   return await dataEngine.getUniqueValues(
                     fieldId,
                     undefined, // tableName
                     whereClause,
-                    null, // limit
+                    undefined, // limit: the engine's default cap
                     null, // timeout
-                    expression, // resolved expression for custom groupings
+                    expression,
                     filterDialog.field.dtype // dtype for display conversion
                   );
                 } catch (err) {
                   console.error('Failed to load unique values:', err);
-                  return [];
+                  return { values: [], truncated: false };
                 }
               }
             };

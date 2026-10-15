@@ -1,0 +1,87 @@
+/**
+ * Unique values in the filter dialog, fetched through DialogsManager from a
+ * DataEngine that runs real DuckDB SQL.
+ */
+
+import React from 'react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { DuckDBInstance } from '@duckdb/node-api';
+import { DialogsManager } from '../dialogs/DialogsManager';
+import { createPivotStore, PivotStoreContext } from '../../../application/state/store';
+import { DataEngine } from '../../../infrastructure/data-engines/DataEngine';
+import { DuckDBDialect } from '../../../domain/query/dialects/DuckDBDialect';
+import { FieldKind } from '../../../domain/models/types';
+
+class NodeDuckDBEngine extends DataEngine {
+  constructor(conn) {
+    super();
+    this.conn = conn;
+    this.dialect = new DuckDBDialect();
+  }
+
+  getDialect() {
+    return this.dialect;
+  }
+
+  async _executeQueryImpl(sql) {
+    const data = (await this.conn.runAndReadAll(sql)).getRowObjectsJson();
+    return { data, dtypes: {}, rowCount: data.length, columnCount: 1 };
+  }
+}
+
+async function makeEngine() {
+  const instance = await DuckDBInstance.create(':memory:');
+  const conn = await instance.connect();
+  await conn.run(`CREATE TABLE pivot_data AS
+    SELECT CASE WHEN i % 2 = 0 THEN 'a' ELSE 'b' END AS region, 'id_' || lpad(i::VARCHAR, 4, '0') AS order_id
+    FROM range(1500) t(i)`);
+  return new NodeDuckDBEngine(conn);
+}
+
+function openFilterDialog(engine, field) {
+  const store = createPivotStore();
+  store.setState({ filterDialog: { field, existingFilter: null, anchorEl: document.createElement('div') } });
+  render(
+    <PivotStoreContext.Provider value={{ store, instanceKey: 'test' }}>
+      <DialogsManager dataEngine={engine} snapshots={[]} />
+    </PivotStoreContext.Provider>
+  );
+  fireEvent.click(screen.getByText(/One Of/i));
+  fireEvent.click(screen.getByText(/Fetch Unique Values/i));
+}
+
+describe('filter dialog unique values', () => {
+  let engine;
+
+  beforeEach(async () => {
+    engine = await makeEngine();
+  });
+
+  it('caps a high-cardinality field and says so', async () => {
+    const result = await engine.getUniqueValues('order_id');
+    expect(result.values).toHaveLength(1000);
+    expect(result.truncated).toBe(true);
+
+    openFilterDialog(engine, { id: 'order_id', name: 'order_id', dtype: 'string', kind: FieldKind.BASE_FIELD });
+    expect(await screen.findByText(/first 1000 values/i)).toBeInTheDocument();
+  });
+
+  it('is not truncated when every value fits', async () => {
+    const result = await engine.getUniqueValues('region');
+    expect(result).toEqual({ values: ['a', 'b'], truncated: false });
+  });
+
+  it('resolves a derived field through its formula', async () => {
+    openFilterDialog(engine, {
+      id: 'region_upper',
+      name: 'region_upper',
+      dtype: 'string',
+      kind: FieldKind.DERIVED_FIELD,
+      formula: 'upper(region)'
+    });
+    await waitFor(() => expect(screen.getByText('A')).toBeInTheDocument());
+    expect(screen.getByText('B')).toBeInTheDocument();
+    expect(screen.queryByText(/first 1000 values/i)).not.toBeInTheDocument();
+  });
+});

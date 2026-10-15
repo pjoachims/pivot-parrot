@@ -59,6 +59,7 @@ export function FilterDialog({
   const [customValue, setCustomValue] = useState('');
   const [showFilterSelection, setShowFilterSelection] = useState(false);
   const [fetchError, setFetchError] = useState('');
+  const [fetchTruncated, setFetchTruncated] = useState(false);
   const [selectedFiltersForFetch, setSelectedFiltersForFetch] = useState(() => {
     const otherFilters = activeFilters.filter(f => f.field !== fieldId);
     return otherFilters.map(f => f.field);
@@ -99,7 +100,7 @@ export function FilterDialog({
 
     try {
       const filtersToApply = applicableFilters.filter(f => selectedFiltersForFetch.includes(f.field));
-      const values = await field.getUniqueValues(filtersToApply);
+      const { values, truncated } = await field.getUniqueValues(filtersToApply);
 
       if (controller.signal.aborted) {
         return;
@@ -109,6 +110,7 @@ export function FilterDialog({
 
       // Update local state immediately for UI display
       setFetchedValues(sortedValues);
+      setFetchTruncated(truncated);
 
       // Also update store cache for future use
       cacheUniqueValues(fieldId, sortedValues);
@@ -595,6 +597,12 @@ export function FilterDialog({
               placeholder="Search..."
               style={styles.searchInput}
             />
+            {fetchTruncated && (
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: '4px 0' }}>
+                Only the first {uniqueValues.length} values were fetched, and search looks only at these.
+                Add a missing value above, or narrow the fetch with other filters.
+              </div>
+            )}
 
             {/* Value List - with selected items at top */}
             <div style={styles.valueListContainer}>
