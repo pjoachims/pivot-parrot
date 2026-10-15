@@ -5,6 +5,7 @@ import { Sidebar } from '../Sidebar';
 import { SidebarTopBar } from '../top-bar/SidebarTopBar';
 import { FieldOptionsSection } from './FieldOptionsSection';
 import { SnapshotsPanel } from '../snapshots/SnapshotsPanel';
+import type { SavedView } from '../../../domain/models/types';
 
 import type { FieldItem } from '../../../domain/field/FieldItem';
 
@@ -21,13 +22,13 @@ interface FieldOptionsContainerProps {
   onCreateSnapshot?: (name: string) => void;
   onLoadSnapshot?: (snapshotId: string) => void;
   onDeleteSnapshot?: (snapshotId: string) => void;
-  onDownloadAllSnapshots?: () => void;
-  onSnapshotsImported?: (snapshots: any[]) => void;
+  onSnapshotsImported?: (snapshots: SavedView[]) => void;
   onExport?: (type: string, data: any) => void;
 
   // External state (not in store)
   isRemoteConnection?: boolean;
-  snapshots?: any[];
+  snapshots?: SavedView[];
+  snapshotsError?: string | null;
   sqlHistory?: any[];
   dataEngine?: any;
 }
@@ -41,11 +42,11 @@ export default function FieldOptionsContainer(props: FieldOptionsContainerProps)
     onCreateSnapshot,
     onLoadSnapshot,
     onDeleteSnapshot,
-    onDownloadAllSnapshots,
     onSnapshotsImported,
     onExport,
     isRemoteConnection = false,
     snapshots = [],
+    snapshotsError = null,
     sqlHistory = [],
     dataEngine
   } = props;
@@ -106,7 +107,7 @@ export default function FieldOptionsContainer(props: FieldOptionsContainerProps)
         onCreateSnapshot={onCreateSnapshot}
         onLoadSnapshot={onLoadSnapshot}
         onDeleteSnapshot={onDeleteSnapshot}
-        onDownloadAllSnapshots={onDownloadAllSnapshots}
+        error={snapshotsError}
       />
     </Sidebar>
   );

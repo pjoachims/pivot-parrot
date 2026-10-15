@@ -5,7 +5,7 @@ import BaseDialog from '../../shared/BaseDialog';
 import ErrorBanner from '../../shared/ErrorBanner';
 import { useClickOutside } from '../../shared/useClickOutside';
 import type { FieldItem } from '../../../domain/field/FieldItem';
-import type { Snapshot } from '../../../domain/models/types';
+import type { SavedView } from '../../../domain/models/types';
 import { exportPivot, importPivot } from '../../../domain/pivot/export';
 
 /**
@@ -15,8 +15,8 @@ import { exportPivot, importPivot } from '../../../domain/pivot/export';
 interface SidebarTopBarProps {
   isRemoteConnection: boolean;
   sqlHistory: any[];
-  snapshots?: Snapshot[];
-  onSnapshotsImported?: (snapshots: Snapshot[]) => void;
+  snapshots?: SavedView[];
+  onSnapshotsImported?: (snapshots: SavedView[]) => void;
   onAutoUpdateChange?: (value: boolean) => void;
   onManualUpdate?: () => void;
   onToggleCollapse?: () => void;

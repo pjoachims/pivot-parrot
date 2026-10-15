@@ -1,4 +1,4 @@
-import { PivotConfig, PivotTableConfig, ExtendedPivotTableConfig, DuckDBInstance, DataInput, FieldItem } from '../models/types';
+import { PivotConfig, PivotTableConfig, ExtendedPivotTableConfig, DuckDBInstance, DataInput, FieldItem, SnapshotStore } from '../models/types';
 import { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 
 /**
@@ -37,6 +37,8 @@ export class NormalizedPivotConfig {
   readonly onConfigChange: ((config: PivotTableConfig) => void) | null;
   readonly onAutoUpdateChange: ((autoUpdate: boolean) => void) | null;
 
+  readonly snapshotStore: SnapshotStore | null;
+
   constructor(config: PivotConfig = {}) {
     // Data & Engine
     this.dataEngine = config.dataEngine || null;
@@ -66,6 +68,8 @@ export class NormalizedPivotConfig {
     // Callbacks
     this.onConfigChange = config.callbacks?.onConfigChange || null;
     this.onAutoUpdateChange = config.callbacks?.onAutoUpdateChange || null;
+
+    this.snapshotStore = config.snapshotStore || null;
   }
 
   /**

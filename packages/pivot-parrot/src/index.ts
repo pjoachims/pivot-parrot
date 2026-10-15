@@ -30,8 +30,13 @@ export type {
   Filter,
   CustomMetric,
   CustomFilter,
-  CustomGrouping
+  CustomGrouping,
+  PivotView,
+  SavedView,
+  NewSavedView,
+  SnapshotStore
 } from './domain/models/types';
+export { createMemorySnapshotStore } from './domain/snapshot/memoryStore';
 
 // Export domain layer for advanced usage
 export * from './domain';

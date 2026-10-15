@@ -153,7 +153,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
 
   // Custom hooks
   const splitPane = useSplitPane(activeView, secondaryDisplayMode);
-  const snapshots = useSnapshots(dataEngine?.getDialect() ?? null);
+  const snapshots = useSnapshots(cfg.snapshotStore);
   // Pivot calculation - executes queries
   const dataVersion = usePivotStore((s) => s.dataVersion);
   // The engine and dataset of the last completed init: a new one re-runs the committed config.
@@ -460,6 +460,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
         dataEngine={queryEngine || dataEngine}
         isRemoteConnection={isRemoteConnection}
         snapshots={snapshots.snapshots}
+        snapshotsError={snapshots.error}
         onManualUpdate={(previewMode) => {
           if (previewMode) {
             // Preview mode: generate SQL from current config without executing
@@ -474,7 +475,6 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
         onCreateSnapshot={handlers.handleCreateSnapshot}
         onLoadSnapshot={handlers.handleLoadSnapshot}
         onDeleteSnapshot={handlers.handleDeleteSnapshot}
-        onDownloadAllSnapshots={handlers.handleDownloadAllSnapshots}
         onSnapshotsImported={snapshots.importSnapshots}
       />
 

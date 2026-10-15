@@ -237,6 +237,9 @@ export interface PivotConfig {
 
   // Callbacks
   callbacks?: PivotCallbacks;
+
+  /** Persists snapshots (saved views); in memory when absent. */
+  snapshotStore?: SnapshotStore;
 }
 
 
@@ -265,22 +268,40 @@ export interface ViewState {
   position: number;
 }
 
-export interface Snapshot {
-  id: string;
-  timestamp: string | number;
-  name?: string;
+/**
+ * What recreates a pivot screen: its config and view state, never its result
+ * data. Restoring re-runs the query, so numbers are always current and no data
+ * leaves the engine. `v` lets a host that stores views migrate old ones.
+ */
+export interface PivotView {
+  v: 1;
   config: PivotTableConfig;
-  cubeResults: CubeRow[];
-  dtypes: Record<string, string>;
+  /** Derived fields (date parts, bins) the config may use; they live outside the config. */
+  derivedFields: FieldItem[];
+  sortConfig: { valueKey: string | null; direction: 'asc' | 'desc' };
   activeView: 'chart' | 'drilldown' | 'sql' | null;
   secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
-  chartConfig?: unknown;
-  sortConfig?: { valueKey: string | null; direction: 'asc' | 'desc' };
-  splitPosition?: number;
-  drilldownState?: {
-    data: DrilldownRow[];
-    filters: DimensionFilters;
-    sql: string;
-  };
-  sqlQuery?: string;
+  chartConfig: unknown | null;
+  splitPosition: number;
+  /** The cell the drilldown was opened on; restoring re-queries its rows. */
+  drilldownFilters: DimensionFilters | null;
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  createdAt: string;
+  view: PivotView;
+}
+
+export type NewSavedView = Omit<SavedView, 'id' | 'createdAt'> & { id?: string };
+
+/**
+ * Where saved views live. A host passes one as `snapshotStore` to keep them
+ * server-side; without it the pivot keeps them in memory.
+ */
+export interface SnapshotStore {
+  list(): Promise<SavedView[]>;
+  save(view: NewSavedView): Promise<SavedView>;
+  remove(id: string): Promise<void>;
 }

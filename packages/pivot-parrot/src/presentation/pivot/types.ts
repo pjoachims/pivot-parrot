@@ -74,28 +74,6 @@ export interface ViewState {
   position: number;
 }
 
-// ==================== Snapshot State ====================
-
-export interface Snapshot {
-  id: string;
-  timestamp: string | number;  // Can be string from hook or number
-  name?: string;
-  config: PivotTableConfig;
-  cubeResults: CubeRow[];
-  dtypes: Record<string, string>;
-  // View state
-  activeView: 'chart' | 'drilldown' | 'sql' | null;
-  secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
-  chartConfig?: unknown;
-  splitPosition?: number;
-  drilldownState?: {
-    data: DrilldownRow[];
-    filters: DimensionFilters;
-    sql: string;
-  };
-  sqlQuery?: string;
-}
-
 // ==================== Enriched Config ====================
 
 // This is the config after field resolution and defaults applied

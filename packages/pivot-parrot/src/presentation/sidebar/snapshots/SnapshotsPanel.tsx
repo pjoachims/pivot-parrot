@@ -1,24 +1,25 @@
 import React from 'react';
 import { usePivotStore } from '../../../application/state/store';
+import type { SavedView } from '../../../domain/models/types';
 
 /**
  * Snapshots Panel Component
  * Displays snapshot management UI
  */
 interface SnapshotsPanelProps {
-  snapshots: any[];
+  snapshots: SavedView[];
+  error?: string | null;
   onCreateSnapshot?: (name: string) => void;
   onLoadSnapshot?: (snapshotId: string) => void;
   onDeleteSnapshot?: (snapshotId: string) => void;
-  onDownloadAllSnapshots?: () => void;
 }
 
 export function SnapshotsPanel({
   snapshots,
+  error = null,
   onCreateSnapshot,
   onLoadSnapshot,
-  onDeleteSnapshot,
-  onDownloadAllSnapshots
+  onDeleteSnapshot
 }: SnapshotsPanelProps) {
   // Store state
   const showSnapshots = usePivotStore(s => s.showSnapshots);
@@ -76,24 +77,13 @@ export function SnapshotsPanel({
             >
               + New
             </button>
-            {snapshots.length > 0 && onDownloadAllSnapshots && (
-              <button
-                onClick={onDownloadAllSnapshots}
-                style={{
-                  flex: 1,
-                  padding: '3px 6px',
-                  fontSize: '11px',
-                  color: 'var(--color-accent)',
-                  background: 'var(--surface-bg)',
-                  border: '1px solid var(--color-accent)',
-                  borderRadius: '3px',
-                  cursor: 'pointer'
-                }}
-              >
-                ⬇ All
-              </button>
-            )}
           </div>
+
+          {error && (
+            <div role="alert" style={{ fontSize: '10px', color: 'var(--color-error)', padding: '4px 2px', marginBottom: '6px' }}>
+              {error}
+            </div>
+          )}
 
           {snapshots.length === 0 ? (
             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
@@ -101,7 +91,7 @@ export function SnapshotsPanel({
             </div>
           ) : (
             <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-              {snapshots.map((snapshot: any) => (
+              {snapshots.map((snapshot) => (
                 <div
                   key={snapshot.id}
                   style={{
@@ -129,7 +119,7 @@ export function SnapshotsPanel({
                       {snapshot.name}
                     </div>
                     <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                      {new Date(snapshot.timestamp).toLocaleTimeString()}
+                      {new Date(snapshot.createdAt).toLocaleString()}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
