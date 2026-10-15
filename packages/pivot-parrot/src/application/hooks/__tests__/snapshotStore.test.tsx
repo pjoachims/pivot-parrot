@@ -238,3 +238,21 @@ it('imported snapshots are saved to the store under new ids', async () => {
   expect(snapshotStore.save).toHaveBeenCalledWith({ name: 'Saved Q2', view: savedQ2.view as PivotView });
   expect(hook.result.current.snapshots.snapshots.map(s => s.id)).toEqual(['srv-1']);
 });
+
+it('an import that fails part-way reports how many snapshots were not saved', async () => {
+  const snapshotStore = fakeStore();
+  const realSave = snapshotStore.save.getMockImplementation()!;
+  snapshotStore.save.mockImplementation(async (input: any) => {
+    if (input.name === 'second') throw new Error('quota exceeded');
+    return realSave(input);
+  });
+  const { hook } = setup(snapshotStore);
+  await waitFor(() => expect(snapshotStore.list).toHaveBeenCalled());
+
+  await act(() => hook.result.current.snapshots.importSnapshots(
+    ['first', 'second', 'third'].map(name => ({ ...savedQ2, name }))
+  ));
+
+  expect(hook.result.current.snapshots.snapshots.map(s => s.name)).toEqual(['first', 'third']);
+  expect(hook.result.current.snapshots.error).toBe('Could not import 1 of 3 snapshots: second: quota exceeded');
+});

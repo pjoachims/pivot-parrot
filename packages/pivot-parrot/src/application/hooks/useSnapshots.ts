@@ -17,15 +17,22 @@ export function useSnapshots(store?: SnapshotStore | null) {
   const [snapshots, setSnapshots] = useState<SavedView[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const message = (err: any) => err?.message ?? String(err);
+
   async function attempt<T>(action: string, call: () => Promise<T>): Promise<T | undefined> {
     try {
       const result = await call();
       setError(null);
       return result;
     } catch (err: any) {
-      setError(`Could not ${action}: ${err?.message ?? err}`);
+      setError(`Could not ${action}: ${message(err)}`);
       return undefined;
     }
+  }
+
+  async function save(name: string, view: PivotView): Promise<void> {
+    const saved = await storeRef.current.save({ name, view: toPlainJSON(view) });
+    setSnapshots(prev => [...prev.filter(s => s.id !== saved.id), saved]);
   }
 
   useEffect(() => {
@@ -36,8 +43,7 @@ export function useSnapshots(store?: SnapshotStore | null) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function createSnapshot(name: string, view: PivotView): Promise<void> {
-    const saved = await attempt('save snapshot', () => storeRef.current.save({ name, view: toPlainJSON(view) }));
-    if (saved) setSnapshots(prev => [...prev.filter(s => s.id !== saved.id), saved]);
+    await attempt('save snapshot', () => save(name, view));
   }
 
   async function deleteSnapshot(id: string): Promise<void> {
@@ -47,9 +53,15 @@ export function useSnapshots(store?: SnapshotStore | null) {
 
   /** Imported views get new ids from the store, so importing twice keeps both copies. */
   async function importSnapshots(views: SavedView[]): Promise<void> {
+    const failures: string[] = [];
     for (const { name, view } of views) {
-      await createSnapshot(name, view);
+      try {
+        await save(name, view);
+      } catch (err: any) {
+        failures.push(`${name}: ${message(err)}`);
+      }
     }
+    setError(failures.length > 0 ? `Could not import ${failures.length} of ${views.length} snapshots: ${failures.join('; ')}` : null);
   }
 
   return {

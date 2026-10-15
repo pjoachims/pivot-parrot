@@ -59,6 +59,12 @@ export function SnapshotsPanel({
         <span style={{ transform: showSnapshots ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▶</span>
       </button>
 
+      {error && (
+        <div role="alert" style={{ fontSize: '10px', color: 'var(--color-error)', padding: '4px 2px' }}>
+          {error}
+        </div>
+      )}
+
       {showSnapshots && (
         <div style={{ marginTop: '8px' }}>
           <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
@@ -78,12 +84,6 @@ export function SnapshotsPanel({
               + New
             </button>
           </div>
-
-          {error && (
-            <div role="alert" style={{ fontSize: '10px', color: 'var(--color-error)', padding: '4px 2px', marginBottom: '6px' }}>
-              {error}
-            </div>
-          )}
 
           {snapshots.length === 0 ? (
             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
