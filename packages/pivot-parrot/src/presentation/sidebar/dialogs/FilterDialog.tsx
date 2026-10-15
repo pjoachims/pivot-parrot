@@ -63,7 +63,8 @@ export function FilterDialog({
   const dtypeCategory = getFilterCategory(fieldType, field.kind);
   const filterTypes = getAvailableFilters(fieldType, field.kind);
   const defaultFilterType = getDefaultFilterType(fieldType, field.kind);
-  const isTemporal = dtypeCategory === 'date' || dtypeCategory === 'timestamp';
+  // Not dtypeCategory: that also files time-of-day types under 'timestamp'.
+  const offersRelative = /^(date|timestamp)/.test(fieldType?.name ?? '');
 
   // Categorize filters
   const basicFilters = filterTypes.filter(ft =>
@@ -95,6 +96,8 @@ export function FilterDialog({
   const [fetched, setFetched] = useState(null); // This dialog's own fetch, {values, truncated}
   const [betweenEnd, setBetweenEnd] = useState(existingFilter?.betweenEnd || '');
   const [relative, setRelative] = useState<RelativeDate>(existingFilter?.relative ?? RELATIVE_PRESETS[2]);
+  // The count may be empty while it is being retyped.
+  const relativeToApply = {...relative, n: Math.max(1, relative.n)};
   const [searchTerm, setSearchTerm] = useState('');
   const [abortController, setAbortController] = useState(null);
   const [showAllValues, setShowAllValues] = useState(false);
@@ -182,7 +185,7 @@ export function FilterDialog({
     const filter = filterType === 'relative_date' ? {
       field: fieldId,
       type: filterType,
-      relative,
+      relative: relativeToApply,
       isNot
     } : {
       field: fieldId,
@@ -332,8 +335,8 @@ export function FilterDialog({
                 type="number"
                 min={1}
                 step={1}
-                value={relative.n}
-                onChange={(e) => setRelative({...relative, n: Math.max(1, Math.floor(Number(e.target.value)) || 1)})}
+                value={relative.n || ''}
+                onChange={(e) => setRelative({...relative, n: Math.floor(Number(e.target.value)) || 0})}
                 style={{...styles.input, width: '64px'}}
               />
               <select
@@ -347,7 +350,7 @@ export function FilterDialog({
               <IsNotToggle isNot={isNot} setIsNot={setIsNot} />
             </div>
             <div style={{fontSize: 'var(--text-xs)', color: 'var(--text-muted)', padding: '8px 0 0'}}>
-              {relativeDateLabel(relative)}, counted from the day the query runs. A saved view stays relative.
+              {relativeDateLabel(relativeToApply, isNot)}, counted from the day the query runs. A saved view stays relative.
             </div>
           </>
         );
@@ -704,7 +707,7 @@ export function FilterDialog({
           >
             Basic
           </button>
-          {isTemporal && (
+          {offersRelative && (
             <button
               onClick={() => handleTabChange('relative')}
               style={{

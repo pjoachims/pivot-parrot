@@ -45,11 +45,14 @@ describe('DropZonesGrid', () => {
   it('shows a relative date filter by its label, never by resolved dates', () => {
     const store = createPivotStore('drop-zones-relative');
     act(() => {
-      store.getState().setAvailableFields([fromSchema({ name: 'order_date', type: 'date32' })]);
+      store.getState().setAvailableFields(['order_date', 'ship_date'].map(name => fromSchema({ name, type: 'date32' })));
       store.getState().setConfig({
         rows: [],
         columns: [],
-        filters: [{ field: 'order_date', type: 'relative_date', relative: { mode: 'last', n: 7, unit: 'day' } }],
+        filters: [
+          { field: 'order_date', type: 'relative_date', relative: { mode: 'last', n: 7, unit: 'day' } },
+          { field: 'ship_date', type: 'relative_date', relative: { mode: 'previous', n: 1, unit: 'month' }, isNot: true },
+        ],
         values: [],
       });
     });
@@ -61,5 +64,6 @@ describe('DropZonesGrid', () => {
     );
 
     expect(screen.getByText('order_date: Last 7 days')).toBeInTheDocument();
+    expect(screen.getByText('ship_date: not Previous month')).toBeInTheDocument();
   });
 });

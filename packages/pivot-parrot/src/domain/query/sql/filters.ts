@@ -83,10 +83,11 @@ class DateRangeFilter extends Filter {
 }
 
 /** "Last 7 days", "This week", "Yesterday": how a relative date filter reads, wherever it is shown. */
-export function relativeDateLabel({ mode, n, unit }: RelativeDate): string {
-  if (n === 1 && unit === 'day') return mode === 'last' ? 'Today' : 'Yesterday';
-  if (n === 1) return `${mode === 'last' ? 'This' : 'Previous'} ${unit}`;
-  return `${mode === 'last' ? 'Last' : 'Previous'} ${n} ${unit}s`;
+export function relativeDateLabel({ mode, n, unit }: RelativeDate, isNot = false): string {
+  const range = n === 1 && unit === 'day' ? (mode === 'last' ? 'Today' : 'Yesterday')
+    : n === 1 ? `${mode === 'last' ? 'This' : 'Previous'} ${unit}`
+    : `${mode === 'last' ? 'Last' : 'Previous'} ${n} ${unit}s`;
+  return isNot ? `not ${range}` : range;
 }
 
 /** Saved views come back from the host's store, and unit and n end up in the SQL text. */
@@ -122,7 +123,7 @@ class RelativeDateFilter extends Filter {
   }
 
   getLabel(): string {
-    return `${this.isNot ? 'not ' : ''}${relativeDateLabel(this.relative)}`;
+    return relativeDateLabel(this.relative, this.isNot);
   }
 }
 

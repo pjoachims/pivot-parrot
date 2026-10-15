@@ -106,7 +106,7 @@ describe('relative date filter rejects what it cannot put into SQL', () => {
     ['an injected n', { mode: 'last', n: '7) OR (1=1', unit: 'day' }],
     ['no relative at all', undefined],
   ])('%s', (_label, relative) => {
-    expect(() => buildFilter({ field: 'd', type: 'relative_date', relative }).toSQL(dialect)).toThrow();
+    expect(() => buildFilter({ field: 'd', type: 'relative_date', relative }).toSQL(dialect)).toThrow(/Invalid relative date/);
   });
 });
 

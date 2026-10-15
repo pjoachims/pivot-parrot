@@ -223,7 +223,7 @@ export default function DropZonesGrid() {
             <div key={fieldId} className="relative" data-filter-field={fieldId}>
               <FieldItem
                 field={fieldItem}
-                label={field.type === 'relative_date' ? `${name}: ${relativeDateLabel(field.relative)}` : name}
+                label={field.type === 'relative_date' ? `${name}: ${relativeDateLabel(field.relative, field.isNot)}` : name}
                 zone="filters"
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}

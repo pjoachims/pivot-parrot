@@ -373,6 +373,8 @@ describe('FilterDialog', () => {
       render(<FilterDialog {...dateProps()} />);
       fireEvent.click(screen.getByRole('button', { name: 'Relative' }));
       fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'previous' } });
+      fireEvent.change(screen.getByLabelText('Count'), { target: { value: '' } });
+      expect(screen.getByLabelText('Count'), 'cleared while retyping').toHaveValue(null);
       fireEvent.change(screen.getByLabelText('Count'), { target: { value: '3' } });
       fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'week' } });
       fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
@@ -393,6 +395,11 @@ describe('FilterDialog', () => {
 
     it('is not offered for a string field', () => {
       render(<FilterDialog {...defaultProps} />);
+      expect(screen.queryByRole('button', { name: 'Relative' })).not.toBeInTheDocument();
+    });
+
+    it('is not offered for a time-of-day field', () => {
+      render(<FilterDialog {...defaultProps} field={{ name: 'start_time' }} fieldType={{ name: 'time64', category: 'temporal' }} />);
       expect(screen.queryByRole('button', { name: 'Relative' })).not.toBeInTheDocument();
     });
   });

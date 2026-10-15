@@ -244,9 +244,10 @@ export function buildHandleApplyFilter(config: PivotTableConfig, filter: Filter)
   const existingIndex = (config.filters || []).findIndex(f => f.field === filter.field);
 
   if (existingIndex >= 0) {
-    // Update existing filter with new values
+    // Keep what the drop put on the filter (filterType, aggregation, ...), but no values of an earlier type.
+    const { value, selectedValues, betweenStart, betweenEnd, relative, ...dropped } = config.filters[existingIndex];
     const newFilters = [...config.filters];
-    newFilters[existingIndex] = { ...newFilters[existingIndex], ...filter };
+    newFilters[existingIndex] = { ...dropped, ...filter };
     return { ...config, filters: newFilters };
   } else {
     // Filter not in zone yet? This shouldn't happen, but add it just in case
