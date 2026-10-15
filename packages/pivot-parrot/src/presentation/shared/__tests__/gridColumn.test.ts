@@ -17,13 +17,24 @@ function decimal128(unscaled: bigint): Uint32Array {
   return out;
 }
 
-it('formats numeric grid cells in the locale, as the pivot table does', () => {
-  expect(cell('double', 1234.5, 'de-DE')).toBe('1234,50');
+it('formats numeric grid cells in the locale', () => {
+  expect(cell('double', 1234.5, 'de-DE')).toBe('1234,5');
   expect(cell('decimal<10,2>', 10.5, 'de-DE')).toBe('10,50');
   expect(cell('int64', 1234567, 'de-DE')).toBe('1234567');
-  expect(cell('double', 1234.5, 'en-US')).toBe('1234.50');
+  expect(cell('double', 1234.5, 'en-US')).toBe('1234.5');
   expect(cell('int64', 9007199254740993n, 'de-DE')).toBe('9007199254740993');
   expect(cell('decimal<10,2>', decimal128(1050n), 'de-DE')).toBe('10,50');
+});
+
+it('shows raw numbers at their precision: DECIMAL to its scale, floats to the digits their type holds', () => {
+  expect(cell('double', 0.0004, 'de-DE')).toBe('0,0004');
+  expect(cell('double', 1 / 3, 'en-US')).toBe('0.333333333333333');
+  expect(cell('float32', Math.fround(0.1), 'en-US')).toBe('0.1');
+  expect(cell('decimal<10,4>', 0.0004, 'de-DE')).toBe('0,0004');
+  expect(cell('decimal<10,4>', decimal128(5n), 'de-DE')).toBe('0,0005');
+  expect(cell('decimal<38,0>', 12, 'de-DE')).toBe('12');
+  expect(cell('decimal<38,18>', 0.1, 'en-US')).toBe('0.100000000000000000');
+  expect(cell('decimal', 10.5, 'de-DE')).toBe('10,5');
 });
 
 it('formats timestamps and dates in the locale', () => {
