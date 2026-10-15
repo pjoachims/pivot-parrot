@@ -2,6 +2,7 @@ import { resolveMetricReferences } from '../../field/metric-resolver';
 import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../field/derived-field-resolver-v2';
 import { getFieldById } from '../../field/getFieldById';
 import { FieldKind } from '../../models/types';
+import { AGGREGATION_SQL_NAMES } from './aggregations';
 
 /**
  * Build CUBE SQL query from pivot configuration
@@ -139,20 +140,7 @@ export function buildCubeSQL(config, whereFilters = [], fieldTypes = {}, tableNa
     expr: m.expr
   }));
 
-  // Map UI aggregation names to dialect registry keys
-  const aggNameMap = {
-    'SUM': 'sum',
-    'AVG': 'avg',
-    'COUNT': 'count',
-    'MIN': 'min',
-    'MAX': 'max',
-    'COUNT DISTINCT': 'count_distinct',
-    'APPROX COUNT DISTINCT': 'approx_count_distinct',
-    'MEDIAN': 'median',
-    'MODE': 'mode',
-    'STD DEV': 'stddev',
-    'VARIANCE': 'variance',
-  };
+  const aggNameMap = AGGREGATION_SQL_NAMES;
 
   // Helper: resolve field to its SQL expression (for custom groupings, derived fields, etc.)
   const resolveFieldExpr = (fieldId) => {

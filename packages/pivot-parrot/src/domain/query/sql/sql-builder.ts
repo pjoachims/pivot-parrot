@@ -36,7 +36,7 @@ export function buildWhereClauses(filters, customFilters = [], dialect, values =
   allValues.forEach(v => {
     if (v.aggregation && v.field) {
       const agg = v.aggregation.toUpperCase();
-      const aggSQL = `${agg}(${dialect.quoteIdentifier(v.field)})`;
+      const aggSQL = dialect.buildAggregation(v.field, v.aggregation);
 
       // Map various possible field name formats to the aggregation SQL
       aggregatedFields.set(`${agg}_${v.field}`, aggSQL); // e.g., "SUM_sales"
@@ -48,9 +48,7 @@ export function buildWhereClauses(filters, customFilters = [], dialect, values =
   // Add custom metrics (persisted aggregations)
   customMetrics.forEach(m => {
     if (m.aggregation && m.field) {
-      const agg = m.aggregation.toUpperCase();
-      const aggSQL = `${agg}(${dialect.quoteIdentifier(m.field)})`;
-      aggregatedFields.set(m.id, aggSQL); // Use custom metric ID
+      aggregatedFields.set(m.id, dialect.buildAggregation(m.field, m.aggregation));
     } else if (m.expr) {
       // Custom metric with expression
       aggregatedFields.set(m.id, m.expr);

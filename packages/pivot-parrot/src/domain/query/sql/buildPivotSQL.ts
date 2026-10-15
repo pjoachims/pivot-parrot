@@ -117,7 +117,7 @@ function buildFilters(
           fieldExpr = f.formula;
         } else if (f.aggregation && f.sourceField) {
           const quotedField = dialect.quoteIdentifier(f.sourceField);
-          fieldExpr = dialect.getAggregation(f.aggregation.toLowerCase(), quotedField);
+          fieldExpr = dialect.aggregate(f.aggregation, quotedField);
         } else {
           throw new Error(`HAVING filter missing enriched data: ${JSON.stringify(f)}`);
         }

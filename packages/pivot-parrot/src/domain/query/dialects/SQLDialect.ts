@@ -1,5 +1,6 @@
 import type { ArrowTypeDefinition } from '../../types/ArrowTypes';
 import { Arrow, uint32ArrayToNumber } from '../../types/ArrowTypes';
+import { AGGREGATION_SQL_NAMES } from '../sql/aggregations';
 
 /**
  * SQLDialect - Base class for SQL dialect abstraction
@@ -264,16 +265,25 @@ export class SQLDialect {
   }
 
   /**
-   * Build complete aggregation expression from field name and aggregation type
-   * Handles quoting and dialect-specific SQL generation
+   * Aggregate an SQL expression by the aggregation's UI name ('Sum', 'Count Distinct', 'Std Dev')
+   * @param {string} aggregation - Aggregation name as the config stores it
+   * @param {string} fieldExpr - SQL expression to aggregate (already quoted/resolved)
+   */
+  aggregate(aggregation: string, fieldExpr: string): string {
+    const aggKey = AGGREGATION_SQL_NAMES[aggregation.trim().toUpperCase()];
+    if (!aggKey) {
+      throw new Error(`Unknown aggregation type: ${aggregation}`);
+    }
+    return this.getAggregation(aggKey, fieldExpr);
+  }
+
+  /**
+   * Build complete aggregation expression from a raw field name and aggregation name
    * @param {string} fieldName - Raw field name (will be quoted)
-   * @param {string} aggregation - Aggregation type (e.g., 'sum', 'count', 'count_distinct')
-   * @returns {string} Complete SQL aggregation expression
+   * @param {string} aggregation - Aggregation name (e.g., 'Sum', 'Count Distinct')
    */
   buildAggregation(fieldName: string, aggregation: string): string {
-    const quotedField = this.quoteIdentifier(fieldName);
-    const aggKey = aggregation.toLowerCase().replace(/\s+/g, '_');
-    return this.getAggregation(aggKey, quotedField);
+    return this.aggregate(aggregation, this.quoteIdentifier(fieldName));
   }
 
   // ==================== FUNCTION REGISTRY ====================

@@ -4,6 +4,7 @@ import { DuckDBDialect } from '../../src/domain/query/dialects/DuckDBDialect';
 import { DatabricksDialect } from '../../src/domain/query/dialects/DatabricksDialect';
 import { buildFilter } from '../../src/domain/query/sql/filters';
 import { buildPivotSQL } from '../../src/domain/query/sql/buildPivotSQL';
+import { buildWhereClauses } from '../../src/domain/query/sql/sql-builder';
 import { fromSchema, createDerived } from '../../src/domain/field/FieldItem';
 
 const dialect = new DuckDBDialect();
@@ -155,5 +156,31 @@ describe('Databricks string literals', () => {
   it('typed drilldown values on a string field', () => {
     expect(databricks.buildWhereClause([{ field: 'path', value: 'C:\\', typeName: 'string' }]))
       .toBe("(path = 'C:\\\\')");
+  });
+});
+
+describe('HAVING on multi-word aggregations', () => {
+  const having = (aggregation: string, field: string, type: string, value: number) => ({
+    values: [{ field, aggregation }],
+    filters: [{ field: `${aggregation.toUpperCase()}_${field}`, filterType: 'having', aggregation, sourceField: field, type, value }],
+  });
+
+  it('Count Distinct', async () => {
+    const rows = await pivot({ rows: ['region'], ...having('Count Distinct', 'customer', 'greater', 0) });
+    expect(rows.map(r => r.region).sort()).toEqual(['A', 'B', null]);
+  });
+
+  it('Std Dev', async () => {
+    expect(await pivot(having('Std Dev', 'qty', 'greater', 100))).toHaveLength(1);
+    expect(await pivot(having('Std Dev', 'qty', 'greater', 110))).toHaveLength(0);
+  });
+
+  it('buildWhereClauses (the filter dialog path)', async () => {
+    const { havingClause } = buildWhereClauses(
+      [{ field: 'COUNT DISTINCT_customer', type: 'greater', value: 0 }], [], dialect,
+      [{ field: 'customer', aggregation: 'Count Distinct' }],
+    );
+    const reader = await conn.runAndReadAll(`SELECT region FROM pivot_data GROUP BY region ${havingClause} ORDER BY region`);
+    expect(reader.getRows().map(r => r[0])).toEqual(['A', 'B', null]);
   });
 });

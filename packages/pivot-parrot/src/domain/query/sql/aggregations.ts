@@ -133,6 +133,17 @@ export const AGGREGATIONS: Record<string, AggregationDefinition> = {
 };
 
 /**
+ * Dialect registry key (sqlName) by the aggregation's name in upper case, as the
+ * UI writes it ('COUNT DISTINCT', 'STD DEV') or as its key ('COUNT_DISTINCT').
+ */
+export const AGGREGATION_SQL_NAMES: Record<string, string> = Object.fromEntries(
+  Object.values(AGGREGATIONS).flatMap(agg => [
+    [agg.value.toUpperCase(), agg.sqlName],
+    [agg.key.toUpperCase(), agg.sqlName],
+  ])
+);
+
+/**
  * Get available aggregations for a field type, filtered by dialect support
  * 
  * @param arrowType - The Arrow type definition for the field
