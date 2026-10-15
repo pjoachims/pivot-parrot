@@ -5,7 +5,7 @@
 import { profiler } from '../../domain/query/utils/profiler';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
-import { findValueFormat } from './formatters';
+import { decodeNumber, findValueFormat } from './formatters';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
@@ -42,17 +42,6 @@ export const downloadCSV = (csv: string, filename: string) => {
 const today = () => new Date().toISOString().slice(0, 10);
 
 type Dtypes = Record<string, string>;
-
-/**
- * A numeric result value as a number. Arrow JS hands DECIMAL over as a
- * Uint32Array (and some engines as a string), which the dialect decodes.
- */
-const decodeNumber = (value, typeName: string | undefined, dialect: SQLDialect | null) => {
-  if (value == null || typeof value === 'number' || typeof value === 'bigint' || !typeName || !dialect) return value;
-  if (!dialect.parseTypeName(typeName).type?.isNumeric) return value;
-  const n = Number(dialect.toDisplay(value, typeName));
-  return Number.isNaN(n) ? value : n;
-};
 
 /** A metric value as a CSV cell: percentages are written as percents, not fractions. */
 const metricCell = (config, raw, metricKey, dtypes: Dtypes, dialect: SQLDialect | null): CsvCell => {

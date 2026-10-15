@@ -24,6 +24,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
   const setSelectedColumns = usePivotStore((s) => s.setDrilldownSelectedColumns);
   const config = usePivotStore((s) => s.config);
   const availableFields = usePivotStore((s) => s.availableFields);
+  const dialect = usePivotStore((s) => s.dialect);
   const [menuAbove, setMenuAbove] = useState(false);
   const [copiedSQL, setCopiedSQL] = useState(false);
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
@@ -88,8 +89,8 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
     return availableColumns
       .filter(key => selectedColumns[key] !== false)
-      .map(key => gridColumnDef(key, fieldDisplayName(key, config, availableFields), dtypes[key], locale, row => result.getValue(row, key)));
-  }, [result, availableColumns, selectedColumns, dtypes, locale, config, availableFields]);
+      .map(key => gridColumnDef(key, fieldDisplayName(key, config, availableFields), dtypes[key], locale, dialect, row => result.getValue(row, key)));
+  }, [result, availableColumns, selectedColumns, dtypes, locale, dialect, config, availableFields]);
 
   // Default column configuration
   const defaultColDef = useMemo(() => ({

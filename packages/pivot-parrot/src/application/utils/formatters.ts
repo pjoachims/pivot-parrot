@@ -8,6 +8,7 @@
 
 import type { ValueFormat } from '../../domain/models/types';
 import { toMetricKey } from '../../domain/pivot/utils';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 
 export interface ResolvedFormat {
   type: 'number' | 'currency' | 'percentage';
@@ -45,6 +46,17 @@ function numberFormatFor(format: ValueFormat, locale: string): Intl.NumberFormat
     numberFormats.set(cacheKey, nf);
   }
   return nf;
+}
+
+/**
+ * A numeric result value as a number. Arrow JS hands DECIMAL over as a
+ * Uint32Array (and some engines as a string), which the dialect decodes.
+ */
+export function decodeNumber(value, typeName: string | undefined, dialect: SQLDialect | null) {
+  if (value == null || typeof value === 'number' || typeof value === 'bigint' || !typeName || !dialect) return value;
+  if (!dialect.parseTypeName(typeName).type?.isNumeric) return value;
+  const n = Number(dialect.toDisplay(value, typeName));
+  return Number.isNaN(n) ? value : n;
 }
 
 /** The format of a value nobody configured one for, by its engine type's category; none for text. */

@@ -1,12 +1,13 @@
 import { getArrowType } from '../../domain/types/ArrowTypes';
 import { convertForGrid } from '../../application/utils/columnarResult';
-import { defaultFormat, formatNumber } from '../../application/utils/formatters';
+import { decodeNumber, defaultFormat, formatNumber } from '../../application/utils/formatters';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 
 /**
  * An ag-grid column over a raw result column (drilldown, SQL playground): the
  * value read lazily per row, the filter and the display by the engine type.
  */
-export function gridColumnDef(key: string, headerName: string, typeName: string, locale: string, getValue: (row: number) => any) {
+export function gridColumnDef(key: string, headerName: string, typeName: string, locale: string, dialect: SQLDialect | null, getValue: (row: number) => any) {
   const arrowType = getArrowType(typeName);
 
   const colDef: any = {
@@ -16,7 +17,7 @@ export function gridColumnDef(key: string, headerName: string, typeName: string,
     filter: true,
     resizable: true,
     minWidth: 100,
-    valueGetter: (params) => convertForGrid(getValue(params.data.__row), arrowType)
+    valueGetter: (params) => convertForGrid(decodeNumber(getValue(params.data.__row), typeName, dialect), arrowType)
   };
 
   if (arrowType?.category === 'temporal') {

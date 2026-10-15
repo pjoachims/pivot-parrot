@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ErrorBanner from '../shared/ErrorBanner';
 import { gridColumnDef } from '../shared/gridColumn';
+import { usePivotStore } from '../../application/state/store';
 import { adaptQueryResult, toRows, type ColumnarResult } from '../../application/utils/columnarResult';
 
 /**
@@ -20,6 +21,7 @@ export default function SQLPlayground({
   onSQLPlaygroundDisplayModeChange,
   locale = 'en-US'
 }) {
+  const dialect = usePivotStore((s) => s.dialect);
   const [results, setResults] = useState<ColumnarResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -59,8 +61,8 @@ export default function SQLPlayground({
   const columnDefs = useMemo(() => {
     if (!results || results.numRows === 0) return [];
 
-    return results.columnNames.map(key => gridColumnDef(key, key, results.dtypes[key], locale, row => results.getValue(row, key)));
-  }, [results, locale]);
+    return results.columnNames.map(key => gridColumnDef(key, key, results.dtypes[key], locale, dialect, row => results.getValue(row, key)));
+  }, [results, locale, dialect]);
 
   // Default column configuration
   const defaultColDef = useMemo(() => ({

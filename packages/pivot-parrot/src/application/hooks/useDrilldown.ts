@@ -3,6 +3,7 @@ import { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import { usePivotStore } from '../state/store';
 import { adaptQueryResult, toRows, type ColumnarResult } from '../utils/columnarResult';
 import { downloadCSV } from '../utils/export';
+import { decodeNumber } from '../utils/formatters';
 import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
 
 // Type definitions
@@ -126,7 +127,8 @@ export function useDrilldown(
     if (!result || result.numRows === 0) return;
 
     const headers = result.columnNames;
-    const rows = Array.from({ length: result.numRows }, (_, i) => headers.map(h => result.getValue(i, h) as CsvCell));
+    const dialect = (queryEngine || dataEngine)?.getDialect() ?? null;
+    const rows = Array.from({ length: result.numRows }, (_, i) => headers.map(h => decodeNumber(result.getValue(i, h), result.dtypes[h], dialect) as CsvCell));
     downloadCSV(toCSV([headers, ...rows], locale), 'drilldown_data.csv');
   }
 
