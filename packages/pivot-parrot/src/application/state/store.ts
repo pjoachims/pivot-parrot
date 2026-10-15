@@ -48,6 +48,8 @@ interface PivotStore {
   dataHash: string | null;
   dataLoading: boolean;
   initComplete: boolean;
+  /** Changes when init completes on a different engine or dataset, so the committed config runs again. */
+  dataVersion: number;
   availableFields: FieldItem[];
   detectedTypes: Record<string, string | number>;
   uniqueValuesCache: Record<string, UniqueValues>;
@@ -132,7 +134,7 @@ interface PivotStore {
 
   // ==================== Data Actions ====================
   setDataLoading: (loading: boolean) => void;
-  setInitComplete: (complete: boolean) => void;
+  setInitComplete: (complete: boolean, dataChanged?: boolean) => void;
   setDataLoaded: (data: {
     hash: string;
     fields: FieldItem[];
@@ -229,6 +231,7 @@ const initialState = {
   dataHash: null,
   dataLoading: false,
   initComplete: false,
+  dataVersion: 0,
   availableFields: [],
   detectedTypes: {},
   uniqueValuesCache: {},
@@ -348,8 +351,12 @@ export function createPivotStore(instanceKey: string = 'default') {
       setDataLoading: (loading) =>
         set({ dataLoading: loading }, false, 'setDataLoading'),
 
-      setInitComplete: (complete) =>
-        set({ initComplete: complete }, false, 'setInitComplete'),
+      setInitComplete: (complete, dataChanged = false) =>
+        set(
+          (state) => ({ initComplete: complete, dataVersion: state.dataVersion + (dataChanged ? 1 : 0) }),
+          false,
+          'setInitComplete'
+        ),
 
       setDataLoaded: ({ hash, fields, types }) =>
         set(

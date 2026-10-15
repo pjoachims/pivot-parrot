@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import React from 'react';
 import { usePivotCalculation } from '../usePivotCalculation';
 import { createPivotStore, PivotStoreContext } from '../../state/store';
-import { DuckDBDialect } from '../../../domain/query/dialects/DuckDBDialect';
+import { RemoteDataEngine } from '../../../infrastructure/data-engines/RemoteDataEngine';
 
 const region = { id: 'region', name: 'region', dtype: 'string', kind: 'base_field' };
 
@@ -18,16 +18,15 @@ const withMetricB = (bExpr) => ({
   filters: []
 });
 
-describe('usePivotCalculation cube cache', () => {
+describe('usePivotCalculation and the engine cache', () => {
   let engine;
+  let backend;
   let store;
   let wrapper;
 
   beforeEach(() => {
-    engine = {
-      getDialect: () => new DuckDBDialect(),
-      executeQuery: vi.fn(async (sql) => ({ data: [{ region: 'A', m_a: sql.length }], dtypes: {}, rowCount: 1 }))
-    };
+    backend = vi.fn(async ({ sql }) => ({ rows: [{ region: 'A', m_a: sql.length }], schema: null }));
+    engine = new RemoteDataEngine({ dialect: 'duckdb', executeQuery: backend });
     store = createPivotStore();
     store.setState({ dataHash: 'data-1', availableFields: [region], detectedTypes: { region: 'string', sales: 'int32' } });
     wrapper = ({ children }) => React.createElement(
@@ -44,28 +43,36 @@ describe('usePivotCalculation cube cache', () => {
 
   it('re-queries when a referenced metric changes behind an unchanged value', async () => {
     const { rerender } = render(withMetricB('sum(sales)'));
-    await waitFor(() => expect(engine.executeQuery).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(backend).toHaveBeenCalledTimes(1));
 
     rerender({ config: withMetricB('count(sales)') });
-    await waitFor(() => expect(engine.executeQuery).toHaveBeenCalledTimes(2));
-    expect(engine.executeQuery.mock.calls[1][0]).toContain('count(sales)');
+    await waitFor(() => expect(backend).toHaveBeenCalledTimes(2));
+    expect(backend.mock.calls[1][0].sql).toContain('count(sales)');
   });
 
-  it('re-queries when the data changes under the same config', async () => {
+  it('serves the same SQL from the cache until the engine clears it', async () => {
     const { result } = render(withMetricB('sum(sales)'));
-    await waitFor(() => expect(engine.executeQuery).toHaveBeenCalledTimes(1));
-
-    act(() => store.setState({ dataHash: 'data-2' }));
-    await act(() => result.current.calculatePivot());
-    expect(engine.executeQuery).toHaveBeenCalledTimes(2);
-  });
-
-  it('serves the same SQL over the same data from the cache', async () => {
-    const { result } = render(withMetricB('sum(sales)'));
-    await waitFor(() => expect(engine.executeQuery).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(backend).toHaveBeenCalledTimes(1));
 
     await act(() => result.current.calculatePivot());
-    expect(engine.executeQuery).toHaveBeenCalledTimes(1);
+    expect(backend).toHaveBeenCalledTimes(1);
     expect(result.current.cubeResults).toHaveLength(1);
+
+    engine.clearCache();
+    await act(() => result.current.calculatePivot());
+    expect(backend).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-runs the committed config when the data version changes', async () => {
+    const config = withMetricB('sum(sales)');
+    const { rerender } = renderHook(
+      ({ dataVersion }) => usePivotCalculation({ executionConfig: config, dataVersion, engine }),
+      { wrapper, initialProps: { dataVersion: 1 } }
+    );
+    await waitFor(() => expect(backend).toHaveBeenCalledTimes(1));
+
+    engine.clearCache();
+    rerender({ dataVersion: 2 });
+    await waitFor(() => expect(backend).toHaveBeenCalledTimes(2));
   });
 });

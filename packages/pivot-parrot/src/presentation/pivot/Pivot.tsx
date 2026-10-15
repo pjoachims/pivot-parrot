@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef, useRef, useContext } from 'react';
 import { DuckDBWASMEngine } from '../../infrastructure/data-engines/DuckDBWASMEngine';
 import { hashData } from '../../domain/query/utils/cache';
 import { dataToCSV } from '../../domain/query/utils/csv';
@@ -68,6 +68,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // ==================== ZUSTAND STATE ====================
   // Get instance key from context
   const instanceKey = usePivotInstanceKey();
+  const storeApi = useContext(PivotStoreContext)!.store;
 
   // Get state from store
   const config = usePivotStore((s) => s.config);
@@ -151,8 +152,12 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   const splitPane = useSplitPane(activeView, secondaryDisplayMode);
   const snapshots = useSnapshots(dataEngine?.getDialect() ?? null);
   // Pivot calculation - executes queries
+  const dataVersion = usePivotStore((s) => s.dataVersion);
+  // The engine and dataset of the last completed init: a new one re-runs the committed config.
+  const readyDataRef = useRef<{ engine: unknown; dataHash: string | null } | null>(null);
   const calculation = usePivotCalculation({
     executionConfig,
+    dataVersion,
     engine: queryEngine || dataEngine,
     isRemoteMode: isRemoteConnection,
     onExecutionComplete: (executedCfg, cubeResults) => {
@@ -298,6 +303,13 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
       }
     }
 
+    function markReady() {
+      const ready = { engine: queryEngine || dataEngine, dataHash: storeApi.getState().dataHash };
+      const dataChanged = ready.engine !== readyDataRef.current?.engine || ready.dataHash !== readyDataRef.current?.dataHash;
+      readyDataRef.current = ready;
+      setInitComplete(true, dataChanged);
+    }
+
     async function _initLocalMode() {
       logger.debug('Starting local mode initialization', {
         hasData: !!cfg.data,
@@ -320,8 +332,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
         applyInitialConfig();
 
         // Step 4: Ready to execute queries (fields + config loaded)
-        logger.debug('Setting initComplete = true');
-        setInitComplete(true);
+        markReady();
       } catch (err: any) {
         logger.error('Error during initialization', { error: err.message });
         setCalculationError?.(err.message);
@@ -373,8 +384,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
           applyInitialConfig();
 
           // Step 4: Ready to execute queries
-          logger.debug('Setting initComplete = true');
-          setInitComplete(true);
+          markReady();
         } else {
           logger.warn('Missing fields or types - NOT setting initComplete', {
             hasFields: !!fields,
@@ -402,7 +412,7 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
     } else {
       logger.warn('No initialization path - missing engines');
     }
-  }, [cfg.data, dataEngine, queryEngine, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig]);
+  }, [cfg.data, dataEngine, queryEngine, storeApi, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig]);
 
 
   // Chart gracefully handles config changes via error handling in ChartView

@@ -12,12 +12,14 @@ const logger = createLogger('PivotCalculation');
  * Handles SQL generation, caching, and display data building
  *
  * @param executionConfig - The committed config to execute (from execution boundary)
+ * @param dataVersion - Changes when the engine or its data does: re-runs executionConfig
  * @param engine - The execution engine (queryEngine || dataEngine from parent)
  * @param isRemoteMode - Whether running in remote mode (no local dataHash needed)
  * @param onExecutionComplete - Optional callback when execution finishes (for commitConfig)
  */
 export function usePivotCalculation({
   executionConfig,
+  dataVersion = 0,
   engine,
   isRemoteMode = false,
   onExecutionComplete
@@ -32,12 +34,8 @@ export function usePivotCalculation({
   const [dtypes, setDtypes] = useState({});
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState(null);
-  // Results keyed by the final SQL, scoped to one dataset: the SQL carries
-  // every expression behind the config, the scope carries the data.
-  const cubeCache = useMemo(() => new Map(), [engine, dataHash]);
   const abortControllerRef = useRef(null);
   const [calculationStartTime, setCalculationStartTime] = useState(null);
-  const maxCacheSize = 5;
 
   // Query result: atomically consistent snapshot of config + data + dtypes + fieldsHash
   const [queryResult, setQueryResult] = useState(null);
@@ -187,20 +185,13 @@ export function usePivotCalculation({
         return;
       }
 
-      const cached = cubeCache.get(finalSQL);
-      if (cached) {
-        logger.debug('Cache hit', { rowCount: cached.cubeResults.length });
-        setResultWithIndex(executionConfig, cached.cubeResults, cached.dtypes || {});
-        setCalculating(false);
-        onExecutionComplete?.(executionConfig, cached.cubeResults);
-        return;
-      }
-
       // Execute query
       if (controller?.signal.aborted) {
         throw new Error('Calculation cancelled');
       }
 
+      // The engine caches by SQL, which carries every expression behind the
+      // config, and drops its cache when its data changes.
       const result = await engine.executeQuery(finalSQL, true, 'pivot');
 
       if (controller?.signal.aborted) {
@@ -224,13 +215,6 @@ export function usePivotCalculation({
       // Set result
       setResultWithIndex(executionConfig, result.data, result.dtypes || {});
 
-      // Update cache
-      if (cubeCache.size >= maxCacheSize) {
-        const firstKey = cubeCache.keys().next().value;
-        cubeCache.delete(firstKey);
-      }
-      cubeCache.set(finalSQL, { cubeResults: result.data, dtypes: result.dtypes });
-
       onExecutionComplete?.(executionConfig, result.data);
 
     } catch (err) {
@@ -244,7 +228,7 @@ export function usePivotCalculation({
         abortControllerRef.current = null;
       }
     }
-  }, [dataHash, executionConfig, engine, isRemoteMode, detectedTypes, availableFields, cubeCache, setResultWithIndex, addToSqlHistory, onExecutionComplete]);
+  }, [dataHash, executionConfig, engine, isRemoteMode, detectedTypes, availableFields, setResultWithIndex, addToSqlHistory, onExecutionComplete]);
 
   // Auto-calculate when executionConfig changes
   useEffect(() => {
@@ -255,7 +239,7 @@ export function usePivotCalculation({
     logger.info('Auto-executing pivot query');
     calculatePivot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [executionConfig]); // Intentionally omit calculatePivot to prevent infinite loop
+  }, [executionConfig, dataVersion]); // Intentionally omit calculatePivot to prevent infinite loop
 
   // Restore from cached snapshot data (no SQL execution)
   const restoreFromCache = useCallback((restoredConfig, cachedCubeResults, cachedDtypes = {}) => {
