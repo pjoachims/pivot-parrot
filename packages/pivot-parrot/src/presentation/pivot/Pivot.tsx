@@ -184,6 +184,8 @@ const PivotInner = forwardRef(({ config: pivotConfig = {} }: { config?: PivotCon
   // Pivot handlers - extracted into custom hook
   const handlers = usePivotHandlers({
     calculation,
+    displayData,
+    dialect: dataEngine?.getDialect() ?? null,
     snapshots,
     drilldown,
     sqlPlayground,

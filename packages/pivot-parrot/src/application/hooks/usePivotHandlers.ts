@@ -5,9 +5,12 @@ import { computeLeafColumns } from '../utils/columnHelpers';
 import { buildPivotCSV } from '../../application/utils/export';
 import { toRows } from '../utils/columnarResult';
 import { dataToCSV } from '../../domain/query/utils/csv';
+import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 
 interface UsePivotHandlersProps {
   calculation: any;
+  displayData: any;
+  dialect?: SQLDialect | null;
   snapshots: any;
   drilldown: any;
   sqlPlayground: any;
@@ -23,6 +26,8 @@ interface UsePivotHandlersProps {
 
 export function usePivotHandlers({
   calculation,
+  displayData,
+  dialect = null,
   snapshots,
   drilldown,
   sqlPlayground,
@@ -185,16 +190,19 @@ export function usePivotHandlers({
       }
 
       // 3. Add expected_output.csv
-      if (calculation.displayData) {
+      if (displayData) {
         const rowFieldNames = config.rows.map((f: any) => typeof f === 'string' ? f : f.id);
-        const leafCols = computeLeafColumns(calculation.displayData, true, true);
+        const leafCols = computeLeafColumns(displayData, true, true);
         const expectedOutputCSV = buildPivotCSV(
-          calculation.displayData,
+          displayData,
           leafCols,
           rowFieldNames,
           true,
           config.showGrandTotal !== false,
-          config
+          config,
+          undefined,
+          calculation.dtypes,
+          dialect
         );
         zip.file('expected_output.csv', expectedOutputCSV);
       }
@@ -208,7 +216,7 @@ export function usePivotHandlers({
       console.error('Error creating test fixture zip:', error);
       alert('Error creating test fixture: ' + error.message);
     }
-  }, [config, availableFields, detectedTypes, calculation]);
+  }, [config, availableFields, detectedTypes, calculation, displayData, dialect]);
 
   return {
     handleCreateSnapshot,
