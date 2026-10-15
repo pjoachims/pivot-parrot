@@ -251,7 +251,7 @@ describe('DuckDBDialect', () => {
         value: 'premium'
       });
 
-      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '!'");
     });
 
     it('should generate NOT LIKE when isNot is true', () => {
@@ -262,7 +262,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '\\') OR notes IS NULL)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '!') OR notes IS NULL)");
     });
 
     it('should escape single quotes in value', () => {
@@ -272,7 +272,7 @@ describe('DuckDBDialect', () => {
         value: "it's"
       });
 
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '!'");
     });
   });
 
@@ -284,7 +284,7 @@ describe('DuckDBDialect', () => {
         value: 'John'
       });
 
-      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '!'");
     });
 
     it('should support NOT variant', () => {
@@ -295,7 +295,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '\\') OR email IS NULL)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '!') OR email IS NULL)");
     });
   });
 
@@ -307,7 +307,7 @@ describe('DuckDBDialect', () => {
         value: '@example.com'
       });
 
-      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '!'");
     });
 
     it('should support NOT variant', () => {
@@ -318,7 +318,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '\\') OR filename IS NULL)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '!') OR filename IS NULL)");
     });
   });
 

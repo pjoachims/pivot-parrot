@@ -9,9 +9,14 @@
 
 import type { SQLDialect } from '../dialects/SQLDialect';
 
-/** Escape LIKE wildcards (%, _) so they match literally. */
-function escapeLikeWildcards(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+/**
+ * A LIKE pattern literal ('<prefix><value><suffix>') that matches the value literally.
+ * The escape character is '!' rather than '\\': in Spark SQL a backslash already
+ * escapes inside the string literal, so ESCAPE '\\' is an unterminated literal there.
+ */
+function likePattern(dialect: SQLDialect, value: any, prefix: string, suffix: string): string {
+  const escaped = String(value).replace(/[!%_]/g, '!$&');
+  return `'${prefix}${dialect.escapeValue(escaped)}${suffix}' ESCAPE '!'`;
 }
 
 /**
@@ -176,8 +181,7 @@ class ContainsFilter extends Filter {
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = escapeLikeWildcards(dialect.escapeValue(this.value));
-    const condition = `${field} LIKE '%${value}%' ESCAPE '\\'`;
+    const condition = `${field} LIKE ${likePattern(dialect, this.value, '%', '%')}`;
     return this.isNot ? negate(field, condition) : condition;
   }
 
@@ -202,8 +206,7 @@ class StartsWithFilter extends Filter {
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = escapeLikeWildcards(dialect.escapeValue(this.value));
-    const condition = `${field} LIKE '${value}%' ESCAPE '\\'`;
+    const condition = `${field} LIKE ${likePattern(dialect, this.value, '', '%')}`;
     return this.isNot ? negate(field, condition) : condition;
   }
 
@@ -228,8 +231,7 @@ class EndsWithFilter extends Filter {
 
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const value = escapeLikeWildcards(dialect.escapeValue(this.value));
-    const condition = `${field} LIKE '%${value}' ESCAPE '\\'`;
+    const condition = `${field} LIKE ${likePattern(dialect, this.value, '%', '')}`;
     return this.isNot ? negate(field, condition) : condition;
   }
 

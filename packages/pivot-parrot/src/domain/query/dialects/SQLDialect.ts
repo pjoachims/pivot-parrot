@@ -22,6 +22,12 @@ export class SQLDialect {
   constructor() {
     // Use Arrow types as base - all data comes from Arrow Tables
     this.types = { ...Arrow };
+    // String literals go through escapeValue, so a dialect's escaping rule covers typed drilldown values too.
+    for (const [name, type] of Object.entries(this.types)) {
+      if (type.category === 'string') {
+        this.types[name] = { ...type, toSQL: (val) => val === null || val === undefined ? 'NULL' : `'${this.escapeValue(val)}'` };
+      }
+    }
 
     // Aggregation registry: agg name → generator function
     this.aggregations = {

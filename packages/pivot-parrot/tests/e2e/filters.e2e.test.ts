@@ -118,3 +118,42 @@ describe('regex filter on DuckDB', () => {
     expect(await select('region', whereOf({ field: 'region', type: 'regex', value: '^A', isNot: true }))).toEqual(['B', null]);
   });
 });
+
+describe('LIKE filters match special characters literally', () => {
+  const notes = async (filter: Record<string, unknown>) => {
+    await conn.run(`CREATE OR REPLACE TEMP VIEW notes AS SELECT * FROM (VALUES ('O''Brien_50%'), ('O''Brien 50'), ('a\\b'), ('x!y'), ('xy')) t(note)`);
+    const reader = await conn.runAndReadAll(`SELECT note FROM notes WHERE ${whereOf({ field: 'note', ...filter })} ORDER BY note`);
+    return reader.getRows().map(r => r[0]);
+  };
+
+  it('% and _', async () => {
+    expect(await notes({ type: 'contains', value: "'Brien_50%" })).toEqual(["O'Brien_50%"]);
+  });
+
+  it('a backslash', async () => {
+    expect(await notes({ type: 'ends_with', value: '\\b' })).toEqual(['a\\b']);
+  });
+
+  it('the escape character itself', async () => {
+    expect(await notes({ type: 'starts_with', value: 'x!' })).toEqual(['x!y']);
+  });
+});
+
+describe('Databricks string literals', () => {
+  const databricks = new DatabricksDialect();
+
+  it('escape backslashes and quotes with a backslash', () => {
+    expect(buildFilter({ field: 'path', type: 'equal', value: "C:\\O'Brien\\" }).toSQL(databricks))
+      .toBe("path = 'C:\\\\O\\'Brien\\\\'");
+  });
+
+  it('LIKE patterns use ! as the escape character', () => {
+    expect(buildFilter({ field: 'Kunde Name', type: 'contains', value: "O'Brien_50%!\\" }).toSQL(databricks))
+      .toBe("`Kunde Name` LIKE '%O\\'Brien!_50!%!!\\\\%' ESCAPE '!'");
+  });
+
+  it('typed drilldown values on a string field', () => {
+    expect(databricks.buildWhereClause([{ field: 'path', value: 'C:\\', typeName: 'string' }]))
+      .toBe("(path = 'C:\\\\')");
+  });
+});

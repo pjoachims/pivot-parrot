@@ -71,6 +71,14 @@ export class DatabricksDialect extends SQLDialect {
   }
 
   /**
+   * Spark SQL string literals treat backslash as an escape character, and
+   * 'a''b' is two adjacent literals concatenated to 'ab', not an escaped quote.
+   */
+  escapeValue(value: any): string {
+    return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  /**
    * Override quoteIdentifier to use backticks for Databricks/Spark SQL
    * In Spark SQL, double quotes create STRING LITERALS, not identifiers
    * @param {string} identifier - Column/table name

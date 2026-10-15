@@ -183,7 +183,7 @@ describe('Filter Classes', () => {
         value: 'premium'
       });
 
-      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("description LIKE '%premium%' ESCAPE '!'");
       expect(filter.getLabel()).toBe('contains "premium"');
     });
 
@@ -194,7 +194,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '\\') OR notes IS NULL)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '!') OR notes IS NULL)");
       expect(filter.getLabel()).toBe('not contains "test"');
     });
 
@@ -204,7 +204,7 @@ describe('Filter Classes', () => {
         value: "it's"
       });
 
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%it''s%' ESCAPE '!'");
     });
 
     it('should handle LIKE wildcards in user input', () => {
@@ -215,7 +215,7 @@ describe('Filter Classes', () => {
       });
 
       // The % and _ in the value are escaped with backslash
-      expect(filter.toSQL(dialect)).toBe("text LIKE '%a\\%b\\_c%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("text LIKE '%a!%b!_c%' ESCAPE '!'");
     });
   });
 
@@ -226,7 +226,7 @@ describe('Filter Classes', () => {
         value: 'John'
       });
 
-      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("name LIKE 'John%' ESCAPE '!'");
       expect(filter.getLabel()).toBe('starts with "John"');
     });
 
@@ -237,7 +237,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '\\') OR email IS NULL)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '!') OR email IS NULL)");
     });
   });
 
@@ -248,7 +248,7 @@ describe('Filter Classes', () => {
         value: '@example.com'
       });
 
-      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("email LIKE '%@example.com' ESCAPE '!'");
       expect(filter.getLabel()).toBe('ends with "@example.com"');
     });
 
@@ -259,7 +259,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '\\') OR filename IS NULL)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '!') OR filename IS NULL)");
     });
   });
 
