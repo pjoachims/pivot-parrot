@@ -267,6 +267,7 @@ export interface Snapshot {
   activeView: 'chart' | 'drilldown' | 'sql' | null;
   secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
   chartConfig?: unknown;
+  sortConfig?: { valueKey: string | null; direction: 'asc' | 'desc' };
   splitPosition?: number;
   drilldownState?: {
     data: DrilldownRow[];

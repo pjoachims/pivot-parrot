@@ -21,6 +21,7 @@ export function useSnapshots() {
       activeView: 'chart' | 'drilldown' | 'sql' | null;
       secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
       chartConfig?: unknown;
+      sortConfig?: Snapshot['sortConfig'];
       drilldownState?: { data: CubeRow[]; filters: DimensionFilters; sql: string };
       sqlQuery?: string;
       splitPosition?: number;
@@ -38,6 +39,7 @@ export function useSnapshots() {
       activeView: viewState.activeView,
       secondaryDisplayMode: viewState.secondaryDisplayMode,
       chartConfig: viewState.chartConfig,
+      sortConfig: viewState.sortConfig,
       drilldownState: viewState.drilldownState,
       sqlQuery: viewState.sqlQuery,
       splitPosition: viewState.splitPosition

@@ -40,6 +40,8 @@ export function usePivotHandlers({
   const setActiveView = usePivotStore((s) => s.setActiveView);
   const setSecondaryDisplayMode = usePivotStore((s) => s.setSecondaryDisplayMode);
   const setChartConfig = usePivotStore((s) => s.setChartConfig);
+  const sortConfig = usePivotStore((s) => s.sortConfig);
+  const setSort = usePivotStore((s) => s.setSort);
 
   // ==================== SNAPSHOT HANDLERS ====================
   const handleCreateSnapshot = useCallback((customName?: string) => {
@@ -51,6 +53,7 @@ export function usePivotHandlers({
       activeView,
       secondaryDisplayMode,
       chartConfig,
+      sortConfig,
       splitPosition: splitPane.splitPosition,
       // Snapshots are serializable, so materialize the columnar drilldown
       // result into a plain rows array here (snapshot creation is an
@@ -70,7 +73,7 @@ export function usePivotHandlers({
       viewState,
       customName
     );
-  }, [executionConfig, calculation.cubeResults, calculation.dtypes, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, sqlPlayground, snapshots]);
+  }, [executionConfig, calculation.cubeResults, calculation.dtypes, activeView, secondaryDisplayMode, chartConfig, sortConfig, splitPane, drilldown, sqlPlayground, snapshots]);
 
   const handleLoadSnapshot = useCallback((snapshotId: string) => {
     const snapshot = snapshots.loadSnapshot(snapshotId);
@@ -81,9 +84,9 @@ export function usePivotHandlers({
       setActiveView(snapshot.activeView);
       setSecondaryDisplayMode(snapshot.secondaryDisplayMode);
 
-      if (snapshot.chartConfig) {
-        setChartConfig(snapshot.chartConfig);
-      }
+      setChartConfig(snapshot.chartConfig ?? null);
+      // Snapshots taken before sorting was stored were shown in query order.
+      setSort(snapshot.sortConfig ?? { valueKey: null, direction: 'desc' });
 
       if (snapshot.drilldownState) {
         drilldown.restoreDrilldown(
@@ -92,6 +95,8 @@ export function usePivotHandlers({
           snapshot.drilldownState.sql,
           snapshot.dtypes
         );
+      } else {
+        drilldown.clearDrilldown();
       }
 
       if (snapshot.sqlQuery) {
@@ -102,7 +107,7 @@ export function usePivotHandlers({
         splitPane.setSplitPosition(snapshot.splitPosition);
       }
     }
-  }, [snapshots, setConfig, commitConfig, calculation, setActiveView, setSecondaryDisplayMode, setChartConfig, drilldown, sqlPlayground, splitPane]);
+  }, [snapshots, setConfig, commitConfig, calculation, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, sqlPlayground, splitPane]);
 
   const handleDeleteSnapshot = useCallback((snapshotId: string) => {
     snapshots.deleteSnapshot(snapshotId);

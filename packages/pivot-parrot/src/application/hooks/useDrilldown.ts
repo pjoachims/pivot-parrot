@@ -46,6 +46,14 @@ export function useDrilldown(
     }
   }
 
+  function clearDrilldown(): void {
+    cancelDrilldown();
+    setDrilldownData(null);
+    setDrilldownFilters(null);
+    setDrilldownSQL(null);
+    setDrilldownDtypes(null);
+  }
+
   async function executeDrilldown(dimensionFilters: DimensionFilters): Promise<DrilldownResult> {
     // Cancel any existing drilldown
     if (abortController) {
@@ -156,6 +164,7 @@ export function useDrilldown(
     executeDrilldown,
     cancelDrilldown,
     exportDrilldownCSV,
-    restoreDrilldown
+    restoreDrilldown,
+    clearDrilldown
   };
 }
