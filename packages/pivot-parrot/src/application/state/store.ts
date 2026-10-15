@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
-import type { PivotTableConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, DrilldownRow, DimensionFilters, SavedViewStates, DerivedField } from '../../domain/models/types';
+import type { PivotTableConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
 import { FieldKind } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
@@ -99,9 +99,6 @@ interface PivotStore {
   sqlQuery: string;
 
   // ==================== Drilldown State ====================
-  drilldownData: DrilldownRow[] | null;
-  drilldownFilters: DimensionFilters | null;
-  drilldownSQL: string | null;
   drilldownSelectedColumns: Record<string, boolean>;
 
   // ==================== Query Progress State ====================
@@ -180,11 +177,7 @@ interface PivotStore {
   setSQLQuery: (query: string) => void;
 
   // ==================== Drilldown Actions ====================
-  setDrilldownData: (data: DrilldownRow[] | null) => void;
-  setDrilldownFilters: (filters: DimensionFilters | null) => void;
-  setDrilldownSQL: (sql: string | null) => void;
   setDrilldownSelectedColumns: (columns: Record<string, boolean>) => void;
-  clearDrilldown: () => void;
 
   // ==================== Query Progress Actions ====================
   setQueryProgress: (progress: { sql?: string; elapsed: number; type: 'pivot' | 'uniqueValues' | 'drilldown' | 'query' } | null) => void;
@@ -275,9 +268,6 @@ const initialState = {
   sqlQuery: '',
 
   // Drilldown
-  drilldownData: null,
-  drilldownFilters: null,
-  drilldownSQL: null,
   drilldownSelectedColumns: {},
 
   // Query Progress
@@ -489,24 +479,8 @@ export function createPivotStore(instanceKey: string = 'default') {
         set({ sqlQuery: query }, false, 'setSQLQuery'),
 
       // ==================== Drilldown Actions ====================
-      setDrilldownData: (data) =>
-        set({ drilldownData: data }, false, 'setDrilldownData'),
-
-      setDrilldownFilters: (filters) =>
-        set({ drilldownFilters: filters }, false, 'setDrilldownFilters'),
-
-      setDrilldownSQL: (sql) =>
-        set({ drilldownSQL: sql }, false, 'setDrilldownSQL'),
-
       setDrilldownSelectedColumns: (columns) =>
         set({ drilldownSelectedColumns: columns }, false, 'setDrilldownSelectedColumns'),
-
-      clearDrilldown: () =>
-        set(
-          { drilldownData: null, drilldownFilters: null, drilldownSQL: null },
-          false,
-          'clearDrilldown'
-        ),
 
       // ==================== Query Progress Actions ====================
       setQueryProgress: (progress) =>
@@ -730,7 +704,7 @@ export function createPivotStore(instanceKey: string = 'default') {
           // Explicitly NOT persisted:
           // - config (comes from Streamlit/props)
           // - dataHash, dataLoading, availableFields, detectedTypes (derived from data)
-          // - cubeResults, drilldownData, sqlQuery (ephemeral query results)
+          // - cubeResults, sqlQuery (ephemeral query results)
           // - queryProgress, isDragging, showChartDialog (runtime UI state)
           // - chartConfig (depends on current data)
         }),
