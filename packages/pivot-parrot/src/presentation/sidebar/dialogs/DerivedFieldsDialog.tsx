@@ -12,7 +12,7 @@ function sanitizeFieldId(fieldName: string): string {
   return fieldName.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
-export default function DerivedFieldsDialog({ fieldName, fieldType, existingDerived = [], onClose, onAdd, position, dialect }) {
+export default function DerivedFieldsDialog({ fieldName, displayName, fieldType, existingDerived = [], onClose, onAdd, position, dialect }) {
   const [selected, setSelected] = useState([]);
   const [bucketValue, setBucketValue] = useState(5);
   const [bucketUnit, setBucketUnit] = useState('minutes');
@@ -242,7 +242,7 @@ export default function DerivedFieldsDialog({ fieldName, fieldType, existingDeri
   // Timestamp: show time bucketing UI
   if (isTimestamp) {
     return (
-      <Popover title={`Time Bucket: ${fieldName}`} onClose={onClose} position={position} width={240}>
+      <Popover title={`Time Bucket: ${displayName}`} onClose={onClose} position={position} width={240}>
         <div style={styles.content}>
           <div style={styles.bucketRow}>
             <input
@@ -277,7 +277,7 @@ export default function DerivedFieldsDialog({ fieldName, fieldType, existingDeri
   // Date: show year/quarter/month options
   if (availableOptions.length === 0) {
     return (
-      <Popover title={`Derived: ${fieldName}`} onClose={onClose} position={position} width={240}>
+      <Popover title={`Derived: ${displayName}`} onClose={onClose} position={position} width={240}>
         <div style={styles.content}>
           <p style={styles.emptyMessage}>All derived fields already created</p>
         </div>
@@ -368,7 +368,7 @@ export default function DerivedFieldsDialog({ fieldName, fieldType, existingDeri
   };
 
   return (
-    <Popover title={`Derived: ${fieldName}`} onClose={onClose} position={position} width={320}>
+    <Popover title={`Derived: ${displayName}`} onClose={onClose} position={position} width={320}>
       <div style={styles.content}>
         {availableOptions.map(option => renderOption(option))}
       </div>

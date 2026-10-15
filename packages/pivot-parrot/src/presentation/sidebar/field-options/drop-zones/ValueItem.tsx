@@ -5,6 +5,8 @@ import { ZoneMoveSelect } from '../../shared/ZoneMoveSelect';
 
 export default function ValueItem({
   valueField,
+  label,
+  fieldLabel,
   index,
   zone = 'values',
   onDragStart,
@@ -63,7 +65,7 @@ export default function ValueItem({
             fontWeight: valueField.isCustom ? 500 : 'normal'
           }}
         >
-          {valueField.isCustom ? valueField.name : `${valueField.aggregation} of ${valueField.field}`}
+          {label}
         </span>
         {valueField.isCustom ? (
           <button
@@ -73,7 +75,7 @@ export default function ValueItem({
             }}
             className="text-blue-500 hover:text-blue-700 text-sm pp-fade-btn"
             title="Edit metric"
-            aria-label={`Edit ${valueField.name}`}
+            aria-label={`Edit ${fieldLabel}`}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -92,7 +94,7 @@ export default function ValueItem({
               onFocus={(e) => e.stopPropagation()}
               draggable={false}
               className="text-xs cursor-pointer"
-              aria-label={`Aggregation for ${valueField.field}`}
+              aria-label={`Aggregation for ${fieldLabel}`}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -134,7 +136,7 @@ export default function ValueItem({
           <span className="text-gray-500 hover:text-blue-600 pp-fade-btn">
             <ZoneMoveSelect
               excludeZone={zone}
-              label={`Move ${valueField.isCustom ? valueField.name : valueField.field} to a different zone`}
+              label={`Move ${fieldLabel} to a different zone`}
               onMove={(targetZone) => onMoveToZone(dragId, targetZone)}
             />
           </span>

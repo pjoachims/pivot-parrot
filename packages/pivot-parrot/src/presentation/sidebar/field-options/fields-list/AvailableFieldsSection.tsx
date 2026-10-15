@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { FieldItem, inferSemanticType } from '../../../../domain/field/FieldItem';
-import { FieldKind } from '../../../../domain/models/types';
+import { FieldKind, PivotTableConfig } from '../../../../domain/models/types';
+import { fieldDisplayName } from '../../../../domain/field/fieldDisplayName';
 import { AvailableFieldItem } from './AvailableFieldItem';
 
 interface AvailableFieldsSectionProps {
@@ -9,7 +10,7 @@ interface AvailableFieldsSectionProps {
   checkedFields: Set<string>;
   derivedFieldsMap: Record<string, any[]>;
   detectedTypes: Record<string, string | number>;
-  fieldNameOverrides: Record<string, string>;
+  config: PivotTableConfig;
   onToggleField: (fieldId: string, checked: boolean) => void;
   onMoveToZone?: (fieldId: string, targetZone: string) => void;
   onDragStart: (e: React.DragEvent, fieldId: string, sourceZone: string) => void;
@@ -28,7 +29,7 @@ export function AvailableFieldsSection({
   checkedFields,
   derivedFieldsMap,
   detectedTypes,
-  fieldNameOverrides,
+  config,
   onToggleField,
   onMoveToZone,
   onDragStart,
@@ -40,16 +41,8 @@ export function AvailableFieldsSection({
   const filteredFields = useMemo(() => {
     if (!searchQuery) return fields;
     const lowerQuery = searchQuery.toLowerCase();
-    return fields.filter(f => {
-      const displayName = fieldNameOverrides[f.id] || f.name;
-      return displayName.toLowerCase().includes(lowerQuery);
-    });
-  }, [fields, searchQuery, fieldNameOverrides]);
-
-  // Get display name for a field (override or original)
-  const getFieldDisplayName = (fieldId: string, fieldName: string) => {
-    return fieldNameOverrides[fieldId] || fieldName;
-  };
+    return fields.filter(f => fieldDisplayName(f.id, config, fields).toLowerCase().includes(lowerQuery));
+  }, [fields, searchQuery, config]);
 
   return (
     <>
@@ -82,7 +75,7 @@ export function AvailableFieldsSection({
               isChecked={checkedFields.has(field.id)}
               isDerivedField={false}
               canHaveDerivedFields={canHaveDerivedFields}
-              displayName={getFieldDisplayName(field.id, field.name)}
+              displayName={fieldDisplayName(field.id, config, fields)}
               detectedType={detectedTypes[field.id]}
               onToggle={onToggleField}
               onMoveToZone={onMoveToZone}
@@ -104,7 +97,7 @@ export function AvailableFieldsSection({
                     isChecked={checkedFields.has(derivedFieldId)}
                     isDerivedField={true}
                     canHaveDerivedFields={false}
-                    displayName={derivedFieldItem.name}
+                    displayName={fieldDisplayName(derivedFieldId, config, fields)}
                     detectedType={detectedTypes[derivedFieldId]}
                     onToggle={onToggleField}
                     onMoveToZone={onMoveToZone}

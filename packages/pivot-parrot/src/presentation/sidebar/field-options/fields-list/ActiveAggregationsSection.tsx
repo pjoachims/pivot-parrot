@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import type { PivotTableConfig } from '../../../../domain/models/types';
+import { fieldDisplayName } from '../../../../domain/field/fieldDisplayName';
 
 interface ActiveAggregationsSectionProps {
   config: PivotTableConfig;
@@ -29,7 +30,7 @@ export function ActiveAggregationsSection({
         const aggId = `${aggUpper}_${v.field}`;
         aggs.push({
           id: aggId,
-          name: `${aggUpper}(${v.field})`,
+          name: fieldDisplayName(aggId, config),
           field: v.field,
           aggregation: v.aggregation,
           isAggregation: true,
@@ -40,7 +41,7 @@ export function ActiveAggregationsSection({
     return aggs.filter((agg: any) =>
       !searchQuery || agg.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [config.values, searchQuery]);
+  }, [config, searchQuery]);
 
   if (activeAggregations.length === 0) {
     return null;

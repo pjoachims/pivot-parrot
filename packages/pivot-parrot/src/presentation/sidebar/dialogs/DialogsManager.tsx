@@ -9,6 +9,7 @@ import SnapshotNameDialog from '../snapshots/SnapshotNameDialog';
 import { filterCustomMetrics } from '../../../application/utils/fieldUtils';
 import { buildWhereClauses } from '../../../domain/query/sql/sql-builder';
 import { FieldKind } from '../../../domain/models/types';
+import { fieldDisplayName } from '../../../domain/field/fieldDisplayName';
 import { buildReferenceLookup, resolveDerivedFieldsInExpressionV2 } from '../../../domain/field/derived-field-resolver-v2';
 
 /**
@@ -105,6 +106,7 @@ export function DialogsManager({
       {derivedFieldDialog && (
         <DerivedFieldsDialog
           fieldName={derivedFieldDialog.fieldName}
+          displayName={fieldDisplayName(derivedFieldDialog.fieldName, config, availableFields)}
           fieldType={derivedFieldDialog.fieldType}
           existingDerived={derivedFieldDialog.existingDerivedFields}
           position={derivedFieldDialog.position}
@@ -179,6 +181,7 @@ export function DialogsManager({
         return (
           <FilterDialog
             field={enrichedField}
+            displayName={fieldDisplayName(enrichedField.id || enrichedField.name, config, availableFields)}
             fieldType={arrowType}
             existingFilter={filterDialog.existingFilter}
             anchorEl={filterDialog.anchorEl}
@@ -193,6 +196,7 @@ export function DialogsManager({
       {havingFilterDialog && (
         <HavingFilterDialog
           field={havingFilterDialog.field}
+          displayName={fieldDisplayName(havingFilterDialog.field.name, config, availableFields)}
           existingFilter={havingFilterDialog.existingFilter}
           anchorEl={havingFilterDialog.anchorEl}
           onApply={handleApplyFilter}

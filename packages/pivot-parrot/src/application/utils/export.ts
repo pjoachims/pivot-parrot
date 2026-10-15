@@ -3,6 +3,7 @@
  */
 
 import { profiler } from '../../domain/query/utils/profiler';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 
 // Escape a string for safe use inside a RegExp
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -58,7 +59,10 @@ export const exportDataCSV = (displayData, config = null) => {
     ...(config?.customGroupings || []),
     ...(config?.customMetrics || [])
   ];
-  const friendlyHeaders = headers.map(header => replaceIdsWithNames(header, idNamePairs));
+  const friendlyHeaders = headers.map(header => {
+    const name = fieldDisplayName(header, config || {});
+    return name !== header ? name : replaceIdsWithNames(header, idNamePairs);
+  });
 
   // Build CSV with friendly headers
   let csv = friendlyHeaders.join(',') + '\n';
@@ -104,33 +108,11 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     return '';
   }
 
-  // Helper to map custom metric ID to friendly name
-  const getMetricName = (metricId) => {
-    if (!metricId) return metricId;
-    if (config?.customMetrics) {
-      const metric = config.customMetrics.find(m => m.id === metricId);
-      if (metric?.name) return metric.name;
-    }
-    return metricId;
-  };
-
-  // Helper to map custom grouping ID to friendly name
-  const getFieldName = (fieldId) => {
-    if (!fieldId) return fieldId;
-    if (config?.customGroupings) {
-      const grouping = config.customGroupings.find(g => g.id === fieldId);
-      if (grouping?.name) return grouping.name;
-    }
-    return fieldId;
-  };
+  const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
 
   const lines = [];
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
-
-  // Map custom grouping IDs to friendly names in field arrays
-  const friendlyRowFields = rowFields ? rowFields.map(getFieldName) : [];
-  const friendlyColFields = colFields.map(getFieldName);
 
   if (hasColFields && leafCols && leafCols.length > 0) {
     // Build multi-row headers for column hierarchy

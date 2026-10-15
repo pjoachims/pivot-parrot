@@ -83,7 +83,7 @@ interface PivotStore {
     anchorEl: HTMLElement;
   } | null;
   havingFilterDialog: {
-    field: { name: string; displayName: string };
+    field: { name: string };
     existingFilter: Filter | null;
     anchorEl: HTMLElement;
   } | null;

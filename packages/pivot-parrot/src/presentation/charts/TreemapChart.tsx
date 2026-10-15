@@ -1,4 +1,5 @@
 import React from 'react';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
   sanitizeFieldName,
@@ -50,6 +51,7 @@ function normalizeValue(value) {
 
 export default function TreemapChartConfig({
   dimensions,
+  dimensionLabel,
   valueFields,
   metric,
   setMetric,
@@ -107,7 +109,7 @@ export default function TreemapChartConfig({
             style={styles.select}
           >
             {dimensions.map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -120,7 +122,7 @@ export default function TreemapChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== level1 && dim !== level3).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -133,7 +135,7 @@ export default function TreemapChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== level1 && dim !== level2 && level2).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -443,7 +445,7 @@ export function transformTreemapChart(chartData, chartConfig) {
   }
 
   // Build title: "Metric by Level1, Level2, Level3"
-  const hierarchyPath = levels.join(', ');
+  const hierarchyPath = levels.map(level => fieldDisplayName(level, config)).join(', ');
   const title = `${metricLabel} by ${hierarchyPath}`;
 
   const layout = {

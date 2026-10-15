@@ -3,6 +3,7 @@
  */
 
 import { isUngrouped, isGrouped, buildCubeIndex } from '../../application/utils/cubeIndex';
+import { valueDisplayName } from '../../domain/field/fieldDisplayName';
 
 // ==================== Type Definitions ====================
 
@@ -98,6 +99,7 @@ interface PivotConfig {
   columns: string[];
   values: ValueConfig[];
   customMetrics?: CustomMetric[];
+  fieldNameOverrides?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -573,13 +575,7 @@ export function getMetricLabel(field: string, config: PivotConfig): string {
     throw new Error(`Metric not found: ${field}`);
   }
 
-  if (valueConfig.isCustom) {
-    // Look up display name from customMetrics
-    const customMetric = config.customMetrics?.find(m => m.id === field);
-    return customMetric?.name || valueConfig.name || field;
-  }
-
-  return `${valueConfig.aggregation} of ${field}`;
+  return valueDisplayName(valueConfig, config);
 }
 
 /**

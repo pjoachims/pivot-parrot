@@ -35,6 +35,8 @@ export function ColumnHeaders({
   leafColumns,
   rowFields,
   colFields,
+  rowFieldLabels,
+  colFieldLabels,
   title,
   styles,
   dialect,
@@ -44,9 +46,6 @@ export function ColumnHeaders({
   if (typeof window !== 'undefined') {
     window.debugLeafColumns = leafColumns;
   }
-
-  // Helper: extract field name (handles FieldItem objects and 'Σ Values' string)
-  const getFieldName = (f) => typeof f === 'string' ? f : (f.name || f.id);
 
   // Special case: no column dimensions, just metrics
   if (data.columnConfig.colFields.length === 0 && leafColumns.length > 0) {
@@ -72,15 +71,14 @@ export function ColumnHeaders({
                 {title && <span style={styles.rowLabelsTitle}>{title}</span>}
                 {rowFields && rowFields.length > 0 && (
                   <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }}>
-                    {rowFields.map(getFieldName).join(' \\ ')}
+                    {rowFieldLabels.join(' \\ ')}
                   </div>
                 )}
               </div>
 
               {/* Right column: Column fields, one per grid row - from original config */}
               {Array.from({ length: specialNumRows }).map((_, idx) => {
-                const field = colFields[idx] || '';
-                const fieldName = getFieldName(field);
+                const fieldName = colFieldLabels[idx] || '';
 
                 return (
                   <div key={idx} style={{
@@ -270,15 +268,14 @@ export function ColumnHeaders({
                     {title && <span style={styles.rowLabelsTitle}>{title}</span>}
                     {rowFields && rowFields.length > 0 && (
                       <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }}>
-                        {rowFields.map(getFieldName).join(' \\ ')}
+                        {rowFieldLabels.join(' \\ ')}
                       </div>
                     )}
                   </div>
 
                   {/* Right column: Column fields, one per grid row - from original config */}
                   {Array.from({ length: numHeaderRows }).map((_, idx) => {
-                    const field = colFields[idx] || '';
-                    const fieldName = getFieldName(field);
+                    const fieldName = colFieldLabels[idx] || '';
 
                     return (
                       <div key={idx} style={{

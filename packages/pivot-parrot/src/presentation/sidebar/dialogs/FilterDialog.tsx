@@ -11,11 +11,11 @@ export function FilterDialog({
   onClose,
   existingFilter,
   anchorEl,
-  activeFilters = []
+  activeFilters = [],
+  displayName
 }) {
   // Field identification: use id for FieldItem, name for plain objects
   const fieldId = field.id || field.name;
-  const fieldDisplayName = field.name || field.id;
 
   // Read from store
   const uniqueValuesCache = usePivotStore(s => s.uniqueValuesCache);
@@ -117,7 +117,7 @@ export function FilterDialog({
       setShowFilterSelection(false);
     } catch (err) {
       if (!controller.signal.aborted) {
-        console.error('Failed to load unique values for', fieldDisplayName, ':', err);
+        console.error('Failed to load unique values for', fieldId, ':', err);
         setFetchError(`Failed to load values: ${err.message}`);
         setLoadingValues(false);
       }
@@ -682,7 +682,7 @@ export function FilterDialog({
 
   return (
     <Popover
-      title={`Filter: ${fieldDisplayName}`}
+      title={`Filter: ${displayName}`}
       onClose={onClose}
       position={position}
       width={400}

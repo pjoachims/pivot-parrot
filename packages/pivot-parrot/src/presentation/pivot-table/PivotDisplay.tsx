@@ -5,6 +5,7 @@ import { createFormatValue, createFormatRowLabel, fmt } from '../../application/
 import { exportDataCSV, exportPivotCSV } from '../../application/utils/export';
 import { SubtotalsMenu, ValuesFormatMenu, RowsOptionsMenu, ExportMenu, SortMenu } from './PivotMenus';
 import { ColumnHeaders } from './ColumnHeaders';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { PivotRow, renderCells } from './PivotRow';
 import PivotDisplayHeader from './PivotDisplayHeader';
 import { ContextMenu } from '../shared/ContextMenu';
@@ -77,19 +78,9 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
         dtypes
     });
 
-    // Helper to map custom grouping IDs to friendly names
-    const getFieldName = (fieldId) => {
-      if (!fieldId) return fieldId;
-      if (config?.customGroupings) {
-        const grouping = config.customGroupings.find(g => g.id === fieldId);
-        if (grouping?.name) return grouping.name;
-      }
-      return fieldId;
-    };
-
-    // Map custom grouping IDs to friendly names in field arrays
-    const friendlyRowFields = React.useMemo(() => rowFields ? rowFields.map(getFieldName) : [], [rowFields, config?.customGroupings]);
-    const friendlyColFields = React.useMemo(() => (config.columns || []).map(getFieldName), [config.columns, config?.customGroupings]);
+    const colFields = config.columns || [];
+    const rowFieldLabels = useMemo(() => (rowFields || []).map(f => fieldDisplayName(f, config, availableFields)), [rowFields, config, availableFields]);
+    const colFieldLabels = useMemo(() => (config.columns || []).map(f => fieldDisplayName(f, config, availableFields)), [config, availableFields]);
 
     // Expose debug toggle to window for console access
     React.useEffect(() => {
@@ -201,9 +192,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       ? (isMultiMetricGrandTotal ? data.grandTotal.length : 1)
       : 0;
 
-    // Also check using friendly field names
-    const valuesInRowsFriendly = friendlyRowFields && friendlyRowFields.some(f => f === 'Σ Values');
-
     // Set up virtualizer - include Grand Total row(s) in count if shown
     const rowVirtualizer = useVirtualizer({
       count: flattenedRows.length + grandTotalRowCount,
@@ -312,8 +300,10 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
             <ColumnHeaders
             data={data}
             leafColumns={leafColumns}
-            rowFields={friendlyRowFields}
-            colFields={friendlyColFields}
+            rowFields={rowFields || []}
+            colFields={colFields}
+            rowFieldLabels={rowFieldLabels}
+            colFieldLabels={colFieldLabels}
             title={title}
             styles={styles}
             dialect={dialect}
@@ -356,7 +346,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
                         <td style={{...styles.groupLabel, fontWeight: '600'}}>
                           <span style={styles.groupText}>Grand Total - {gtRow.metricLabel}</span>
                         </td>
-                        {renderCells(gtRow.values, leafColumns, styles, formatValue, gtRow.metric, { groupLabel: 'Grand Total' }, friendlyRowFields, friendlyColFields, onDrilldown ? handleCellContextMenu : null)}
+                        {renderCells(gtRow.values, leafColumns, styles, formatValue, gtRow.metric, { groupLabel: 'Grand Total' }, rowFields, colFields, onDrilldown ? handleCellContextMenu : null)}
                       </tr>
                     );
                   } else if (!isMultiMetricGrandTotal && grandTotalIndex === 0) {
@@ -371,7 +361,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
                         }}
                       >
                         <td style={{...styles.groupLabel, fontWeight: '600'}}><span style={styles.groupText}>Grand Total</span></td>
-                        {renderCells(data.grandTotal, leafColumns, styles, formatValue, null, { groupLabel: 'Grand Total' }, friendlyRowFields, friendlyColFields, onDrilldown ? handleCellContextMenu : null)}
+                        {renderCells(data.grandTotal, leafColumns, styles, formatValue, null, { groupLabel: 'Grand Total' }, rowFields, colFields, onDrilldown ? handleCellContextMenu : null)}
                       </tr>
                     );
                   }
@@ -389,7 +379,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
                     rowKey={key}
                     expanded={expanded}
                     toggle={toggle}
-                    rowFields={friendlyRowFields}
+                    rowFields={rowFields}
                     formatRowLabel={formatRowLabel}
                     showRowSubtotals={showRowSubtotals}
                     styles={styles}
@@ -397,7 +387,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
                     formatValue={formatValue}
                     virtualStart={transformOffset}
                     rowHeight={ROW_HEIGHT}
-                    colFields={friendlyColFields}
+                    colFields={colFields}
                     onCellContextMenu={onDrilldown ? handleCellContextMenu : null}
                     onChevronContextMenu={handleChevronContextMenu}
                   />

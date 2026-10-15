@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getArrowType } from '../../domain/types/ArrowTypes';
 import { usePivotStore } from '../../application/state/store';
 import { convertForGrid } from '../../application/utils/columnarResult';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 
 // Constants
 const COPY_FEEDBACK_DURATION_MS = 2000; // Duration to show "Copied!" feedback
@@ -22,6 +23,8 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const selectedColumns = usePivotStore((s) => s.drilldownSelectedColumns);
   const setSelectedColumns = usePivotStore((s) => s.setDrilldownSelectedColumns);
+  const config = usePivotStore((s) => s.config);
+  const availableFields = usePivotStore((s) => s.availableFields);
   const [menuAbove, setMenuAbove] = useState(false);
   const [copiedSQL, setCopiedSQL] = useState(false);
   const [showInfoTooltip, setShowInfoTooltip] = useState(false);
@@ -91,7 +94,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
         const colDef: any = {
           field: key,
-          headerName: key,
+          headerName: fieldDisplayName(key, config, availableFields),
           sortable: true,
           filter: true,
           resizable: true,
@@ -122,7 +125,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
         return colDef;
       });
-  }, [result, availableColumns, selectedColumns, dtypes, locale]);
+  }, [result, availableColumns, selectedColumns, dtypes, locale, config, availableFields]);
 
   // Default column configuration
   const defaultColDef = useMemo(() => ({
@@ -329,7 +332,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
                           }}
                           style={{ cursor: 'pointer' }}
                         />
-                        <span className="pp-truncate">{col}</span>
+                        <span className="pp-truncate">{fieldDisplayName(col, config, availableFields)}</span>
                       </label>
                     ))}
                   </div>

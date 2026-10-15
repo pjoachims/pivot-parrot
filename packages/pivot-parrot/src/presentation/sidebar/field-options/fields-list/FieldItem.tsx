@@ -3,6 +3,7 @@ import { ZoneMoveSelect } from '../../shared/ZoneMoveSelect';
 
 export default function FieldItem({
   field,
+  label,
   zone,
   onDragStart,
   onDragEnd,
@@ -16,9 +17,7 @@ export default function FieldItem({
   onShowDerived,
   ...props
 }) {
-  // Extract field ID and label (handles FieldItem objects and 'Σ Values' string)
   const fieldId = typeof field === 'string' ? field : field.id;
-  const fieldLabel = typeof field === 'string' ? field : (field.name || field.id);
   const isCustom = typeof field === 'object' && field.isCustom;
 
   const isDateField = detectedTypes[fieldId] === 'date';
@@ -63,7 +62,7 @@ export default function FieldItem({
       {...props}
     >
       <span className="text-xs flex-1 pp-truncate">
-        {children || fieldLabel}
+        {children || label}
       </span>
 
       {/* Filter icon for filter zone - replaces remove button */}
@@ -73,7 +72,7 @@ export default function FieldItem({
           className="text-gray-500 hover:text-blue-600 pointer-events-auto pp-fade-btn"
           style={{ fontSize: '10px', padding: '0 2px', lineHeight: 1 }}
           title="Edit filter"
-          aria-label={`Edit filter for ${fieldLabel}`}
+          aria-label={`Edit filter for ${label}`}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
             <line x1="0" y1="2" x2="10" y2="2" />
@@ -93,7 +92,7 @@ export default function FieldItem({
               className="text-blue-500 hover:text-blue-700 pointer-events-auto pp-fade-btn"
               style={{ fontSize: '11px', fontWeight: 600, padding: '0 4px' }}
               title="Create derived fields"
-              aria-label={`Create derived fields from ${fieldLabel}`}
+              aria-label={`Create derived fields from ${label}`}
             >
               f
             </button>
@@ -108,7 +107,7 @@ export default function FieldItem({
               }}
               className="text-gray-500 hover:text-red-600 text-sm pointer-events-auto pp-fade-btn"
               title="Remove"
-              aria-label={`Remove ${fieldLabel}`}
+              aria-label={`Remove ${label}`}
             >
               ×
             </button>
@@ -121,7 +120,7 @@ export default function FieldItem({
         <span className="text-gray-500 hover:text-blue-600 pointer-events-auto pp-fade-btn">
           <ZoneMoveSelect
             excludeZone={zone}
-            label={`Move ${fieldLabel} to a different zone`}
+            label={`Move ${label} to a different zone`}
             onMove={onMoveToZone}
           />
         </span>

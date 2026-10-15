@@ -1,4 +1,5 @@
 import React from 'react';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
   selectChartData,
@@ -16,6 +17,7 @@ import {
 
 export default function ScatterChartConfig({
   dimensions,
+  dimensionLabel,
   valueFields,
   pointLevel,
   setPointLevel,
@@ -39,7 +41,7 @@ export default function ScatterChartConfig({
           style={styles.select}
         >
           {dimensions.map(dim => (
-            <option key={dim} value={dim}>{dim}</option>
+            <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
           ))}
         </select>
       </div>
@@ -96,7 +98,7 @@ export default function ScatterChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== pointLevel).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -176,7 +178,7 @@ export function transformScatterChart(chartData, chartConfig) {
     }
 
     return {
-      name: colorBy ? groupName : pointLevelField,
+      name: colorBy ? groupName : fieldDisplayName(pointLevelField, config),
       x: rows.map(row => row[xColumn]),
       y: rows.map(row => row[yColumn]),
       text: rows.map(row => row[pointLevelField]),

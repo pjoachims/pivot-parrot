@@ -1,4 +1,5 @@
 import React from 'react';
+import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
   selectChartData,
@@ -18,6 +19,7 @@ import { BarLineTrace, PlotlyLayout } from './types';
 
 export default function BarLineChartConfig({
   dimensions,
+  dimensionLabel,
   valueFields,
   xAxis,
   setXAxis,
@@ -60,7 +62,7 @@ export default function BarLineChartConfig({
             style={styles.select}
           >
             {dimensions.map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -73,7 +75,7 @@ export default function BarLineChartConfig({
           >
             <option value="">None</option>
             {dimensions.filter(dim => dim !== xAxis).map(dim => (
-              <option key={dim} value={dim}>{dim}</option>
+              <option key={dim} value={dim}>{dimensionLabel(dim)}</option>
             ))}
           </select>
         </div>
@@ -393,7 +395,7 @@ export function transformBarLineChart(chartData, chartConfig) {
   const layout: PlotlyLayout = {
     title: '',
     xaxis: {
-      title: xAxisField,
+      title: fieldDisplayName(xAxisField, config),
       type: xAxisType,
       tickformat: plotlyFormat.tick,
       hoverformat: plotlyFormat.hover,

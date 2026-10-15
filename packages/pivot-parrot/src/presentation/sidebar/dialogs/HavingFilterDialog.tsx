@@ -5,7 +5,7 @@ import Popover from '../shared/Popover';
  * Simple numeric filter dialog for HAVING filters (aggregations and custom metrics)
  * Only supports numeric comparison operators and a single value
  */
-export function HavingFilterDialog({ field, onApply, onClose, existingFilter, anchorEl }) {
+export function HavingFilterDialog({ field, displayName, onApply, onClose, existingFilter, anchorEl }) {
   const [operator, setOperator] = useState(existingFilter?.type || 'greater');
   const [value, setValue] = useState(existingFilter?.value || '');
 
@@ -37,7 +37,7 @@ export function HavingFilterDialog({ field, onApply, onClose, existingFilter, an
 
   return (
     <Popover
-      title={`Filter: ${field.name}`}
+      title={`Filter: ${displayName}`}
       onClose={onClose}
       position={position}
       width={350}
