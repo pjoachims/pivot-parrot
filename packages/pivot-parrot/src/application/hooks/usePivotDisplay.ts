@@ -48,7 +48,8 @@ export function usePivotDisplay(
         uniqueColCombos.add(colKey);
       });
 
-      const estimatedColumns = uniqueColCombos.size * enrichedValues.length;
+      const metricsPerMember = rowFieldNames.includes('Σ Values') ? 1 : enrichedValues.length;
+      const estimatedColumns = uniqueColCombos.size * metricsPerMember;
       if (estimatedColumns > MAX_COLUMNS) {
         // Return error object instead of throwing (prevents React crash)
         return {

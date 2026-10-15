@@ -28,9 +28,7 @@ export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, col
       // They need subtotals if they have children
       if (valuesIndex === 0 && node.depth === 0 && hasChildren) {
         // This is a metric parent node - give it subtotals
-        const metricNameWrapped = node.path[0]; // The metric is the first element
-        // Unwrap the metric name from {v, t} - it's always wrapped as STRING
-        const metricName = metricNameWrapped.v;
+        const metricName = node.path[0];
 
         node.subtotals = columnOutline.map((col) => {
           // Use hash lookup: all row dimensions grouped, match column path
@@ -47,19 +45,8 @@ export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, col
 
       // Node must be at or below Values level to have values
       if (node.path.length <= valuesIndex) {
+        // A member above the metric level spans several metrics: no common subtotal (as in Excel).
         node.values = null;
-
-        // Parent nodes (above metric level) should get subtotals if depth 0 or 1
-        if (hasChildren && (node.depth === 0 || node.depth === 1)) {
-          // Build subtotals for this parent node (aggregate across all metrics)
-          node.subtotals = columnOutline.map(col => {
-            // Use hash lookup: match parent path, remaining rows grouped
-            const hash = createCellHash(node.path, rowFields, col.path, colFields);
-            return lookupCubeValue(cubeIndex, hash, col.metric || 'value');
-          });
-        }
-
-        // Still recurse for children
         if (hasChildren) {
           populateNodeValues(node.children, sqlRows, rowFields, columnOutline, colFields, valuesIndex, originalRowFields, cubeIndex, dtypes);
         }
@@ -68,9 +55,7 @@ export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, col
 
       // Split path at Values position
       const beforePath = node.path.slice(0, valuesIndex);
-      const rowMetricWrapped = node.path[valuesIndex];
-      // Unwrap the metric name from {v, t} - it's always wrapped as STRING
-      const rowMetric = rowMetricWrapped.v;
+      const rowMetric = node.path[valuesIndex];
       const afterPath = node.path.slice(valuesIndex + 1);
 
       // IMPORTANT: Use originalRowFields (with Σ Values) for slicing, not actualRowFields
