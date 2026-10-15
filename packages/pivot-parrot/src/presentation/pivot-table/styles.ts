@@ -6,7 +6,8 @@ export const styles: Record<string, React.CSSProperties> = {
   rowLabelContainerOuter: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '4px' },
   rowLabelContainer: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', position: 'relative' },
   rowLabelsTitle: { fontSize: 'var(--text-sm)', fontWeight: '600', color: 'var(--text-primary)' },
-  rowFieldsHierarchy: { fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: '400', paddingTop: '4px', borderTop: '1px solid var(--surface-hover)' },
+  // Capped: a field's display name must not widen the row-label column
+  rowFieldsHierarchy: { fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: '400', paddingTop: '4px', borderTop: '1px solid var(--surface-hover)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   buttonGroup: { display: 'flex', gap: '6px', alignItems: 'center' },
   menuButton: { background: 'var(--surface-bg)', border: '1px solid var(--border-color-light)', padding: '5px 10px', cursor: 'pointer', fontSize: 'var(--text-sm)', lineHeight: 1, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '500', transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
   gearButton: { background: 'var(--surface-bg)', border: '1px solid var(--border-color-light)', padding: '5px 8px', cursor: 'pointer', fontSize: '14px', lineHeight: 1, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },

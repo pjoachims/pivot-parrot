@@ -55,6 +55,11 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onDrop, children }: Sid
     <div
       className="sidebar-container"
       style={{
+        // Fixed: sized by its content, one long field name widened the whole
+        // sidebar instead of truncating in its row or chip
+        width: '320px',
+        minWidth: 0,
+        flexShrink: 0,
         maxWidth: '100%',
         boxSizing: 'border-box',
         overflow: 'hidden',

@@ -71,7 +71,7 @@ export function ColumnHeaders({
               }}>
                 {title && <span style={styles.rowLabelsTitle}>{title}</span>}
                 {rowFields && rowFields.length > 0 && (
-                  <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }}>
+                  <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }} title={rowFieldLabels.join(' \\ ')}>
                     {rowFieldLabels.join(' \\ ')}
                   </div>
                 )}
@@ -90,7 +90,7 @@ export function ColumnHeaders({
                     paddingLeft: '8px'
                   }}>
                     {fieldName && (
-                      <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }}>
+                      <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }} title={fieldName}>
                         {fieldName}
                       </div>
                     )}
@@ -268,7 +268,7 @@ export function ColumnHeaders({
                   }}>
                     {title && <span style={styles.rowLabelsTitle}>{title}</span>}
                     {rowFields && rowFields.length > 0 && (
-                      <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }}>
+                      <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }} title={rowFieldLabels.join(' \\ ')}>
                         {rowFieldLabels.join(' \\ ')}
                       </div>
                     )}
@@ -287,7 +287,7 @@ export function ColumnHeaders({
                         paddingLeft: '8px'
                       }}>
                         {fieldName && (
-                          <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }}>
+                          <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }} title={fieldName}>
                             {fieldName}
                           </div>
                         )}
