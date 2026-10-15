@@ -149,7 +149,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     const flattenedRows = useMemo(() => {
       const flat = [];
 
-      function flattenNode(node, path = [], depth = 0) {
+      function flattenNode(node, depth = 0) {
         const key = rowKey(node);
         const isOpen = !!expanded[key];
         const kids = node.children || [];
@@ -159,19 +159,15 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
         if (config.showNullGroups === false && (node.groupLabel === '(null)' || node.groupLabel === null)) return;
 
         // Add this row
-        flat.push({ node, path, depth, key, isOpen, hasKids });
+        flat.push({ node, depth, key, isOpen, hasKids });
 
         // If expanded, add children
         if (isOpen && hasKids) {
-          kids.forEach((child, idx) => {
-            flattenNode(child, [...path, idx], depth + 1);
-          });
+          kids.forEach(child => flattenNode(child, depth + 1));
         }
       }
 
-      data.rowGroups.forEach((group, idx) => {
-        flattenNode(group, [idx], 0);
-      });
+      data.rowGroups.forEach(group => flattenNode(group, 0));
 
       return flat;
     }, [data.rowGroups, expanded]);
@@ -370,12 +366,11 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
 
                 // Render regular row with transform positioning
                 const rowData = flattenedRows[virtualRow.index];
-                const { node, path, depth, key } = rowData;
+                const { node, depth, key } = rowData;
                 return (
                   <PivotRow
                     key={key}
                     node={node}
-                    path={path}
                     depth={depth}
                     rowKey={key}
                     expanded={expanded}

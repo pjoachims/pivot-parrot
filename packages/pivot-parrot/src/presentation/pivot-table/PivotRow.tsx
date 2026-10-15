@@ -68,7 +68,6 @@ export function renderCells(vals, leafColumns, styles, formatValue, rowMetric = 
  */
 export function PivotRow({
   node,
-  path,
   depth,
   rowKey,
   expanded,
@@ -148,7 +147,7 @@ export function PivotRow({
               e.preventDefault();
               e.stopPropagation();
               if (onChevronContextMenu) {
-                onChevronContextMenu(e, { depth, fieldName, isOpen, path });
+                onChevronContextMenu(e, { depth, fieldName, isOpen });
               }
             }}
             aria-label={isOpen ? `Collapse ${displayLabel}` : `Expand ${displayLabel}`}
