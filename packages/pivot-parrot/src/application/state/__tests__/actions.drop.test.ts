@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildHandleDrop } from '../actions';
 import { FieldKind } from '../../../domain/models/types';
+import { getFieldById } from '../../../domain/field/getFieldById';
+import { fieldDisplayName } from '../../../domain/field/fieldDisplayName';
 
 const available: any[] = [
   { id: 'region', kind: FieldKind.BASE_FIELD },
@@ -43,5 +45,28 @@ describe('handleDrop keeps a dimension in one place', () => {
     const filter = { field: 'shop', type: 'in', values: ['A'] };
     const { config: c } = buildHandleDrop(config({ filters: [filter] }), available, types)('shop', 'available', 'filters', 1);
     expect(c.filters).toEqual([filter]);
+  });
+});
+
+describe('an aggregation moved from Values to Filters stays one field', () => {
+  const withQty = () => config({ values: [{ field: 'qty', aggregation: 'Sum' }] });
+  const typesWithQty = { ...types, qty: 'int64' };
+
+  it('is a HAVING filter the resolvers still know, by kind and by name', () => {
+    const result = buildHandleDrop(withQty(), available, typesWithQty)('SUM_qty', 'values', 'filters', null, 0);
+    expect(result.shouldOpenHavingDialog).toBe(true);
+    expect(result.config.values).toEqual([]);
+    expect(result.config.filters[0]).toMatchObject({ field: 'SUM_qty', sourceField: 'qty', aggregation: 'Sum', filterType: 'having' });
+
+    const item = getFieldById('SUM_qty', available, result.config);
+    expect(item).toMatchObject({ id: 'SUM_qty', kind: FieldKind.AGGREGATION, sourceField: 'qty', aggregation: 'Sum' });
+    expect(fieldDisplayName('SUM_qty', result.config, available)).toBe('SUM(qty)');
+  });
+
+  it('moves back to Values as the same aggregation of the same column', () => {
+    const inFilters = buildHandleDrop(withQty(), available, typesWithQty)('SUM_qty', 'values', 'filters', null, 0).config;
+    const { config: back } = buildHandleDrop(inFilters, available, typesWithQty)('SUM_qty', 'filters', 'values', null);
+    expect(back.values).toEqual([{ field: 'qty', aggregation: 'Sum' }]);
+    expect(back.filters).toEqual([]);
   });
 });
