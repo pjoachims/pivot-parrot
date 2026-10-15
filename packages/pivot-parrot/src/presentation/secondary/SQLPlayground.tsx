@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { Icon } from '../shared/Icon';
 import ErrorBanner from '../shared/ErrorBanner';
 import { gridColumnDef } from '../shared/gridColumn';
 import { usePivotStore } from '../../application/state/store';
@@ -25,6 +26,7 @@ export default function SQLPlayground({
   const [results, setResults] = useState<ColumnarResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const gridRef = useRef(null);
   const [AgGridReact, setAgGridReact] = useState(null);
   const [gridLoaded, setGridLoaded] = useState(false);
@@ -92,6 +94,7 @@ export default function SQLPlayground({
 
     setLoading(true);
     setError(null);
+    const started = performance.now();
 
     try {
       const result = await onExecuteSQL(sql);
@@ -100,6 +103,7 @@ export default function SQLPlayground({
       setError(err.message || 'Query execution failed');
       setResults(null);
     } finally {
+      setElapsedMs(Math.round(performance.now() - started));
       setLoading(false);
     }
   };
@@ -131,18 +135,21 @@ export default function SQLPlayground({
     URL.revokeObjectURL(link.href);
   };
 
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  const shortcut = isMac ? '⌘↵' : 'Ctrl+↵';
+  const rowCount = results?.numRows ?? 0;
+
   return (
     <div style={styles.container}>
-      {/* Header with display mode menu */}
-      <div style={styles.header}>
-        <h3 style={styles.title}>SQL Playground</h3>
-
-        {/* Display Mode Menu */}
-        <div style={styles.displayModeMenu}>
+      <div className="pp-panel-header">
+        <span className="pp-panel-title">SQL Playground</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <select
             value={sqlPlaygroundDisplayMode}
             onChange={(e) => onSQLPlaygroundDisplayModeChange(e.target.value)}
-            style={styles.displayModeSelect}
+            className="pp-select pp-select--sm"
+            style={{ width: 'auto' }}
+            aria-label="SQL Playground display mode"
           >
             <option value="split-below">Split Below</option>
             <option value="split-right">Split Right</option>
@@ -152,49 +159,64 @@ export default function SQLPlayground({
         </div>
       </div>
 
-      {/* SQL Editor */}
       <div style={styles.editorSection}>
         <textarea
           value={sql}
           onChange={(e) => onSQLChange && onSQLChange(e.target.value)}
-          style={styles.textarea}
-          placeholder="Enter SQL query..."
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              handleExecute();
+            }
+          }}
+          className="pp-textarea pp-textarea--code"
+          style={{ minHeight: '96px', maxHeight: '40vh' }}
+          aria-label="SQL query"
+          placeholder="SELECT * FROM pivot_data LIMIT 100"
           spellCheck={false}
         />
-        <div style={styles.editorToolbar}>
+        <div style={styles.statusLine} role="status" aria-live="polite">
+          <span className="pp-hint" style={{ flex: 1, minWidth: 0 }}>
+            {loading
+              ? 'Running…'
+              : error
+                ? <span style={{ color: 'var(--color-error)' }}>Query failed{elapsedMs !== null ? ` after ${elapsedMs} ms` : ''}</span>
+                : results
+                  ? `${rowCount.toLocaleString(locale)} row${rowCount !== 1 ? 's' : ''} · ${elapsedMs} ms`
+                  : 'Not run yet'}
+          </span>
+          {rowCount > 0 && (
+            <button onClick={handleExportCSV} className="pp-btn pp-btn--sm">
+              <Icon name="download" />
+              Export CSV
+            </button>
+          )}
           <button
             onClick={handleExecute}
-            disabled={loading}
-            style={styles.executeButton}
+            disabled={loading || !sql.trim()}
+            className="pp-btn pp-btn--primary pp-btn--sm"
+            title={`Run query (${shortcut})`}
           >
-            {loading ? 'Executing...' : 'Execute'}
+            <Icon name="play" />
+            {loading ? 'Running…' : 'Run'}
+            <kbd style={styles.kbd}>{shortcut}</kbd>
           </button>
-          {results && results.numRows > 0 && (
-            <>
-              <span style={styles.resultCount}>
-                {results.numRows} row{results.numRows !== 1 ? 's' : ''}
-              </span>
-              <button onClick={handleExportCSV} style={styles.exportButton}>
-                Export CSV
-              </button>
-            </>
-          )}
         </div>
       </div>
 
-      {/* Error Display */}
       {error && (
-        <ErrorBanner title="Error" message={error} style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none' }} />
+        <div style={{ padding: '0 var(--space-3) var(--space-3)' }}>
+          <ErrorBanner title="Error" message={error} />
+        </div>
       )}
 
-      {/* Results Grid */}
       <div style={styles.gridContainer} className="ag-theme-alpine">
         {!gridLoaded ? (
           <div style={styles.loadingGrid}>
             <span className="pp-spinner" aria-hidden="true" />
             Loading grid library...
           </div>
-        ) : results && results.numRows > 0 ? (
+        ) : rowCount > 0 ? (
           <AgGridReact
             ref={gridRef}
             rowData={rowData}
@@ -206,7 +228,10 @@ export default function SQLPlayground({
             onGridReady={onGridReady}
           />
         ) : !loading && !error ? (
-          <div style={styles.empty}>Execute a query to see results</div>
+          <div style={styles.empty}>
+            <span>{results ? 'The query returned no rows' : 'Run a query to see rows'}</span>
+            {!results && <span className="pp-hint">{shortcut} in the editor runs it</span>}
+          </div>
         ) : null}
       </div>
     </div>
@@ -222,102 +247,48 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--surface-bg)',
     overflow: 'hidden'
   },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 20px',
-    borderBottom: '1px solid var(--border-color-light)',
-    background: 'var(--surface-subtle)'
-  },
-  title: {
-    margin: 0,
-    fontSize: '16px',
-    fontWeight: 600,
-    color: 'var(--text-primary)'
-  },
-  displayModeMenu: {
-    display: 'flex',
-    alignItems: 'center'
-  },
-  displayModeSelect: {
-    padding: '6px 10px',
-    fontSize: 'var(--text-base)',
-    border: '1px solid var(--border-color-medium)',
-    borderRadius: 'var(--radius-sm)',
-    backgroundColor: 'var(--surface-bg)',
-    cursor: 'pointer'
-  },
   editorSection: {
     display: 'flex',
     flexDirection: 'column',
-    borderBottom: '1px solid var(--border-color-light)',
-    background: 'var(--surface-bg)'
+    gap: 'var(--space-2)',
+    padding: 'var(--space-3)'
   },
-  textarea: {
-    width: '100%',
-    minHeight: '120px',
-    padding: '12px',
-    fontSize: 'var(--text-base)',
-    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-    border: 'none',
-    resize: 'vertical',
-    lineHeight: '1.5'
-  },
-  editorToolbar: {
+  statusLine: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '10px 12px',
-    borderTop: '1px solid var(--border-color-light)',
-    background: 'var(--surface-subtle)'
+    gap: 'var(--space-2)'
   },
-  executeButton: {
-    padding: '6px 16px',
-    fontSize: 'var(--text-base)',
-    color: 'var(--text-inverse)',
-    border: 'none',
-    borderRadius: 'var(--radius-sm)',
-    backgroundColor: 'var(--color-accent)',
-    cursor: 'pointer',
-    fontWeight: 500,
-    transition: 'background-color 0.2s'
-  },
-  resultCount: {
-    fontSize: '12px',
-    color: 'var(--text-muted)',
-    marginLeft: 'auto'
-  },
-  exportButton: {
-    padding: '6px 12px',
-    fontSize: 'var(--text-base)',
-    color: 'var(--color-accent)',
-    border: '1px solid var(--color-accent)',
-    borderRadius: 'var(--radius-sm)',
-    backgroundColor: 'var(--surface-bg)',
-    cursor: 'pointer',
-    transition: 'all 0.2s'
+  kbd: {
+    marginLeft: 'var(--space-1)',
+    fontFamily: 'inherit',
+    fontSize: 'var(--text-xs)',
+    opacity: 0.75
   },
   gridContainer: {
     flex: 1,
-    padding: '20px',
+    minHeight: 0,
+    padding: '0 var(--space-3) var(--space-3)',
     overflow: 'hidden'
   },
   empty: {
     display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-1)',
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
+    border: '1px dashed var(--border-color-light)',
+    borderRadius: 'var(--radius-sm)',
     color: 'var(--text-muted)',
-    fontSize: '14px'
+    fontSize: 'var(--text-md)'
   },
   loadingGrid: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: 'var(--space-2)',
     height: '100%',
     color: 'var(--text-muted)',
-    fontSize: '14px'
+    fontSize: 'var(--text-md)'
   }
 };
