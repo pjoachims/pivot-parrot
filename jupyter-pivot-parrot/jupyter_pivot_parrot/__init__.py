@@ -7,6 +7,8 @@ import uuid
 import anywidget
 from traitlets import Bool, Bytes, Dict, Int, List, Unicode
 
+from .sql_guard import ensure_safe_query
+
 
 def _table_to_arrow_bytes(table):
     """Serialize a PyArrow table to Arrow IPC stream bytes."""
@@ -109,6 +111,9 @@ class PivotParrot(anywidget.AnyWidget):
         Data for local in-browser DuckDB WASM computation.
     connection : object, optional
         Remote database connection with execute_query(sql, timeout=None).
+        It only ever receives a single SELECT over the source (sql_guard);
+        outside the 'duckdb' dialect that check is textual, so connect as a
+        principal that can read the source and nothing else.
     query : str, optional
         Remote source query.
     table : str, optional
@@ -195,6 +200,8 @@ class PivotParrot(anywidget.AnyWidget):
 
         self._connection = None
         self._base_query = None
+        # The dialect traitlet syncs from the browser; the guard must not trust it
+        self._guard_dialect = kwargs.get("dialect", "duckdb")
 
         if is_local:
             kwargs["mode"] = "local"
@@ -243,7 +250,9 @@ class PivotParrot(anywidget.AnyWidget):
             if self._connection is None or self._base_query is None:
                 raise ValueError("Remote connection is not configured")
 
-            sql = _wrap_pivot_data_query(content.get("sql", ""), self._base_query)
+            sql = content.get("sql", "")
+            ensure_safe_query(sql, self._guard_dialect)
+            sql = _wrap_pivot_data_query(sql, self._base_query)
             result = _execute_query(self._connection, sql, timeout=content.get("timeout"))
             self.send(
                 {"type": "query_result", "requestId": request_id, "status": "success"},

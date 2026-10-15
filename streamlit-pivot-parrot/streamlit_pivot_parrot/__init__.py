@@ -50,7 +50,10 @@ def pivot_table(
     data : pd.DataFrame or dict or list, optional
         Direct data for client-side mode
     connection : DatabaseConnection, optional
-        Database connection for remote mode (must have execute_query(sql) method)
+        Database connection for remote mode (must have execute_query(sql) method).
+        It only ever receives a single SELECT over the source (sql_guard);
+        outside the 'duckdb' dialect that check is textual, so connect as a
+        principal that can read the source and nothing else.
     query : str, optional
         SQL query to create pivot source (remote mode only)
     table : str, optional
@@ -256,6 +259,7 @@ def _pivot_remote(
     wrapped_connection = _wrap_connection(connection)
     st.session_state[f"pivot_conn_{stable_key}"] = wrapped_connection
     st.session_state[f"pivot_query_{stable_key}"] = base_query
+    st.session_state[f"pivot_dialect_{stable_key}"] = dialect
 
     # Check if connection supports timeout (for cancel button in frontend)
     timeout_enabled = getattr(wrapped_connection, 'timeout_enabled', False)

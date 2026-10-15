@@ -16,6 +16,7 @@ import pyarrow as pa
 import streamlit as st
 
 from .database_connection import DatabaseConnection, DatabricksConnection
+from .sql_guard import ensure_safe_query
 
 
 def _wrap_connection(connection):
@@ -173,7 +174,8 @@ def execute_query_request(key, sql, timeout=None):
     """
     Execute a query request for a given component instance.
 
-    Looks up connection and base_query by key, wraps SQL with CTE if needed,
+    Looks up connection and base_query by key, refuses anything but a single
+    SELECT over pivot_data (see sql_guard), wraps SQL with CTE if needed,
     executes query, and returns Arrow bytes.
 
     Args:
@@ -186,6 +188,7 @@ def execute_query_request(key, sql, timeout=None):
 
     Raises:
         ValueError: If connection or base_query not found
+        UnsafeQueryError: If sql is not a single SELECT over pivot_data
         Exception: Any database or serialization errors
     """
     # Direct lookup by key
@@ -203,6 +206,8 @@ def execute_query_request(key, sql, timeout=None):
             f"Base query not found for key '{key}'. "
             f"Ensure pivot_table() is called before query execution."
         )
+
+    ensure_safe_query(sql, st.session_state.get(f"pivot_dialect_{key}", 'duckdb'))
 
     connection = st.session_state[conn_key]
     base_query = st.session_state[query_key]
