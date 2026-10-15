@@ -61,6 +61,39 @@ describe('buildPivotCSV', () => {
   });
 });
 
+describe('buildPivotCSV with Σ Values in rows', () => {
+  it('writes one row per metric, its percent, and one grand-total row per metric', () => {
+    const d = buildPivotDisplayData(cubeRows.slice(0, 1).concat(cubeRows[2]), ['Märkte', 'Σ Values'], [], config.values);
+    expect(buildPivotCSV(d, d._columnOutline, ['Märkte', 'Σ Values'], true, true, config, 'de-DE').split('\n')).toEqual([
+      'Row Labels;Grand Total',
+      'Köln;',
+      '    Umsatz €;1234,5',
+      '    Quote;12,34%',
+      'Grand Total - Umsatz €;1333,5',
+      'Grand Total - Quote;20%'
+    ]);
+  });
+
+  it('heads a column hierarchy with the column members only, no metric level', () => {
+    const rows = [
+      { Markt: 'Köln', Jahr: 2024, m1: 10, m2: 0.1, _grouping_Markt: 0, _grouping_Jahr: 0 },
+      { Markt: 'Köln', Jahr: null, m1: 10, m2: 0.1, _grouping_Markt: 0, _grouping_Jahr: 1 },
+      { Markt: null, Jahr: 2024, m1: 10, m2: 0.1, _grouping_Markt: 1, _grouping_Jahr: 0 },
+      { Markt: null, Jahr: null, m1: 10, m2: 0.1, _grouping_Markt: 1, _grouping_Jahr: 1 }
+    ];
+    const d = buildPivotDisplayData(rows, ['Σ Values', 'Markt'], ['Jahr'], config.values);
+    expect(buildPivotCSV(d, d._columnOutline, ['Σ Values', 'Markt'], true, true, config, 'de-DE').split('\n')).toEqual([
+      'Row Labels;2024;Grand Total',
+      'Umsatz €;10;10',
+      '    Köln;10;10',
+      'Quote;10%;10%',
+      '    Köln;10%;10%',
+      'Grand Total - Umsatz €;10;10',
+      'Grand Total - Quote;10%;10%'
+    ]);
+  });
+});
+
 describe('buildDataCSV', () => {
   it('drops _grouping_ columns and labels rolled-up members, leaving genuine NULLs empty', () => {
     expect(buildDataCSV(cubeRows, config, 'de-DE')).toBe('Märkte;Umsatz €;Quote\nKöln;1234,5;12,34%\n;99;50%\nTotal;1333,5;20%');

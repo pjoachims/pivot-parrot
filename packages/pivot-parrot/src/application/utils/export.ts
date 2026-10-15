@@ -111,9 +111,13 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
 
+  // With Σ Values in rows the metric names label rows, so the header has no metric level
+  const valuesInRows = valuesIndex >= 0;
+  const metricLevel = valuesInRows ? -1 : colFields.length;
+
   if (hasColFields && leafCols && leafCols.length > 0) {
     // Build multi-row headers for column hierarchy
-    const numLevels = colFields.length + 1; // colFields + value field row
+    const numLevels = valuesInRows ? colFields.length : colFields.length + 1;
 
     for (let level = 0; level < numLevels; level++) {
       const row = level === 0 ? ['Row Labels'] : [''];
@@ -123,6 +127,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
         const path = leaf.path || [];
 
         // For regular columns, path contains: [colField1Value, colField2Value, ..., metricName]
+        // (no metricName with Σ Values in rows)
         // For subtotals, path contains: [...colFieldValues, "_SUBTOTAL_metric"]
         // For grand total, path is: ["_GRAND_TOTAL_metric"]
 
@@ -130,7 +135,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
           // Grand Total column
           if (level === 0) {
             row.push('Grand Total');
-          } else if (level === numLevels - 1) {
+          } else if (level === metricLevel) {
             row.push(getMetricName(leaf.value) || '');
           } else {
             row.push('');
@@ -145,17 +150,15 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
             row.push(pathVal || '');
           } else if (level === subtotalDepth) {
             row.push('Subtotal');
-          } else if (level === numLevels - 1) {
+          } else if (level === metricLevel) {
             row.push(getMetricName(leaf.value) || '');
           } else {
             row.push('');
           }
         } else {
-          // Regular column - path has colField values followed by metric name
           if (level < path.length) {
-            // Last level of path is the metric name - map it to friendly name
             const value = path[level];
-            row.push(level === path.length - 1 ? getMetricName(value) : value);
+            row.push(!valuesInRows && level === path.length - 1 ? getMetricName(value) : value);
           } else {
             row.push('');
           }
@@ -164,6 +167,8 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
 
       lines.push(row);
     }
+  } else if (valuesInRows) {
+    lines.push(['Row Labels', ...(leafCols || []).map(leaf => leaf.isGrandTotal ? 'Grand Total' : leaf.label)]);
   } else {
     // Simple header: Row Labels + value fields (map to friendly names)
     const valueHeaders = (data.columnConfig.valueFields || []).map(getMetricName);
@@ -206,7 +211,14 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
 
   // Add Grand Total row with raw numbers
   if (showGrandTotal && data.grandTotal) {
-    lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric))]);
+    if (valuesInRows) {
+      // One grand-total row per metric: data.grandTotal holds {metric, metricLabel, values}
+      data.grandTotal.forEach(gt => {
+        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map((leaf, idx) => metricCell(config, gt.values?.[idx], gt.metric))]);
+      });
+    } else {
+      lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric))]);
+    }
   }
 
   return toCSV(lines, locale);
