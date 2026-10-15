@@ -87,7 +87,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("status NOT IN ('cancelled', 'refunded')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status IN ('cancelled', 'refunded')) OR status IS NULL)");
       expect(filter.getLabel()).toBe('NOT 2 selected');
     });
 
@@ -162,7 +162,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (status = 'deleted')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status = 'deleted') OR status IS NULL)");
       expect(filter.getLabel()).toBe('≠ deleted');
     });
 
@@ -194,7 +194,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("notes NOT LIKE '%test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '\\') OR notes IS NULL)");
       expect(filter.getLabel()).toBe('not contains "test"');
     });
 
@@ -237,7 +237,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("email NOT LIKE 'test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '\\') OR email IS NULL)");
     });
   });
 
@@ -259,7 +259,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("filename NOT LIKE '%.tmp' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '\\') OR filename IS NULL)");
     });
   });
 
@@ -310,7 +310,7 @@ describe('Filter Classes', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (score > 100)");
+      expect(filter.toSQL(dialect)).toBe("(NOT (score > 100) OR score IS NULL)");
     });
   });
 

@@ -78,3 +78,33 @@ describe('drilldown on a decimal dimension', () => {
     expect(await select('zip', where)).toEqual(['01234']);
   });
 });
+
+describe('excluding values keeps the blanks', () => {
+  it.each([
+    ['not one_of', { type: 'one_of', selectedValues: ['A'] }],
+    ['not equal', { type: 'equal', value: 'A' }],
+    ['not contains', { type: 'contains', value: 'A' }],
+    ['not starts_with', { type: 'starts_with', value: 'A' }],
+    ['not ends_with', { type: 'ends_with', value: 'A' }],
+    ['not less_equal', { type: 'less_equal', value: 'A' }],
+  ])('%s', async (_label, filter) => {
+    expect(await select('region', whereOf({ field: 'region', isNot: true, ...filter }))).toEqual(['B', null]);
+  });
+
+  it.each([
+    ['not greater', 'greater', 49], ['not less', 'less', 49], ['not less_equal', 'less_equal', 50],
+  ])('%s on a number keeps NULL', async (_label, type, value) => {
+    await conn.run(`CREATE OR REPLACE TEMP VIEW nums AS SELECT * FROM (VALUES (1), (100), (NULL)) t(n)`);
+    const where = buildFilter({ field: 'n', type, value, isNot: true }).toSQL(dialect);
+    const reader = await conn.runAndReadAll(`SELECT count(*) FROM nums WHERE ${where}`);
+    expect(Number(reader.getRows()[0][0])).toBe(2);
+  });
+
+  it('excluding the blank entry itself drops the NULL rows', async () => {
+    expect(await select('region', whereOf({ field: 'region', type: 'one_of', selectedValues: ['A', null], isNot: true }))).toEqual(['B']);
+  });
+
+  it('including the blank entry matches the NULL rows', async () => {
+    expect(await select('region', whereOf({ field: 'region', type: 'one_of', selectedValues: ['A', null] }))).toEqual(['A', null]);
+  });
+});

@@ -15,6 +15,14 @@ function escapeLikeWildcards(value: string): string {
 }
 
 /**
+ * Excluding a value keeps the blanks, as in Excel. In SQL NOT (x = 'A') is NULL,
+ * not true, for a NULL x, so the NULL rows have to be let back in explicitly.
+ */
+function negate(field: string, condition: string): string {
+  return `(NOT (${condition}) OR ${field} IS NULL)`;
+}
+
+/**
  * Base Filter class
  */
 class Filter {
@@ -84,9 +92,16 @@ class OneOfFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true): string | null {
     if (!this.selectedValues || this.selectedValues.length === 0) return null;
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
-    const quotedValues = this.selectedValues.map(v => dialect.quoteValue(v, this.dtype));
-    const not = this.isNot ? 'NOT ' : '';
-    return `${field} ${not}IN (${quotedValues.join(', ')})`;
+    const values = this.selectedValues.filter(v => v !== null && v !== undefined);
+    const blanksSelected = values.length < this.selectedValues.length;
+    const inList = values.length > 0
+      ? `${field} IN (${values.map(v => dialect.quoteValue(v, this.dtype)).join(', ')})`
+      : null;
+    const condition = !inList ? `${field} IS NULL`
+      : blanksSelected ? `(${inList} OR ${field} IS NULL)`
+      : inList;
+    if (!this.isNot) return condition;
+    return blanksSelected ? `NOT (${condition})` : negate(field, condition);
   }
 
   getLabel(): string {
@@ -136,10 +151,8 @@ class EqualFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = dialect.quoteValue(this.value, this.dtype);
-    if (this.isNot) {
-      return `NOT (${field} = ${value})`;
-    }
-    return `${field} = ${value}`;
+    const condition = `${field} = ${value}`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -164,8 +177,8 @@ class ContainsFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = escapeLikeWildcards(dialect.escapeValue(this.value));
-    const not = this.isNot ? 'NOT ' : '';
-    return `${field} ${not}LIKE '%${value}%' ESCAPE '\\'`;
+    const condition = `${field} LIKE '%${value}%' ESCAPE '\\'`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -190,8 +203,8 @@ class StartsWithFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = escapeLikeWildcards(dialect.escapeValue(this.value));
-    const not = this.isNot ? 'NOT ' : '';
-    return `${field} ${not}LIKE '${value}%' ESCAPE '\\'`;
+    const condition = `${field} LIKE '${value}%' ESCAPE '\\'`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -216,8 +229,8 @@ class EndsWithFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = escapeLikeWildcards(dialect.escapeValue(this.value));
-    const not = this.isNot ? 'NOT ' : '';
-    return `${field} ${not}LIKE '%${value}' ESCAPE '\\'`;
+    const condition = `${field} LIKE '%${value}' ESCAPE '\\'`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -289,10 +302,8 @@ class GreaterFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = dialect.quoteValue(this.value, this.dtype);
-    if (this.isNot) {
-      return `NOT (${field} > ${value})`;
-    }
-    return `${field} > ${value}`;
+    const condition = `${field} > ${value}`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -316,10 +327,8 @@ class LessFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = dialect.quoteValue(this.value, this.dtype);
-    if (this.isNot) {
-      return `NOT (${field} < ${value})`;
-    }
-    return `${field} < ${value}`;
+    const condition = `${field} < ${value}`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -343,10 +352,8 @@ class GreaterEqualFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = dialect.quoteValue(this.value, this.dtype);
-    if (this.isNot) {
-      return `NOT (${field} >= ${value})`;
-    }
-    return `${field} >= ${value}`;
+    const condition = `${field} >= ${value}`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {
@@ -370,10 +377,8 @@ class LessEqualFilter extends Filter {
   toSQL(dialect: SQLDialect, quoteField = true) {
     const field = quoteField ? dialect.quoteIdentifier(this.field) : this.field;
     const value = dialect.quoteValue(this.value, this.dtype);
-    if (this.isNot) {
-      return `NOT (${field} <= ${value})`;
-    }
-    return `${field} <= ${value}`;
+    const condition = `${field} <= ${value}`;
+    return this.isNot ? negate(field, condition) : condition;
   }
 
   getLabel() {

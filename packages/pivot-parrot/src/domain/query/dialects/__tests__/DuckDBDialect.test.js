@@ -138,7 +138,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("NOT (status = 'deleted')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status = 'deleted') OR status IS NULL)");
     });
 
     it('should escape single quotes in values', () => {
@@ -171,7 +171,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("status NOT IN ('cancelled', 'refunded')");
+      expect(filter.toSQL(dialect)).toBe("(NOT (status IN ('cancelled', 'refunded')) OR status IS NULL)");
     });
 
     it('should escape values with single quotes', () => {
@@ -262,7 +262,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("notes NOT LIKE '%test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (notes LIKE '%test%' ESCAPE '\\') OR notes IS NULL)");
     });
 
     it('should escape single quotes in value', () => {
@@ -295,7 +295,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("email NOT LIKE 'test%' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (email LIKE 'test%' ESCAPE '\\') OR email IS NULL)");
     });
   });
 
@@ -318,7 +318,7 @@ describe('DuckDBDialect', () => {
         isNot: true
       });
 
-      expect(filter.toSQL(dialect)).toBe("filename NOT LIKE '%.tmp' ESCAPE '\\'");
+      expect(filter.toSQL(dialect)).toBe("(NOT (filename LIKE '%.tmp' ESCAPE '\\') OR filename IS NULL)");
     });
   });
 
