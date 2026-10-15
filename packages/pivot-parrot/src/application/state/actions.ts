@@ -68,10 +68,13 @@ function sameValue(a: ValueConfig, b: ValueConfig): boolean {
     && Boolean(a.isCustom) === Boolean(b.isCustom);
 }
 
-/** Insert `item` at `index` after removing every entry `isSame` matches; `index` counts the removed entries. */
-function insertOnce<T>(items: T[], item: T, index: number, isSame: (entry: T) => boolean): T[] {
+/**
+ * Insert `item` at `index` after removing every entry `isSame` matches. `index`
+ * is a drop position counted in `items` as the user saw them, removed entries included.
+ */
+function insertOnce<T>(items: T[], item: T, index: number, isSame: (entry: T, position: number) => boolean): T[] {
   const removedBefore = items.slice(0, index).filter(isSame).length;
-  const kept = items.filter(entry => !isSame(entry));
+  const kept = items.filter((entry, position) => !isSame(entry, position));
   kept.splice(index - removedBefore, 0, item);
   return kept;
 }
@@ -156,7 +159,7 @@ export function buildHandleDrop(
       // A dimension sits on one axis once; dropping it again moves it.
       const otherZone = targetZone === 'rows' ? 'columns' : 'rows';
       newConfig[otherZone] = newConfig[otherZone].filter(f => f !== fieldName);
-      newConfig[targetZone] = insertOnce(newConfig[targetZone], fieldName, insertAt, f => f === fieldName);
+      newConfig[targetZone] = insertOnce(config[targetZone], fieldName, insertAt, f => f === fieldName);
 
     } else if (targetZone === 'values') {
       let valueConfig: ValueConfig;
@@ -169,7 +172,8 @@ export function buildHandleDrop(
         valueConfig = { field: fieldName, aggregation: defaultAgg };
       }
       // A field may sit in Values with several aggregations (and in Rows too), but not twice with the same one.
-      newConfig.values = insertOnce(newConfig.values, valueConfig, insertAt, v => sameValue(v, valueConfig));
+      newConfig.values = insertOnce(config.values, valueConfig, insertAt,
+        (v, position) => sameValue(v, valueConfig) || (sourceZone === 'values' && position === sourceIndex));
 
     } else if (targetZone === 'filters') {
       // Enrich filter with info from FieldItem for HAVING clause generation
@@ -201,7 +205,7 @@ export function buildHandleDrop(
         }
       }
 
-      const filters = newConfig.filters || [];
+      const filters = config.filters || [];
       const placed = filters.find(f => f.field === fieldName) ?? filterItem;
       newConfig.filters = insertOnce(filters, placed, insertAt, f => f.field === fieldName);
 
