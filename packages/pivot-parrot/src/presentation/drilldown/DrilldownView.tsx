@@ -173,7 +173,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
 
   const handleExportCSV = () => {
     if (onExportCSV) {
-      onExportCSV(result);
+      onExportCSV(result, locale);
     }
   };
 

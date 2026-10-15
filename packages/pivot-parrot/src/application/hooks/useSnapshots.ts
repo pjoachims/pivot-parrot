@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { dataToCSV } from '../../domain/query/utils/csv';
+import { buildDataCSV, downloadCSV } from '../utils/export';
+import { usePivotLocale } from '../state/store';
 import type { PivotTableConfig } from '../../domain/models/types';
 import type { Snapshot, CubeRow, DimensionFilters } from '../../domain/models/types';
 
@@ -12,6 +13,7 @@ type Dtypes = Record<string, string>;
  */
 export function useSnapshots() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const locale = usePivotLocale();
 
   function createSnapshot(
     executionConfig: PivotTableConfig,
@@ -64,16 +66,8 @@ export function useSnapshots() {
     }
 
     snapshots.forEach((snapshot) => {
-      const csv = dataToCSV(snapshot.cubeResults || []);
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(snapshot.name || snapshot.id).replace(/\s+/g, '_')}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const csv = buildDataCSV(snapshot.cubeResults, snapshot.config, locale);
+      downloadCSV(csv, `${(snapshot.name || snapshot.id).replace(/\s+/g, '_')}.csv`);
     });
   }
 

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import { usePivotStore } from '../state/store';
 import { adaptQueryResult, toRows, type ColumnarResult } from '../utils/columnarResult';
+import { downloadCSV } from '../utils/export';
+import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
 
 // Type definitions
 type DimensionFilters = Record<string, any>;
@@ -120,28 +122,12 @@ export function useDrilldown(
     }
   }
 
-  function exportDrilldownCSV(result: ColumnarResult | null): void {
+  function exportDrilldownCSV(result: ColumnarResult | null, locale?: string): void {
     if (!result || result.numRows === 0) return;
 
     const headers = result.columnNames;
-    const rows: string[] = [];
-    for (let i = 0; i < result.numRows; i++) {
-      rows.push(headers.map(h => {
-        const val = result.getValue(i, h);
-        const strVal = val === null || val === undefined ? '' : String(val);
-        return strVal.includes(',') || strVal.includes('"')
-          ? `"${strVal.replace(/"/g, '""')}"`
-          : strVal;
-      }).join(','));
-    }
-    const csv = [headers.join(','), ...rows].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'drilldown_data.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
+    const rows = Array.from({ length: result.numRows }, (_, i) => headers.map(h => result.getValue(i, h) as CsvCell));
+    downloadCSV(toCSV([headers, ...rows], locale), 'drilldown_data.csv');
   }
 
   function restoreDrilldown(data: any[], filters: DimensionFilters, sql: string, dtypes?: Record<string, string>): void {

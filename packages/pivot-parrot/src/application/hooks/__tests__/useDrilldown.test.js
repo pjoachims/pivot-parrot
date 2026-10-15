@@ -9,7 +9,7 @@ import React from 'react';
 import { useDrilldown } from '../useDrilldown';
 import { Arrow } from '../../../domain/types/ArrowTypes';
 import { createPivotStore, PivotStoreContext } from '../../state/store';
-import { toRows } from '../../utils/columnarResult';
+import { toRows, adaptQueryResult } from '../../utils/columnarResult';
 
 describe('useDrilldown', () => {
   let mockDataEngine;
@@ -352,6 +352,26 @@ describe('useDrilldown', () => {
         { category: 'string', sales: 'numeric' },
         1
       );
+    });
+  });
+  describe('exportDrilldownCSV', () => {
+    it('writes escaped headers, quoted newlines, a BOM and the locale separators', async () => {
+      let blob;
+      URL.createObjectURL = vi.fn((b) => { blob = b; return 'blob:x'; });
+      URL.revokeObjectURL = vi.fn();
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useDrilldown(mockDataEngine, null, {}, null, null), { wrapper });
+      result.current.exportDrilldownCSV(adaptQueryResult({ data: [{ 'Region; Stadt': 'Köln\nNord', umsatz: 1234.5 }] }), 'de-DE');
+
+      const buffer = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsArrayBuffer(blob);
+      });
+      const text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(buffer);
+      expect(text).toBe('\uFEFF"Region; Stadt";umsatz\n"Köln\nNord";1234,5');
+      click.mockRestore();
     });
   });
 });

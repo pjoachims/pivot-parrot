@@ -2,8 +2,7 @@ import React, { useState, useRef, useMemo, memo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { styles } from './styles';
 import { createFormatValue, createFormatRowLabel } from '../../application/utils/formatters';
-import { exportDataCSV, exportPivotCSV } from '../../application/utils/export';
-import { SubtotalsMenu, ValuesFormatMenu, RowsOptionsMenu, ExportMenu, SortMenu } from './PivotMenus';
+import { SubtotalsMenu, ValuesFormatMenu, RowsOptionsMenu, SortMenu } from './PivotMenus';
 import { ColumnHeaders } from './ColumnHeaders';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { PivotRow, renderCells } from './PivotRow';
@@ -279,6 +278,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       data={data}
       cubeResults={cubeResults}
       config={config}
+      locale={locale}
       onDrilldown={onDrilldown}
       onOpenSQL={onOpenSQL}
     />

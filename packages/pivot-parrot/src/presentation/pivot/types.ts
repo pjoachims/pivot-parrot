@@ -35,7 +35,7 @@ export interface DrilldownState {
   drilldownFilters: DimensionFilters | null;
   drilldownSQL: string | null;
   drilldownDtypes: Record<string, string> | null;
-  exportDrilldownCSV: (data: ColumnarResult | null) => void;
+  exportDrilldownCSV: (data: ColumnarResult | null, locale?: string) => void;
 }
 
 export interface DrilldownRow {

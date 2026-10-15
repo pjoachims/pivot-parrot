@@ -4,6 +4,8 @@
 
 import { profiler } from '../../domain/query/utils/profiler';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
+import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
+import { findValueFormat } from './formatters';
 
 // Escape a string for safe use inside a RegExp
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -25,33 +27,34 @@ export const replaceIdsWithNames = (header, idNamePairs) => {
   return header.replace(pattern, match => nameById.get(match) ?? match);
 };
 
-// Helper to escape CSV values
-export const escapeCSV = (val) => {
-  if (val == null) return '';
-  const str = String(val);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+/** Download CSV text as a file. The UTF-8 BOM makes Excel decode it as UTF-8. */
+export const downloadCSV = (csv: string, filename: string) => {
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
 };
 
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** A metric value as a CSV cell: percentages are written as percents, not fractions. */
+const metricCell = (config, value, metricKey): CsvCell =>
+  typeof value === 'number' && findValueFormat(config, metricKey)?.type === 'percentage'
+    ? { percent: value }
+    : value;
+
+const GROUPING_PREFIX = '_grouping_';
+
 /**
- * Export raw SQL data to CSV with friendly column names
+ * CSV of raw CUBE rows with friendly column names. The _grouping_* columns are
+ * dropped; a dimension rolled up by the CUBE (its grouping flag is 1) is written
+ * as "Total" so it can't be mistaken for a NULL member, which stays empty.
  */
-export const exportDataCSV = (displayData, config = null) => {
-  return profiler.profile('exportDataCSV', () => {
-  let sqlData = null;
-
-  if (displayData?.cubeResults && displayData.cubeResults.length > 0) {
-    sqlData = displayData.cubeResults;
-  }
-
-  if (!sqlData || !sqlData.length) {
-    alert('No data to export');
-    return;
-  }
-
-  const headers = Object.keys(sqlData[0]);
+export const buildDataCSV = (cubeRows, config = null, locale?: string): string => {
+  if (!cubeRows?.length) return '';
+  const headers = Object.keys(cubeRows[0]).filter(h => !h.startsWith(GROUPING_PREFIX));
 
   // Map technical IDs to friendly names for custom metrics and groupings
   // (single pass, longest id first - see replaceIdsWithNames)
@@ -64,31 +67,23 @@ export const exportDataCSV = (displayData, config = null) => {
     return name !== header ? name : replaceIdsWithNames(header, idNamePairs);
   });
 
-  // Build CSV with friendly headers
-  let csv = friendlyHeaders.join(',') + '\n';
-  sqlData.forEach(row => {
-    const values = headers.map(h => {
-      const val = row[h];
-      // Handle null/undefined as empty string
-      if (val === null || val === undefined) return '';
-      // Convert all other values (including false, 0, "") to string
-      const str = String(val);
-      // Escape quotes and wrap in quotes if contains comma
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    });
-    csv += values.join(',') + '\n';
-  });
+  const rows = cubeRows.map(row => headers.map(h =>
+    Number(row[GROUPING_PREFIX + h]) === 1 ? 'Total' : metricCell(config, row[h], h)
+  ));
+  return toCSV([friendlyHeaders, ...rows], locale);
+};
 
-  // Download
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `pivot_data_${new Date().toISOString().slice(0,10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+/**
+ * Export raw SQL data to CSV with friendly column names
+ */
+export const exportDataCSV = (displayData, config = null, locale?: string) => {
+  return profiler.profile('exportDataCSV', () => {
+  const csv = buildDataCSV(displayData?.cubeResults, config, locale);
+  if (!csv) {
+    alert('No data to export');
+    return;
+  }
+  downloadCSV(csv, `pivot_data_${today()}.csv`);
   });
 };
 
@@ -100,9 +95,10 @@ export const exportDataCSV = (displayData, config = null) => {
  * @param {boolean} showRowSubtotals - Whether to show row subtotals
  * @param {boolean} showGrandTotal - Whether to show grand total
  * @param {Object} config - Pivot config for mapping custom metric names
+ * @param {string} locale - Decides delimiter and decimal mark (default: en, comma and dot)
  * @returns {string} CSV string
  */
-export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null) => {
+export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string) => {
   return profiler.profile('buildPivotCSV', () => {
   if (!data || !data.rowGroups) {
     return '';
@@ -110,7 +106,8 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
 
   const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
 
-  const lines = [];
+  const lines: CsvCell[][] = [];
+  const valuesIndex = (rowFields || []).indexOf('Σ Values');
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
 
@@ -165,13 +162,13 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
         }
       });
 
-      lines.push(row.map(escapeCSV).join(','));
+      lines.push(row);
     }
   } else {
     // Simple header: Row Labels + value fields (map to friendly names)
     const valueHeaders = (data.columnConfig.valueFields || []).map(getMetricName);
     const headers = ['Row Labels', ...valueHeaders];
-    lines.push(headers.map(escapeCSV).join(','));
+    lines.push(headers);
   }
 
   // Build data rows with indentation
@@ -196,19 +193,8 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
       cellValues = null;
     }
 
-    // Build value cells with raw numbers (no formatting)
-    const values = [label];
-    (leafCols || []).forEach((leaf, idx) => {
-      const rawVal = cellValues?.[idx];  // Use array index
-      // Export raw value: null/undefined → empty, all others (including false, 0, "") → string
-      if (rawVal === null || rawVal === undefined) {
-        values.push('');
-      } else {
-        values.push(String(rawVal));
-      }
-    });
-
-    lines.push(values.map(escapeCSV).join(','));
+    const rowMetric = valuesIndex >= 0 ? row.path?.[valuesIndex] : null;
+    lines.push([label, ...(leafCols || []).map((leaf, idx) => metricCell(config, cellValues?.[idx], rowMetric || leaf.metric))]);
 
     // Recurse for children
     if (hasKids && row.children) {
@@ -220,21 +206,10 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
 
   // Add Grand Total row with raw numbers
   if (showGrandTotal && data.grandTotal) {
-    const values = ['Grand Total'];
-    (leafCols || []).forEach((leaf, idx) => {
-      const rawVal = data.grandTotal[idx];  // Use array index
-      // Export raw value: null/undefined → empty, all others (including false, 0, "") → string
-      if (rawVal === null || rawVal === undefined) {
-        values.push('');
-      } else {
-        values.push(String(rawVal));
-      }
-    });
-    lines.push(values.map(escapeCSV).join(','));
+    lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric))]);
   }
 
-  // Return CSV string
-  return lines.join('\n');
+  return toCSV(lines, locale);
   });
 };
 
@@ -246,22 +221,17 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
  * @param {boolean} showRowSubtotals - Whether to show row subtotals
  * @param {boolean} showGrandTotal - Whether to show grand total
  * @param {Object} config - Pivot config for mapping custom metric names
+ * @param {string} locale - Decides delimiter and decimal mark
  */
-export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null) => {
+export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string) => {
   return profiler.profile('exportPivotCSV', () => {
-  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config);
+  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, locale);
 
   if (!csv) {
     alert('No pivot data to export');
     return;
   }
 
-  // Download
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `pivot_visual_${new Date().toISOString().slice(0,10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  downloadCSV(csv, `pivot_visual_${today()}.csv`);
   });
 };

@@ -38,6 +38,7 @@ export default function PivotDisplayHeader({
   data,
   cubeResults,
   config,
+  locale = 'en-US',
   onOpenSQL,
   onDrilldown
 }) {
@@ -123,7 +124,7 @@ export default function PivotDisplayHeader({
 
   const handleExportData = () => {
     if (cubeResults && cubeResults.length > 0) {
-      exportDataCSV({ cubeResults }, config);
+      exportDataCSV({ cubeResults }, config, locale);
       setShowExportMenu(false);
       setExportError('');
     } else {
@@ -135,7 +136,7 @@ export default function PivotDisplayHeader({
     if (data && config) {
       const rowFieldNames = config.rows.map(f => typeof f === 'string' ? f : f.id);
       const leafCols = computeLeafColumns(data);
-      exportPivotCSV(data, leafCols, rowFieldNames, true, config.showGrandTotal !== false, config);
+      exportPivotCSV(data, leafCols, rowFieldNames, true, config.showGrandTotal !== false, config, locale);
       setShowExportMenu(false);
     }
   };

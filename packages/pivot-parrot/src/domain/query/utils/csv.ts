@@ -3,20 +3,49 @@
  * Handles CSV parsing and conversion for data import/export
  */
 
+/** A percentage held as a fraction (0.1234), written as "12.34%" so Excel parses it as a percent. */
+export interface CsvPercent {
+  percent: number;
+}
+
+export type CsvCell = string | number | bigint | boolean | Date | CsvPercent | null | undefined;
+
 /**
- * Convert array of objects to CSV string
+ * Excel reads a CSV with the separators of the user's locale: where the decimal
+ * mark is a comma, the field delimiter is a semicolon.
+ */
+function csvSeparators(locale = 'en-US') {
+  const decimal = new Intl.NumberFormat(locale).formatToParts(1.5).find(p => p.type === 'decimal')?.value ?? '.';
+  return { decimal, delimiter: decimal === ',' ? ';' : ',' };
+}
+
+/**
+ * Serialize rows to CSV (RFC 4180 quoting, LF between records, no BOM).
+ * Numbers keep their full precision and no grouping; only the decimal mark
+ * follows the locale.
+ */
+export function toCSV(rows: CsvCell[][], locale?: string): string {
+  const { decimal, delimiter } = csvSeparators(locale);
+  const number = (n: number | bigint) => String(n).replace('.', decimal);
+  const cell = (v: CsvCell): string => {
+    if (v == null) return '';
+    if (typeof v === 'number' || typeof v === 'bigint') return number(v);
+    if (typeof v === 'object' && 'percent' in v) return `${number(Number((v.percent * 100).toPrecision(15)))}%`;
+    const s = String(v);
+    return s.includes('"') || s.includes(delimiter) || /[\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return rows.map(row => row.map(cell).join(delimiter)).join('\n');
+}
+
+/**
+ * Convert array of objects to machine CSV (comma, dot decimals), e.g. for DuckDB ingestion
  * @param {Array<Object>} data - Array of data objects
  * @returns {string} CSV string
  */
 export function dataToCSV(data) {
   if (!data?.length) return '';
   const cols = Object.keys(data[0]);
-  return cols.join(',') + '\n' + data.map(r => cols.map(c => {
-    const v = r[c];
-    if (v == null) return '';
-    const s = String(v);
-    return (/[",\n]/.test(s)) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }).join(',')).join('\n');
+  return toCSV([cols, ...data.map(r => cols.map(c => r[c]))]);
 }
 
 /**

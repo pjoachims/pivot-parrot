@@ -165,64 +165,6 @@ export function RowsOptionsMenu({
 }
 
 /**
- * Export CSV Menu - Options for exporting data or pivot layout
- */
-export function ExportMenu({
-  styles,
-  exportDataCSV,
-  exportPivotCSV,
-  leafColumns
-}) {
-  return (
-    <div className="pivot-popover-menu" style={styles.popoverMenu} onClick={(e) => e.stopPropagation()}>
-      <div style={styles.menuHeader}>Export CSV</div>
-      <div style={{ padding: '8px 0' }}>
-        <button
-          onClick={() => exportDataCSV()}
-          className="pp-icon-btn-hover"
-          style={{
-            ...styles.menuButton,
-            width: '100%',
-            marginBottom: '8px',
-            justifyContent: 'flex-start',
-            gap: '6px',
-            padding: '8px 12px'
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-            <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-          </svg>
-          Export Data (SQL Results)
-        </button>
-        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '12px', paddingLeft: '12px' }}>
-          Raw query results - clean, normalized data
-        </div>
-        <button
-          onClick={() => exportPivotCSV(leafColumns)}
-          className="pp-icon-btn-hover"
-          style={{
-            ...styles.menuButton,
-            width: '100%',
-            justifyContent: 'flex-start',
-            gap: '6px',
-            padding: '8px 12px'
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="9" x2="9" y2="21" />
-          </svg>
-          Export Pivot (Visual Layout)
-        </button>
-        <div style={{ fontSize: '10px', color: 'var(--text-muted)', paddingLeft: '12px' }}>
-          Exact visual table with hierarchy
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Sort Menu - Sort rows by value field
  */
 export function SortMenu({
