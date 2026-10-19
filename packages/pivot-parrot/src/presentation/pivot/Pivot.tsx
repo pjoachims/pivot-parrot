@@ -3,6 +3,7 @@ import { DuckDBWASMEngine } from '../../infrastructure/data-engines/DuckDBWASMEn
 import { hashData } from '../../domain/query/utils/cache';
 import { dataToCSV } from '../../domain/query/utils/csv';
 import { FieldItem } from '../../domain/field/FieldItem';
+import { hasFilterValue } from '../../domain/query/sql/filters';
 import ErrorBoundary from '../shared/ErrorBoundary';
 import { ProgressIndicator } from '../shared/ProgressIndicator';
 import { useSplitPane } from '../../application/hooks/useSplitPane';
@@ -272,15 +273,9 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
     // Check if any filter is incomplete (no value selected yet)
     // This prevents triggering a query while user is still configuring a filter
     // Custom filters (isCustom: true) are always complete - their formula IS the filter
-    const hasIncompleteFilter = (config.filters || []).some(f => {
-      // Custom filters are always complete
-      if (f.isCustom || f.type === 'custom_filter') return false;
-
-      const hasValue = f.value !== undefined && f.value !== null && f.value !== '';
-      const hasSelectedValues = f.selectedValues && f.selectedValues.length > 0;
-      const hasBetweenValues = f.betweenStart !== undefined || f.betweenEnd !== undefined;
-      return !hasValue && !hasSelectedValues && !hasBetweenValues;
-    });
+    const hasIncompleteFilter = (config.filters || []).some(f =>
+      !(f.isCustom || f.type === 'custom_filter') && !hasFilterValue(f)
+    );
 
     if (hasIncompleteFilter) {
       logger.debug('Auto-commit skipped: incomplete filter (awaiting user selection)');

@@ -13,7 +13,7 @@
 import type { SQLDialect } from '../dialects/SQLDialect';
 import { buildCubeSQL } from './buildCubeSQL';
 import { buildFieldItemFilters } from './sql-builder';
-import { buildFilter } from './filters';
+import { buildFilter, hasFilterValue } from './filters';
 import type { FieldItem } from '../../field/FieldItem';
 import { getFieldById } from '../../field/getFieldById';
 import { resolveFieldExpr } from '../../field/resolveFieldExpr';
@@ -92,11 +92,7 @@ function buildFilters(
 
   // Classify filters as WHERE or HAVING based on field kind
   (config.filters || [])
-    .filter(f =>
-      f.value !== undefined ||
-      (f.selectedValues && f.selectedValues.length > 0) ||
-      (f.betweenStart !== undefined && f.betweenEnd !== undefined)
-    )
+    .filter(hasFilterValue)
     .forEach(f => {
       const fieldItem = getFieldById(f.field, availableFields, config);
 

@@ -8,7 +8,7 @@ import ValueItem from './ValueItem';
 import { enrichValuesWithMetrics } from '../../../../application/utils/fieldUtils';
 import { getFieldById } from '../../../../application/utils/getFieldById';
 import { fieldDisplayName, valueDisplayName } from '../../../../domain/field/fieldDisplayName';
-import { relativeDateLabel } from '../../../../domain/query/sql/filters';
+import { hasFilterValue, relativeDateLabel } from '../../../../domain/query/sql/filters';
 
 /**
  * DropZonesGrid component
@@ -211,10 +211,7 @@ export default function DropZonesGrid() {
           const fieldId = typeof field === 'string' ? field : field.field;
           const fieldItem = getFieldById(fieldId, availableFields, config) || fieldId;
           // Check if filter has been configured (has values)
-          const hasActiveFilter = field.value !== undefined ||
-            (field.selectedValues && field.selectedValues.length > 0) ||
-            (field.betweenStart !== undefined && field.betweenEnd !== undefined) ||
-            field.relative !== undefined;
+          const hasActiveFilter = hasFilterValue(field);
           const name = fieldDisplayName(fieldId, config, availableFields);
 
           return (

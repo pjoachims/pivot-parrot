@@ -8,7 +8,7 @@
  */
 
 import type { SQLDialect } from '../dialects/SQLDialect';
-import { RELATIVE_DATE_UNITS, type RelativeDate } from '../../models/types';
+import { RELATIVE_DATE_UNITS, type RelativeDate, type Filter as FilterConfig } from '../../models/types';
 
 /**
  * A LIKE pattern literal ('<prefix><value><suffix>') that matches the value literally.
@@ -80,6 +80,14 @@ class DateRangeFilter extends Filter {
   getLabel(): string {
     return `${this.start} to ${this.end}`;
   }
+}
+
+/** Whether a filter holds what its SQL needs: a dropped field stays unset until its dialog is applied. */
+export function hasFilterValue(f: Pick<FilterConfig, 'value' | 'selectedValues' | 'betweenStart' | 'betweenEnd' | 'relative'>): boolean {
+  return (f.value !== undefined && f.value !== null && f.value !== '') ||
+    (f.selectedValues !== undefined && f.selectedValues.length > 0) ||
+    (f.betweenStart !== undefined && f.betweenEnd !== undefined) ||
+    f.relative !== undefined;
 }
 
 /** "Last 7 days", "This week", "Yesterday": how a relative date filter reads, wherever it is shown. */
