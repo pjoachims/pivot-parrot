@@ -4,6 +4,8 @@
  * Provides compact JSON representation of pivot state with minimal data needed for reconstruction
  */
 
+import type { RelativeDate } from '../../models/types';
+
 // Type definitions for serialization objects
 interface SerializedValue {
   field: any;
@@ -26,6 +28,7 @@ interface SerializedFilter {
   value?: any;
   start?: any;
   end?: any;
+  relative?: RelativeDate;
   not?: boolean;
   custom?: boolean;
 }
@@ -39,6 +42,7 @@ interface ActiveFilter {
   end?: any;
   betweenStart?: any;
   betweenEnd?: any;
+  relative?: RelativeDate;
   isNot?: boolean;
   isCustom?: boolean;
 }
@@ -122,6 +126,7 @@ function serializeActiveFilter(filter: ActiveFilter): SerializedFilter {
   if (filter.end !== undefined) serialized.end = filter.end;
   if (filter.betweenStart !== undefined) serialized.start = filter.betweenStart;
   if (filter.betweenEnd !== undefined) serialized.end = filter.betweenEnd;
+  if (filter.relative !== undefined) serialized.relative = filter.relative;
   if (filter.isNot) serialized.not = true;
   if (filter.isCustom) serialized.custom = true;
 
@@ -245,6 +250,7 @@ function deserializeActiveFilter(data: SerializedFilter): ActiveFilter {
     filter.end = data.end;
     filter.betweenEnd = data.end;
   }
+  if (data.relative !== undefined) filter.relative = data.relative;
   if (data.not) filter.isNot = true;
   if (data.custom) filter.isCustom = true;
 
