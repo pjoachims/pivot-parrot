@@ -13,7 +13,7 @@ import { SIGMA_VALUES_ID } from '../models/types';
 
 /**
  * Sort each level of the row tree by one value, in place. `sortValue` gives a
- * node's total for that value (all columns aggregated). The level of metric rows
+ * node's value in the sorted column. The level of metric rows
  * (Σ Values in rows, `metricDepth`) keeps the order of the Values zone.
  */
 function sortRowTree(nodes, direction, sortValue, metricDepth) {
@@ -56,7 +56,7 @@ function sortRowTree(nodes, direction, sortValue, metricDepth) {
  * @param {Array<string>} rowFields - Row dimension fields (may include 'Σ Values')
  * @param {Array<string>} colFields - Column dimension fields (may include 'Σ Values')
  * @param {Array<Object>} valueFields - Value field configurations
- * @param {Object} sortConfig - Sort configuration { valueKey, direction }
+ * @param {Object} sortConfig - Sort configuration { valueKey, direction, columnPath? }
  * @param {Object} dtypes - Column name → engine type name mapping
  * @returns {Object} Pivot display data structure
  */
@@ -139,7 +139,7 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
     if (sortConfig && sortConfig.valueKey) {
       const sortValue = node => {
         const dimPath = valuesInRows ? node.path.filter((_, i) => i !== rowValuesIndex) : node.path;
-        const hash = createCellHash(dimPath, actualRowFields, [], actualColFields);
+        const hash = createCellHash(dimPath, actualRowFields, sortConfig.columnPath ?? [], actualColFields);
         return lookupCubeValue(cubeIndex, hash, sortConfig.valueKey);
       };
       profiler.profile('sortRowTree', () =>

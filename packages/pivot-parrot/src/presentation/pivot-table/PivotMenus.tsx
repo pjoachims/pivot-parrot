@@ -12,18 +12,16 @@ export function SortMenu({
 }) {
   const handleValueChange = (e) => {
     const valueKey = e.target.value;
-    onSortChange({
-      valueKey: valueKey || null,
-      direction: sortConfig.direction
-    });
+    onSortChange(valueKey
+      ? { ...sortConfig, valueKey }
+      : { valueKey: null, direction: sortConfig.direction });
   };
 
   const handleDirectionChange = (e) => {
-    onSortChange({
-      valueKey: sortConfig.valueKey,
-      direction: e.target.value
-    });
+    onSortChange({ ...sortConfig, direction: e.target.value });
   };
+
+  const columnPath = sortConfig.valueKey && sortConfig.columnPath?.length ? sortConfig.columnPath : null;
 
   const valueFields = data?.columnConfig?.valueFields || [];
 
@@ -64,6 +62,20 @@ export function SortMenu({
             <option value="asc">↑ Asc</option>
           </select>
         </div>
+      </div>
+      <div className="pp-row" style={{ padding: 'var(--space-2) var(--space-3) 0', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span className="pp-label">
+          In column: {columnPath ? columnPath.map(m => (m === null || m === '' ? '(Blank)' : String(m))).join(' / ') : 'Grand Total'}
+        </span>
+        {columnPath && (
+          <button
+            type="button"
+            className="pp-btn pp-btn--quiet pp-btn--sm"
+            onClick={() => onSortChange({ valueKey: sortConfig.valueKey, direction: sortConfig.direction })}
+          >
+            Use Grand Total
+          </button>
+        )}
       </div>
     </div>
   );

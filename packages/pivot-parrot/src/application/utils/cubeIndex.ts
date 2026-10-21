@@ -39,6 +39,8 @@ export function safeStringify(value) {
  */
 function normalizeValue(val) {
   if (val === null || val === undefined) return val;
+  // A member saved in a view comes back from JSON as the ISO string.
+  if (val instanceof Date) return val.toISOString();
 
   const str = String(val);
   // Remove quotes from large DECIMAL values (e.g., "17604449022020080021205" -> 17604449022020080021205)
@@ -133,6 +135,14 @@ export function createCellHash(nodePath, rowFields, colPath, colFields) {
 
   // Sort for order-independence
   return [...ungrouped.sort(), ...grouped.sort()].join('|');
+}
+
+/**
+ * Identity of a column path as the cube hash sees it, so a path read back from
+ * JSON (BigInt as number, Date as ISO string) equals the live one.
+ */
+export function columnPathKey(path) {
+  return JSON.stringify(path.map(member => (member === null || member === undefined) ? null : String(normalizeValue(member))));
 }
 
 /**

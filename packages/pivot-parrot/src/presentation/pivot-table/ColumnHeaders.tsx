@@ -1,5 +1,8 @@
 import React from 'react';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
+import type { SortConfig } from '../../domain/models/types';
+import { usePivotStore } from '../../application/state/store';
+import { columnPathKey } from '../../application/utils/cubeIndex';
 
 /**
  * Format a column header value based on field type
@@ -28,6 +31,43 @@ function formatHeaderValue(value, field, dialect, dtypes) {
 }
 
 /**
+ * The sort a click on a leaf header applies: descending, then ascending, then
+ * off. With Σ Values in rows a leaf has no metric of its own, so it sorts by
+ * the value already chosen in the Sort menu, or else the first value.
+ */
+function nextSortForLeaf(leaf, sortConfig: SortConfig, valueFields: string[]): SortConfig {
+  const valueKey = leaf.metric ?? sortConfig.valueKey ?? valueFields[0] ?? null;
+  const columnPath = leaf.columnPath?.length ? leaf.columnPath : undefined;
+  if (!isSortedBy(leaf, sortConfig)) return { valueKey, direction: 'desc', columnPath };
+  if (sortConfig.direction === 'desc') return { valueKey, direction: 'asc', columnPath };
+  return { valueKey: null, direction: 'desc' };
+}
+
+function isSortedBy(leaf, sortConfig: SortConfig): boolean {
+  if (!sortConfig.valueKey) return false;
+  if (leaf.metric != null && leaf.metric !== sortConfig.valueKey) return false;
+  return columnPathKey(leaf.columnPath ?? []) === columnPathKey(sortConfig.columnPath ?? []);
+}
+
+function SortableHeader({ leaf, label, columnName, style, colSpan = 1, rowSpan = 1, sortConfig, onSort }) {
+  const sorted = isSortedBy(leaf, sortConfig) ? sortConfig.direction : null;
+  const name = [leaf.metric != null && leaf.label, columnName].filter(Boolean).join(', ');
+  return (
+    <th
+      style={style}
+      colSpan={colSpan}
+      rowSpan={rowSpan}
+      aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
+    >
+      <button type="button" className="pp-sort-header" aria-label={`Sort by ${name}`} onClick={() => onSort(leaf)}>
+        {label}
+        {sorted && <span aria-hidden="true">{sorted === 'asc' ? ' ↑' : ' ↓'}</span>}
+      </button>
+    </th>
+  );
+}
+
+/**
  * Column Headers Component
  * Renders the complex hierarchical column headers for the pivot table
  */
@@ -43,6 +83,13 @@ export function ColumnHeaders({
   dialect,
   dtypes
 }) {
+  const sortConfig = usePivotStore((s) => s.sortConfig);
+  const setSort = usePivotStore((s) => s.setSort);
+  const onSort = (leaf) => setSort(nextSortForLeaf(leaf, sortConfig, data.columnConfig.valueFields || []));
+  const columnName = (leaf) => leaf.columnPath?.length
+    ? leaf.columnPath.map((member, i) => formatHeaderValue(member, colFields[i], dialect, dtypes)).join(' / ')
+    : leaf.isGrandTotal ? 'Grand Total' : '';
+
   // Debug: expose leaf columns
   if (typeof window !== 'undefined') {
     window.debugLeafColumns = leafColumns;
@@ -100,9 +147,15 @@ export function ColumnHeaders({
             </div>
           </th>
           {leafColumns.map((leaf, i) => (
-            <th key={i} style={{ ...styles.headerCell, ...styles.mainHeader, boxShadow: 'inset 0.5px 0 0 0 var(--border-color-light), inset 0 0.5px 0 0 var(--border-color-light), inset 0 -1px 0 0 var(--border-color-medium)' }}>
-              <div>{leaf.label || leaf.metric || leaf.value}</div>
-            </th>
+            <SortableHeader
+              key={i}
+              leaf={leaf}
+              label={leaf.label || leaf.metric || leaf.value}
+              columnName={columnName(leaf)}
+              style={{ ...styles.headerCell, ...styles.mainHeader, boxShadow: 'inset 0.5px 0 0 0 var(--border-color-light), inset 0 0.5px 0 0 var(--border-color-light), inset 0 -1px 0 0 var(--border-color-medium)' }}
+              sortConfig={sortConfig}
+              onSort={onSort}
+            />
           ))}
         </tr>
       </>
@@ -131,10 +184,10 @@ export function ColumnHeaders({
         headerRows[0].push({
           value: leaf.label || leaf.value || 'Total',
           colSpan: 1,
-          rowSpan: 1,
+          rowSpan: numHeaderRows,
           isGrandTotal: true,
           isSubtotal: false,
-          shared: true  // Allow merging multiple grand total headers
+          leaf
         });
       } else {
         // Values in columns with multiple header rows
@@ -151,7 +204,8 @@ export function ColumnHeaders({
         headerRows[numHeaderRows - 1].push({
           value: leaf.label || leaf.metric,
           isSubtotal: false,
-          isGrandTotal: true
+          isGrandTotal: true,
+          leaf
         });
       }
     } else if (leaf.isSubtotal) {
@@ -178,7 +232,8 @@ export function ColumnHeaders({
           colSpan: 1,
           rowSpan: numHeaderRows - displayPath.length,
           isSubtotal: true,
-          isGrandTotal: false
+          isGrandTotal: false,
+          leaf
         });
       }
     } else {
@@ -186,14 +241,17 @@ export function ColumnHeaders({
       // Use displayPath if available (contains labels), otherwise fall back to path (contains IDs)
       const displayPath = leaf.displayPath || path;
 
+      // The last entry is this leaf's own cell: never merged, it is the sort target.
       displayPath.forEach((p, idx) => {
         // Safety check: only add to rows that exist
         if (idx < headerRows.length) {
+          const isLeafCell = idx === displayPath.length - 1;
           headerRows[idx].push({
             value: p,
-            shared: true,
+            shared: !isLeafCell,
             isSubtotal: false,
-            isGrandTotal: false
+            isGrandTotal: false,
+            ...(isLeafCell && { leaf })
           });
         }
       });
@@ -247,7 +305,6 @@ export function ColumnHeaders({
     <>
       {mergedRows.map((mergedRow, rowIdx) => {
         const isFirstRow = rowIdx === 0;
-        const isLastRow = rowIdx === mergedRows.length - 1;
         return (
           <tr key={rowIdx} style={styles.headerRow}>
             {isFirstRow && (
@@ -302,8 +359,8 @@ export function ColumnHeaders({
                                 h.isSubtotal ? { ...styles.headerCell, ...styles.subtotalHeader } :
                                 { ...styles.headerCell, ...styles.mainHeader };
 
-              // Add bold bottom border to last row headers
-              if (isLastRow) {
+              // Add bold bottom border to headers that reach the last row
+              if (rowIdx + (h.rowSpan || 1) === mergedRows.length) {
                 headerStyle = {
                   ...headerStyle,
                   boxShadow: 'inset 0.5px 0 0 0 var(--border-color-light), inset 0 0.5px 0 0 var(--border-color-light), inset 0 -1px 0 0 var(--border-color-medium)'
@@ -315,6 +372,21 @@ export function ColumnHeaders({
               const formattedValue = formatHeaderValue(h.value, field, dialect, dtypes);
 
               const cellKey = `${rowIdx}-${i}`;
+              if (h.leaf) {
+                return (
+                  <SortableHeader
+                    key={cellKey}
+                    leaf={h.leaf}
+                    label={formattedValue}
+                    columnName={columnName(h.leaf)}
+                    style={headerStyle}
+                    colSpan={h.colSpan || 1}
+                    rowSpan={h.rowSpan || 1}
+                    sortConfig={sortConfig}
+                    onSort={onSort}
+                  />
+                );
+              }
               if (h.rowSpan && h.rowSpan > 1) {
                 return (
                   <th key={cellKey} style={headerStyle} colSpan={h.colSpan || 1} rowSpan={h.rowSpan}>

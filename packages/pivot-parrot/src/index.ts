@@ -33,6 +33,7 @@ export type {
   CustomFilter,
   CustomGrouping,
   PivotView,
+  SortConfig,
   SavedView,
   NewSavedView,
   SnapshotStore

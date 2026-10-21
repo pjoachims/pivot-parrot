@@ -327,6 +327,7 @@ export function buildColumnTree(columnOutline, colFields, valueFields, valuesInd
   if (colFields.length === 0) {
     return columnOutline.map(col => ({
       ...col,
+      columnPath: col.path,
       children: []
     }));
   }
@@ -480,6 +481,7 @@ function markLeafNodes(tree, columnOutline) {
           node.isGrandTotal = col.depth === 0;
           node.label = col.label;
           node.metric = col.metric;
+          node.columnPath = col.path;
 
           // Also copy displayPath from outline to tree node
           if (col.displayPath) {
@@ -544,7 +546,8 @@ function buildDimensionTree(columnOutline, colFields) {
         isSubtotal: col.isSubtotal,
         isGrandTotal: true,
         label: col.label,
-        metric: col.metric
+        metric: col.metric,
+        columnPath: col.path
       });
       return;
     }
@@ -585,7 +588,8 @@ function buildDimensionTree(columnOutline, colFields) {
         isSubtotal: true,
         isGrandTotal: false,
         label: col.label,
-        metric: col.metric
+        metric: col.metric,
+        columnPath: col.path
       };
       currentLevel.push(subtotalNode);
       return;
@@ -618,6 +622,7 @@ function buildDimensionTree(columnOutline, colFields) {
         node.isGrandTotal = false;
         node.label = col.label;
         node.metric = col.metric;
+        node.columnPath = col.path;
       }
 
       currentLevel = node.children;
