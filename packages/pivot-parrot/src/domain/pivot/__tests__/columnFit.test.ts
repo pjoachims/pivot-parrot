@@ -100,3 +100,10 @@ describe('expandGroup', () => {
     expect(new Set(fit.autoCollapsed)).toEqual(new Set([...regionsOf('A'), ...regionsOf('B')]));
   });
 });
+
+it('fits a table with more groups than a function call takes arguments', () => {
+  const many = Array.from({ length: 200_000 }, (_, i) => [`m${i}`]);
+  expect(fitColumns(many, none, 10, collapsed => (collapsed.size === many.length ? 1 : 1_000_000))).toEqual({
+    collapsed: expect.any(Array), autoCollapsed: expect.any(Array), columnCount: 1
+  });
+});

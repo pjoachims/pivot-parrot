@@ -42,7 +42,7 @@ export function fitColumns(groups: unknown[][], folds: ColumnFolds, limit: numbe
 
   const opened = new Set(folds.expanded);
   const keptOpen = new Set(groups.filter(g => opened.has(columnPathKey(g))).flatMap(prefixKeys));
-  const deepest = Math.max(0, ...groups.map(g => g.length));
+  const deepest = groups.reduce((max, g) => Math.max(max, g.length), 0);
   let narrowest = ownCount;
   for (const kept of [keptOpen, new Set<string>()]) {
     for (let depth = deepest; depth >= 1; depth--) {
