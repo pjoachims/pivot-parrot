@@ -2,14 +2,14 @@ import React, { useState, useRef, useMemo, memo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { styles } from './styles';
 import { createFormatValue, createFormatRowLabel } from '../../application/utils/formatters';
-import { ColumnHeaders } from './ColumnHeaders';
+import { ColumnHeaders, formatHeaderValue } from './ColumnHeaders';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { PivotRow, renderCells } from './PivotRow';
 import PivotDisplayHeader from './PivotDisplayHeader';
 import { ContextMenu } from '../shared/ContextMenu';
 import { ChevronContextMenu } from '../shared/ChevronContextMenu';
 import { useExpansionState } from '../../application/hooks/useExpansionState';
-import { useColumnCollapse } from '../../application/hooks/useColumnCollapse';
+import { useColumnCollapse, type ColumnCollapse } from '../../application/hooks/useColumnCollapse';
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
 import { usePivotStore } from '../../application/state/store';
@@ -54,7 +54,7 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
     // Expansion state management
     const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({ data });
 
-    const columnCollapse = useColumnCollapse(data?.columnConfig?.groups);
+    const columnCollapse = useColumnCollapse(data.columnConfig.groups, data.columnFit);
     const [columnGroupMenu, setColumnGroupMenu] = useState<{ x: number; y: number; group: unknown[] } | null>(null);
 
     // Context menu management
@@ -174,6 +174,7 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
     />
 
     <div style={{ padding: '8px', flex: 1, width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <ColumnFitNotice collapse={columnCollapse} groupName={group => group.map((m, d) => formatHeaderValue(m, data.columnConfig.colFields[d], dialect, dtypes)).join(' / ')} />
       <div ref={parentRef} style={styles.wrapper}>
         <div style={{ position: 'relative' }}>
           <table style={styles.table}>
@@ -196,6 +197,7 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
             styles={styles}
             dialect={dialect}
             dtypes={dtypes}
+            collapse={columnCollapse}
             onGroupContextMenu={(e, group) => setColumnGroupMenu({ x: e.clientX, y: e.clientY, group })}
           />
         </thead>
@@ -337,6 +339,20 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
       />
     )}
   </div>);
+}
+
+/** Why column groups show folded that the user did not collapse, or why one did not open. */
+function ColumnFitNotice({ collapse, groupName }: { collapse: ColumnCollapse; groupName: (group: unknown[]) => string }) {
+  const { autoCollapsed, refused, limit } = collapse;
+  if (!refused && autoCollapsed.length === 0) return null;
+  const folded = autoCollapsed.length === 1 ? '1 column group' : `${autoCollapsed.length} column groups`;
+  return (
+    <div role="status" style={styles.notice}>
+      {refused
+        ? `${groupName(refused)} cannot open: the table would have more than ${limit} columns. Collapse another column group first.`
+        : `${folded} collapsed to fit the ${limit}-column limit. Expand them one at a time.`}
+    </div>
+  );
 }
 
 export default PivotDisplay;

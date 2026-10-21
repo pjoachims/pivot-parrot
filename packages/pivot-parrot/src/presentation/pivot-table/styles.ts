@@ -2,6 +2,7 @@ export const styles: Record<string, React.CSSProperties> = {
   container: { width: '100%', fontSize: 'var(--text-sm)', background: 'var(--surface-bg)', height: '100%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color-light)', margin: '0 8px 8px 0' },
   wrapper: { overflow: 'auto', width: '100%', flex: 1, position: 'relative', background: 'var(--surface-bg)' },
   table: { borderCollapse: 'separate', borderSpacing: 0, width: 'auto', background: 'var(--surface-bg)', border: '0.5px solid var(--border-color-light)' },
+  notice: { padding: '4px 8px', marginBottom: '8px', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', background: 'var(--surface-hover)', borderRadius: '2px' },
   empty: { padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' },
   rowLabelContainerOuter: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '4px' },
   rowLabelContainer: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', position: 'relative' },

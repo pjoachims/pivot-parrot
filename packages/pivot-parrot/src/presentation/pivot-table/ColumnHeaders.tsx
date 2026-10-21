@@ -2,13 +2,12 @@ import React from 'react';
 import type { SortConfig } from '../../domain/models/types';
 import { usePivotStore } from '../../application/state/store';
 import { columnPathKey } from '../../application/utils/cubeIndex';
-import { useColumnCollapse } from '../../application/hooks/useColumnCollapse';
 import { Icon } from '../shared/Icon';
 
 /**
  * Format a column header value based on field type
  */
-function formatHeaderValue(value, field, dialect, dtypes) {
+export function formatHeaderValue(value, field, dialect, dtypes) {
   if (value === null || value === undefined || value === '') return '(Blank)';
   if (typeof value === 'boolean') return String(value);
 
@@ -88,11 +87,11 @@ export function ColumnHeaders({
   styles,
   dialect,
   dtypes,
+  collapse,
   onGroupContextMenu = null
 }) {
   const sortConfig = usePivotStore((s) => s.sortConfig);
   const setSort = usePivotStore((s) => s.setSort);
-  const collapse = useColumnCollapse(data.columnConfig.groups);
   const onSort = (leaf) => setSort(nextSortForLeaf(leaf, sortConfig, data.columnConfig.valueFields || []));
   const formatMember = (member, d) => formatHeaderValue(member, data.columnConfig.colFields[d], dialect, dtypes);
   const columnName = (leaf) => leaf.columnPath?.length

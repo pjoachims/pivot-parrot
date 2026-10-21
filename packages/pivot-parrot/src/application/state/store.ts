@@ -4,6 +4,7 @@ import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import type { PivotTableConfig, SortConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
 import { FieldKind } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
+import type { ColumnFolds } from '../../domain/pivot/columnFit';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import { hashData } from '../../domain/query/utils/cache';
 import { bigIntReplacer, bigIntReviver } from '../../domain/snapshot/json';
@@ -53,8 +54,10 @@ interface PivotStore {
 
   // ==================== Display State ====================
   sortConfig: SortConfig;
-  /** columnPathKey of each collapsed column group; not persisted, like row expansion. */
+  /** columnPathKey of each column group the user collapsed; not persisted, like row expansion. */
   collapsedColumns: string[];
+  /** columnPathKey of each column group the user opened, which folding to fit the column limit leaves open. */
+  expandedColumns: string[];
   chartConfig: ChartConfig | null;
 
   // ==================== UI State ====================
@@ -146,7 +149,7 @@ interface PivotStore {
 
   // ==================== Display Actions ====================
   setSort: (sort: SortConfig) => void;
-  setCollapsedColumns: (keys: string[]) => void;
+  setColumnFolds: (folds: ColumnFolds) => void;
   setChartConfig: (config: ChartConfig | null) => void;
 
   // ==================== UI Actions ====================
@@ -238,6 +241,7 @@ const initialState = {
   // Display
   sortConfig: { valueKey: null, direction: 'desc' as const },
   collapsedColumns: [],
+  expandedColumns: [],
   chartConfig: null,
 
   // UI
@@ -396,8 +400,8 @@ export function createPivotStore(instanceKey: string = 'default') {
       setSort: (sortConfig) =>
         set({ sortConfig }, false, 'setSort'),
 
-      setCollapsedColumns: (collapsedColumns) =>
-        set({ collapsedColumns }, false, 'setCollapsedColumns'),
+      setColumnFolds: ({ collapsed, expanded }) =>
+        set({ collapsedColumns: collapsed, expandedColumns: expanded }, false, 'setColumnFolds'),
 
       setChartConfig: (chartConfig) =>
         set({ chartConfig }, false, 'setChartConfig'),
