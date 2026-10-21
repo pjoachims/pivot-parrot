@@ -123,14 +123,13 @@ export default function DropZonesGrid() {
         });
         break;
 
-      case FieldKind.CUSTOM_FILTER:
-        // Open expression editor
-        console.log('[handleFilterClick] Opening ExpressionDialog');
+      case FieldKind.CUSTOM_FILTER: {
         const customFilter = (config.customFilters || []).find(f => f.id === fieldId);
         if (customFilter) {
           setExpressionDialog({ type: 'filter', editing: customFilter });
         }
         break;
+      }
 
       default:
         console.error(`Unexpected field kind in filters: ${fieldItem.kind}`);

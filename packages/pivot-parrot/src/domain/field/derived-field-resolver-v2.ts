@@ -311,14 +311,7 @@ export function resolveDerivedFieldsInExpressionV2(
   if (!resolvedCache) {
     // Cache miss - build dependency graph and topologically sort
     const { deps, nodes } = buildDependencyGraph(referenceLookup);
-    let sortedFields: string[];
-
-    try {
-      sortedFields = topologicalSort(deps, nodes);
-    } catch (error) {
-      // Re-throw with original error message about circular dependency
-      throw error;
-    }
+    const sortedFields = topologicalSort(deps, nodes);
 
     // Build cache for resolved expressions
     resolvedCache = new Map<string, string>();

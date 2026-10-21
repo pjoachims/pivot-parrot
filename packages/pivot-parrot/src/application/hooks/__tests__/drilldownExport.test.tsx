@@ -36,5 +36,5 @@ it('the drilldown CSV decodes Arrow DECIMAL cells', async () => {
     reader.onload = () => resolve(reader.result as string);
     reader.readAsText(blob!);
   });
-  expect(text.replace(/^﻿/, '')).toBe('city;price\nKöln;10,5');
+  expect(text.replace(/^\uFEFF/, '')).toBe('city;price\nKöln;10,5');
 });

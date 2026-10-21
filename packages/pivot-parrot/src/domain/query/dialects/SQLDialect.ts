@@ -469,7 +469,7 @@ export class SQLDialect {
     }
 
     // Remove brackets, angle brackets, parentheses, and parameters
-    const normalized = arrowTypeStr.split(/[\[\(<]/)[0].trim();
+    const normalized = arrowTypeStr.split(/[[(<]/)[0].trim();
 
     // Return as-is - the Arrow type registry uses these exact names
     // (int64, utf8, timestamp, date32, bool, float64, etc.)
