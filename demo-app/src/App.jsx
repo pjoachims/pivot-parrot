@@ -1,8 +1,17 @@
 import { useState, useRef } from 'react';
 import * as duckdb from '@duckdb/duckdb-wasm';
+import duckdbMvpWasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
+import duckdbMvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
+import duckdbEhWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
+import duckdbEhWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 import { Pivot } from 'pivot-parrot';
 // CSS is now bundled into the JS automatically - no need to import separately
 import { SAMPLE_DATA } from './sampleData';
+
+const DUCKDB_BUNDLES = {
+  mvp: { mainModule: duckdbMvpWasm, mainWorker: duckdbMvpWorker },
+  eh: { mainModule: duckdbEhWasm, mainWorker: duckdbEhWorker }
+};
 
 const SAMPLE_CONFIG = {
   filters: [],
@@ -188,6 +197,7 @@ function App() {
         ref={pivotRef}
         config={{
           duckdb: duckdb,
+          duckdbBundles: DUCKDB_BUNDLES,
           data: data,
           initialConfig: pivotConfig,
           settings: {

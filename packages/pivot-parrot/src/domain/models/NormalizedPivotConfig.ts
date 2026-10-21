@@ -11,6 +11,7 @@ export class NormalizedPivotConfig {
   // Data & Engine
   readonly dataEngine: DataEngine | null;
   readonly duckdb: DuckDBInstance | undefined;
+  readonly duckdbBundles: PivotConfig['duckdbBundles'];
   readonly data: DataInput | undefined;
   readonly mode: 'local' | 'remote';
 
@@ -44,6 +45,7 @@ export class NormalizedPivotConfig {
     // Data & Engine
     this.dataEngine = config.dataEngine || null;
     this.duckdb = config.duckdb;
+    this.duckdbBundles = config.duckdbBundles;
     this.data = config.data;
     this.mode = config.mode || 'local';
 
