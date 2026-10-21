@@ -31,7 +31,6 @@ describe('buildCubeSQL - Aggregation Changes', () => {
 
     const sql = buildCubeSQL(config, [], fieldTypes, 'pivot_data', dialect);
 
-    console.log('COUNT SQL:', sql);
     expect(sql).toContain('COUNT');
     expect(sql).toContain('sales');
     expect(sql).toContain('count_sales'); // Metric key should be lowercase
@@ -49,7 +48,6 @@ describe('buildCubeSQL - Aggregation Changes', () => {
 
     const sql = buildCubeSQL(config, [], fieldTypes, 'pivot_data', dialect);
 
-    console.log('SUM SQL:', sql);
     expect(sql).toContain('SUM');
     expect(sql).toContain('sales');
     expect(sql).toContain('sum_sales'); // Metric key should be lowercase
@@ -68,7 +66,6 @@ describe('buildCubeSQL - Aggregation Changes', () => {
 
     const sql = buildCubeSQL(config, [], fieldTypes, 'pivot_data', dialect);
 
-    console.log('AVG SQL:', sql);
     expect(sql).toContain('AVG');
     expect(sql).toContain('profit');
     expect(sql).toContain('avg_profit'); // Metric key should be lowercase
@@ -90,7 +87,6 @@ describe('buildCubeSQL - Aggregation Changes', () => {
 
     const sql = buildCubeSQL(config, [], fieldTypes, 'pivot_data', dialect);
 
-    console.log('Multiple aggregations SQL:', sql);
     expect(sql).toContain('SUM(sales)');
     expect(sql).toContain('COUNT(sales)');
     expect(sql).toContain('AVG(profit)');
@@ -114,7 +110,6 @@ describe('buildCubeSQL - Aggregation Changes', () => {
 
     const sql = buildCubeSQL(config, [], fieldTypes, 'pivot_data', dialect);
 
-    console.log('Lowercase alias SQL:', sql);
     // Column aliases should be lowercase to match DuckDB's normalization
     expect(sql).toMatch(/AS\s+sum_sales/i);
     expect(sql).toMatch(/AS\s+count_distinct_sales/i);

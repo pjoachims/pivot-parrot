@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { renderHook, act } from '@testing-library/react';
+import { act } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createPivotStore, PivotStoreContext } from '../../../../../application/state/store';
 import FieldsList from '../FieldsList';

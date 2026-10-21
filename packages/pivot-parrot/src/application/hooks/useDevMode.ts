@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- dev mode's job is printing to the console */
 /**
  * Dev Mode Hook
  * Exposes debugging utilities to window.__pivotParrot when dev mode is enabled
@@ -252,7 +253,7 @@ function estimateMemorySize(obj: any): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  } catch (error) {
+  } catch {
     // Fallback if serialization fails
     return 'Unknown';
   }

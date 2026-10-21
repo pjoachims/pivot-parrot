@@ -158,7 +158,7 @@ export function getAvailableAggregations(
   if (!arrowType) {
     const all = Object.values(AGGREGATIONS);
     if (!dialect) return all;
-    return all.filter(agg => dialect.aggregations.hasOwnProperty(agg.sqlName));
+    return all.filter(agg => Object.prototype.hasOwnProperty.call(dialect.aggregations, agg.sqlName));
   }
 
   // Filter by type category
@@ -170,7 +170,7 @@ export function getAvailableAggregations(
   if (!dialect) return byCategory;
   
   return byCategory.filter(agg => 
-    dialect.aggregations.hasOwnProperty(agg.sqlName)
+    Object.prototype.hasOwnProperty.call(dialect.aggregations, agg.sqlName)
   );
 }
 

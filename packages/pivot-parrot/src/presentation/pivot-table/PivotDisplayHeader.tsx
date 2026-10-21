@@ -26,8 +26,7 @@ export default function PivotDisplayHeader({
   locale = 'en-US',
   dtypes = {},
   dialect = null,
-  onOpenSQL,
-  onDrilldown
+  onOpenSQL
 }) {
   // Read from store
   const sortConfig = usePivotStore((s) => s.sortConfig);

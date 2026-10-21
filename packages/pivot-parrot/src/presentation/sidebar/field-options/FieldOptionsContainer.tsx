@@ -43,7 +43,6 @@ export default function FieldOptionsContainer(props: FieldOptionsContainerProps)
     onLoadSnapshot,
     onDeleteSnapshot,
     onSnapshotsImported,
-    onExport,
     isRemoteConnection = false,
     snapshots = [],
     snapshotsError = null,

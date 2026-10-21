@@ -13,10 +13,9 @@ import { isUngrouped, safeStringify } from '../../application/utils/cubeIndex';
  * @param {Array<string>} rowFields - Row dimension fields
  * @param {Array<Object>} valueFields - Value fields (if Values in rows)
  * @param {number} valuesIndex - Position of Σ Values in rows (-1 if in columns)
- * @param {Object} dtypes - Column name → DTYPE enum mapping
  * @returns {Array<Object>} Root-level row nodes
  */
-export function buildRowTree(sqlRows, rowFields, valueFields, valuesIndex, dtypes = {}) {
+export function buildRowTree(sqlRows, rowFields, valueFields, valuesIndex) {
   const root = { children: new Map() };
 
   // Build mapping from metric key to label for display
@@ -53,9 +52,6 @@ export function buildRowTree(sqlRows, rowFields, valueFields, valuesIndex, dtype
 
   if (valuesIndex !== -1) {
     // Values in rows: inject metrics into paths at valuesIndex
-    const beforeFields = rowFields.slice(0, valuesIndex);
-    const afterFields = rowFields.slice(valuesIndex);
-
     // Special case: no other dimensions (Values is the only row field)
     if (rowFields.length === 0) {
       // Just insert each metric as a standalone row

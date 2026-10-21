@@ -17,6 +17,7 @@ export function useDialogA11y(containerRef: React.RefObject<HTMLElement>, onClos
 
   useEffect(() => {
     const container = containerRef.current;
+    const toRestore = previouslyFocused.current;
 
     // Respect an existing autoFocus inside the dialog (e.g. an input with
     // `autoFocus`). Otherwise focus the first control below the header, so a
@@ -53,7 +54,7 @@ export function useDialogA11y(containerRef: React.RefObject<HTMLElement>, onClos
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      previouslyFocused.current?.focus?.();
+      toRestore?.focus?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);

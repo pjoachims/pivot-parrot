@@ -131,10 +131,8 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
       const row = level === 0 ? ['Row Labels'] : [''];
 
       leafCols.forEach(leaf => {
-        // A leaf's path holds its column members; with Σ Values in columns a
-        // regular leaf's path ends in its metric. Subtotal and grand-total
-        // leaves carry only their members and name the metric in leaf.metric.
-        const path = leaf.path || [];
+        // A hierarchy leaf's path may hold its metric too; columnPath, and an outline column's path, hold only members
+        const path = leaf.columnPath ?? leaf.path ?? [];
 
         if (level === metricLevel && (leaf.isSubtotal || leaf.isGrandTotal)) {
           row.push(getMetricName(leaf.metric) || '');
@@ -143,10 +141,9 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
         } else if (leaf.isSubtotal) {
           row.push(level < path.length ? path[level] : level === path.length ? 'Subtotal' : '');
         } else if (level < path.length) {
-          const value = path[level];
-          row.push(!valuesInRows && level === path.length - 1 ? getMetricName(leaf.metric ?? value) : value);
+          row.push(path[level]);
         } else {
-          row.push('');
+          row.push(level === metricLevel ? getMetricName(leaf.metric) : '');
         }
       });
 

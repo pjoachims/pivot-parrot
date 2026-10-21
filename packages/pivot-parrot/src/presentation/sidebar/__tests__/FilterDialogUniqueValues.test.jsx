@@ -40,7 +40,7 @@ async function makeEngine() {
 }
 
 function showFilterDialog(engine, field, availableFields = [field], store = createPivotStore()) {
-  store.setState({ availableFields, filterDialog: { field, existingFilter: null, anchorEl: document.createElement('div') } });
+  store.setState({ availableFields, filterDialog: { field, existingFilter: null, anchorFieldId: field.id } });
   const view = render(
     <PivotStoreContext.Provider value={{ store, instanceKey: 'test' }}>
       <DialogsManager dataEngine={engine} snapshots={[]} />

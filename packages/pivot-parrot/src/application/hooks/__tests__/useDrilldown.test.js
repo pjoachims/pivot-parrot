@@ -277,7 +277,7 @@ describe('useDrilldown', () => {
 
       // SETUP
       let cancelCalled = false;
-      const executePromise = new Promise((resolve, reject) => {
+      const executePromise = new Promise((resolve) => {
         setTimeout(() => {
           if (!cancelCalled) {
             resolve({

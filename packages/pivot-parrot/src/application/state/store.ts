@@ -1,9 +1,10 @@
 import { createContext, useContext } from 'react';
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
-import type { PivotTableConfig, SortConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
+import type { PivotTableConfig, SortConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates } from '../../domain/models/types';
 import { FieldKind } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
+import type { ColumnFolds } from '../../domain/pivot/columnFit';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import { hashData } from '../../domain/query/utils/cache';
 import { bigIntReplacer, bigIntReviver } from '../../domain/snapshot/json';
@@ -13,7 +14,6 @@ import {
   buildHandleRemoveFilter,
   buildHandleCreateExpression,
   buildChangeAggregation,
-  buildHandleAddDerivedFields,
   buildDeleteCustomExpression,
   buildRemoveFieldFromAllZones
 } from './actions';
@@ -53,8 +53,10 @@ interface PivotStore {
 
   // ==================== Display State ====================
   sortConfig: SortConfig;
-  /** columnPathKey of each collapsed column group; not persisted, like row expansion. */
+  /** columnPathKey of each column group the user collapsed; not persisted, like row expansion. */
   collapsedColumns: string[];
+  /** columnPathKey of each column group the user opened, which folding to fit the column limit leaves open. */
+  expandedColumns: string[];
   chartConfig: ChartConfig | null;
 
   // ==================== UI State ====================
@@ -83,17 +85,17 @@ interface PivotStore {
     existingDerivedFields: string[];
     position?: { x: number; y: number };
   } | null;
+  /** Each filter dialog opens beside the Filters pill of `anchorFieldId`; the dialog layer finds the pill. */
   filterDialog: {
     field: FieldItem;
     existingFilter: Filter | null;
-    anchorEl: HTMLElement;
+    anchorFieldId: string;
   } | null;
   havingFilterDialog: {
     field: { name: string };
     existingFilter: Filter | null;
-    anchorEl: HTMLElement;
+    anchorFieldId: string;
   } | null;
-  pendingFilterOpen: { fieldName: string; type: 'filter' | 'having' } | null;
   snapshotNameDialog: boolean;
 
   // ==================== Split Pane State ====================
@@ -146,7 +148,7 @@ interface PivotStore {
 
   // ==================== Display Actions ====================
   setSort: (sort: SortConfig) => void;
-  setCollapsedColumns: (keys: string[]) => void;
+  setColumnFolds: (folds: ColumnFolds) => void;
   setChartConfig: (config: ChartConfig | null) => void;
 
   // ==================== UI Actions ====================
@@ -171,7 +173,6 @@ interface PivotStore {
   setDerivedFieldDialog: (dialog: PivotStore['derivedFieldDialog']) => void;
   setFilterDialog: (dialog: PivotStore['filterDialog']) => void;
   setHavingFilterDialog: (dialog: PivotStore['havingFilterDialog']) => void;
-  setPendingFilterOpen: (pending: PivotStore['pendingFilterOpen']) => void;
   setSnapshotNameDialog: (show: boolean) => void;
 
   // ==================== Split Pane Actions ====================
@@ -239,6 +240,7 @@ const initialState = {
   // Display
   sortConfig: { valueKey: null, direction: 'desc' as const },
   collapsedColumns: [],
+  expandedColumns: [],
   chartConfig: null,
 
   // UI
@@ -261,7 +263,6 @@ const initialState = {
   derivedFieldDialog: null,
   filterDialog: null,
   havingFilterDialog: null,
-  pendingFilterOpen: null,
   snapshotNameDialog: false,
 
   // Split Pane
@@ -398,8 +399,8 @@ export function createPivotStore(instanceKey: string = 'default') {
       setSort: (sortConfig) =>
         set({ sortConfig }, false, 'setSort'),
 
-      setCollapsedColumns: (collapsedColumns) =>
-        set({ collapsedColumns }, false, 'setCollapsedColumns'),
+      setColumnFolds: ({ collapsed, expanded }) =>
+        set({ collapsedColumns: collapsed, expandedColumns: expanded }, false, 'setColumnFolds'),
 
       setChartConfig: (chartConfig) =>
         set({ chartConfig }, false, 'setChartConfig'),
@@ -462,8 +463,6 @@ export function createPivotStore(instanceKey: string = 'default') {
       setHavingFilterDialog: (dialog) =>
         set({ havingFilterDialog: dialog }, false, 'setHavingFilterDialog'),
 
-      setPendingFilterOpen: (pending) =>
-        set({ pendingFilterOpen: pending }, false, 'setPendingFilterOpen'),
 
       setSnapshotNameDialog: (show) =>
         set({ snapshotNameDialog: show }, false, 'setSnapshotNameDialog'),
@@ -533,12 +532,13 @@ export function createPivotStore(instanceKey: string = 'default') {
 
         const updates: Partial<PivotStore> = { config: result.config };
 
-        // Signal the component layer to open the filter dialog after render
-        if ((result.shouldOpenFilterDialog || result.shouldOpenHavingDialog) && result.fieldName) {
-          updates.pendingFilterOpen = {
-            fieldName: result.fieldName,
-            type: result.shouldOpenHavingDialog ? 'having' : 'filter'
-          };
+        const opened = (result.shouldOpenFilterDialog || result.shouldOpenHavingDialog) && result.fieldName
+          ? getFieldById(result.fieldName, state.availableFields, result.config)
+          : null;
+        if (opened) {
+          const dialog = { existingFilter: null, anchorFieldId: result.fieldName };
+          if (result.shouldOpenHavingDialog) updates.havingFilterDialog = { ...dialog, field: { name: opened.id } };
+          else updates.filterDialog = { ...dialog, field: opened };
         }
 
         set(updates, false, 'handleDrop');

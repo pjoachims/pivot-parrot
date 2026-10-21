@@ -371,7 +371,7 @@ export function selectChartData(
   cubeResults: CubeRow[],
   chartDimensions: string[],
   allDimensions: string[],
-  config: PivotConfig
+  _config: PivotConfig
 ): CubeRow[] {
   if (!cubeResults || cubeResults.length === 0) {
     throw new Error('No data available');

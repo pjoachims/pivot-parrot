@@ -6,7 +6,6 @@ const AFTER_THRESHOLD = 0.65;
 export default function DropZone({
   title,
   icon,
-  fields = [],
   zone,
   dragOverZone,
   insertionIndex,

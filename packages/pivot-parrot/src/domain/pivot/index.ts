@@ -49,6 +49,44 @@ function sortRowTree(nodes, direction, sortValue, metricDepth) {
   });
 }
 
+export interface PivotDisplayData {
+  columnConfig: {
+    colFields: string[];
+    hierarchy: any[];
+    valueFields: string[];
+    valuesIndex?: number;
+    valuesInRows?: boolean;
+    groups: unknown[][];
+  };
+  rowGroups: any[];
+  grandTotal: any;
+  cubeIndex?: Map<string, any>;
+  _columnOutline?: any[];
+}
+
+/**
+ * How many columns buildPivotDisplayData lays out for these arguments, less
+ * the subtotal and grand total columns the table hides. It builds only the
+ * column outline, so it is cheap next to the build, which fills every cell.
+ */
+export function countDisplayColumns(
+  sqlRows, rowFields, colFields, valueFields, collapsedColumns: Iterable<string>,
+  { showColSubtotals, showGrandTotalCol }: { showColSubtotals: boolean; showGrandTotalCol: boolean }
+): number {
+  const outline = buildColumnOutline(
+    sqlRows,
+    colFields.filter(f => f !== SIGMA_VALUES_ID),
+    valueFields,
+    colFields.indexOf(SIGMA_VALUES_ID),
+    rowFields.includes(SIGMA_VALUES_ID),
+    new Set(collapsedColumns)
+  );
+  return outline.filter(col => {
+    if (col.path.length === 0 && (col.isSubtotal || col.isGrandTotal)) return showGrandTotalCol;
+    return !col.isSubtotal || showColSubtotals;
+  }).length;
+}
+
 /**
  * Main entry point: Build pivot display data using long-to-wide transformation
  *
@@ -61,7 +99,7 @@ function sortRowTree(nodes, direction, sortValue, metricDepth) {
  * @param {Iterable<string>} collapsedColumns - columnPathKey of each collapsed column group
  * @returns {Object} Pivot display data structure
  */
-export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields, sortConfig = null, dtypes = {}, collapsedColumns = []) {
+export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields, sortConfig = null, dtypes = {}, collapsedColumns = []): PivotDisplayData {
   return profiler.profile('buildPivotDisplayData', () => {
     if (!sqlRows?.length) {
       return {
@@ -95,7 +133,6 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
         valueFields,
         colValuesIndex,
         valuesInRows,
-        dtypes,
         new Set(collapsedColumns)
       )
     );
@@ -117,8 +154,7 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
         sqlRows,
         actualRowFields,
         valueFields,
-        rowValuesIndex,
-        dtypes
+        rowValuesIndex
       )
     );
 

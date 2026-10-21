@@ -21,7 +21,7 @@ const mockDialect = {
     'double': Arrow.double
   },
   // Convert Uint32Array, BigInt, and strings to number
-  toChartValue: (value, typeName) => {
+  toChartValue: (value) => {
     if (value instanceof Uint32Array) {
       // Simple conversion for test - just take first element
       return value[0];
@@ -220,7 +220,7 @@ describe('Chart Integration Tests', () => {
       };
 
       const chartData = buildChartData(sqlRows, chartConfig, config, dtypes, mockDialect);
-      const { traces, layout } = transformScatterChart(chartData, chartConfig);
+      const { traces } = transformScatterChart(chartData, chartConfig);
 
       expect(traces).toHaveLength(1);
 

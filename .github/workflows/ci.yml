@@ -30,6 +30,9 @@ jobs:
       - name: Run type check
         run: npm run type-check --workspaces --if-present
 
+      - name: Run lint
+        run: npm run lint --workspaces --if-present
+
       - name: Run tests
         run: npm run test --workspaces --if-present
 

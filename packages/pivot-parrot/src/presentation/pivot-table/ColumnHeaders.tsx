@@ -2,13 +2,12 @@ import React from 'react';
 import type { SortConfig } from '../../domain/models/types';
 import { usePivotStore } from '../../application/state/store';
 import { columnPathKey } from '../../application/utils/cubeIndex';
-import { useColumnCollapse } from '../../application/hooks/useColumnCollapse';
 import { Icon } from '../shared/Icon';
 
 /**
  * Format a column header value based on field type
  */
-function formatHeaderValue(value, field, dialect, dtypes) {
+export function formatHeaderValue(value, field, dialect, dtypes) {
   if (value === null || value === undefined || value === '') return '(Blank)';
   if (typeof value === 'boolean') return String(value);
 
@@ -88,88 +87,16 @@ export function ColumnHeaders({
   styles,
   dialect,
   dtypes,
+  collapse,
   onGroupContextMenu = null
 }) {
   const sortConfig = usePivotStore((s) => s.sortConfig);
   const setSort = usePivotStore((s) => s.setSort);
-  const collapse = useColumnCollapse(data.columnConfig.groups);
   const onSort = (leaf) => setSort(nextSortForLeaf(leaf, sortConfig, data.columnConfig.valueFields || []));
   const formatMember = (member, d) => formatHeaderValue(member, data.columnConfig.colFields[d], dialect, dtypes);
   const columnName = (leaf) => leaf.columnPath?.length
     ? leaf.columnPath.map(formatMember).join(' / ')
     : leaf.isGrandTotal ? 'Grand Total' : '';
-
-  // Debug: expose leaf columns
-  if (typeof window !== 'undefined') {
-    window.debugLeafColumns = leafColumns;
-  }
-
-  // Special case: no column dimensions, just metrics
-  if (data.columnConfig.colFields.length === 0 && leafColumns.length > 0) {
-    const specialNumRows = 1; // Only 1 header row in this case
-    return (
-      <>
-        <tr style={styles.headerRow}>
-          <th style={{ ...styles.headerCell, ...styles.rowLabelHeader }} rowSpan={1}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'auto 1fr',
-              gridTemplateRows: `repeat(${specialNumRows}, 1fr)`,
-              gap: '8px',
-              height: '100%'
-            }}>
-              {/* Left column: Spans all rows, flex inside for title top + row fields bottom */}
-              <div style={{
-                gridRow: '1 / -1',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: title ? 'space-between' : 'flex-end'
-              }}>
-                {title && <span style={styles.rowLabelsTitle}>{title}</span>}
-                {rowFields && rowFields.length > 0 && (
-                  <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }} title={rowFieldLabels.join(' \\ ')}>
-                    {rowFieldLabels.join(' \\ ')}
-                  </div>
-                )}
-              </div>
-
-              {/* Right column: Column fields, one per grid row - from original config */}
-              {Array.from({ length: specialNumRows }).map((_, idx) => {
-                const fieldName = colFieldLabels[idx] || '';
-
-                return (
-                  <div key={idx} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    borderLeft: '0.5px solid var(--border-color-light)',
-                    paddingLeft: '8px'
-                  }}>
-                    {fieldName && (
-                      <div style={{ ...styles.rowFieldsHierarchy, borderTop: 'none', paddingTop: 0 }} title={fieldName}>
-                        {fieldName}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </th>
-          {leafColumns.map((leaf, i) => (
-            <HeaderCell
-              key={i}
-              leaf={leaf}
-              label={leaf.label || leaf.metric || leaf.value}
-              columnName={columnName(leaf)}
-              style={{ ...styles.headerCell, ...styles.mainHeader, boxShadow: 'inset 0.5px 0 0 0 var(--border-color-light), inset 0 0.5px 0 0 var(--border-color-light), inset 0 -1px 0 0 var(--border-color-medium)' }}
-              sortConfig={sortConfig}
-              onSort={onSort}
-            />
-          ))}
-        </tr>
-      </>
-    );
-  }
 
   // Laid out from the data, not the config: a new config shows the previous data until its results arrive.
   // When values are in rows, we don't need an extra row for metric names

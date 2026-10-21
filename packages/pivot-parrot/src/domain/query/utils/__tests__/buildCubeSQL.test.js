@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { buildCubeSQL } from '../../sql/buildCubeSQL';
 import { SQLDialect } from '../../dialects/SQLDialect';
 import { DatabricksDialect } from '../../dialects/DatabricksDialect';

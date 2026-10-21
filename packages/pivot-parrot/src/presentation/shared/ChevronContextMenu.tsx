@@ -5,7 +5,7 @@ import { useFixedPosition } from './useFixedPosition';
 /**
  * Context menu for chevron expand/collapse buttons
  */
-export function ChevronContextMenu({ x, y, onClose, onFoldLevel, onUnfoldLevel, onFoldAll, onUnfoldAll, levelName, isExpanded }) {
+export function ChevronContextMenu({ x, y, onClose, onFoldLevel, onUnfoldLevel, onFoldAll, onUnfoldAll, levelName }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(menuRef, onClose);

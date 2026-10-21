@@ -129,7 +129,7 @@ export const createFormatValue = (config, locale = 'en-US', dtypes = {}, dialect
   let num;
   try {
     num = Number(n);
-  } catch (e) {
+  } catch {
     // DuckDB BigInt proxy throws "not safe to convert" - return as string
     return String(n);
   }

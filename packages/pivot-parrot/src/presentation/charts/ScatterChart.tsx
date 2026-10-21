@@ -2,7 +2,6 @@ import React from 'react';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
-  selectChartData,
   groupData,
   sanitizeFieldName,
   getMetricLabel,

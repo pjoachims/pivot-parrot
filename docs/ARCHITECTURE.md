@@ -88,7 +88,7 @@ packages/pivot-parrot/src/
 │   │   ├── useSnapshots.ts        # Snapshot CRUD operations
 │   │   ├── useSplitPane.ts        # Split pane resize logic
 │   │   ├── useQueryProgress.ts    # Query progress tracking
-│   │   └── useDevMode.ts          # Dev tools (window.pivotDebug)
+│   │   └── useDevMode.ts          # Dev tools (window.__pivotParrot)
 │   └── utils/
 │       ├── cubeIndex.ts           # O(1) CUBE lookups via hash index
 │       ├── chartUtils.ts          # Chart data transformation

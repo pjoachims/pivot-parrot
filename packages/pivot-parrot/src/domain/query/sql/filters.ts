@@ -47,7 +47,7 @@ class Filter {
    * @param {boolean} quoteField - Whether to quote the field identifier (default: true)
    * @returns {string} SQL fragment
    */
-  toSQL(dialect: SQLDialect, quoteField: boolean = true): string | null {
+  toSQL(_dialect: SQLDialect, _quoteField: boolean = true): string | null {
     throw new Error('toSQL() must be implemented by subclass');
   }
 
@@ -457,7 +457,7 @@ class CustomFilterExpression extends Filter {
     this.isCustom = isCustom;
   }
 
-  toSQL(dialect: SQLDialect) {
+  toSQL(_dialect: SQLDialect) {
     // Custom filter expressions are already SQL, just wrap in parentheses
     // User is responsible for engine compatibility
     return `(${this.expr})`;

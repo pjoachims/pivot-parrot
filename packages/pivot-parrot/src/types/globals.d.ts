@@ -1,9 +1,4 @@
 declare global {
-  interface Window {
-    debugLeafColumns?: unknown;
-    togglePivotDebug?: () => void;
-  }
-
   interface Document {
     webkitFullscreenElement?: Element | null;
     mozFullScreenElement?: Element | null;

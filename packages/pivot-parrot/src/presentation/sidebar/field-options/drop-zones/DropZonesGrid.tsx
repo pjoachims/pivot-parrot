@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { usePivotStore } from '../../../../application/state/store';
 import { FieldKind } from '../../../../domain/models/types';
 import DropZone from './DropZone';
@@ -9,6 +9,7 @@ import { enrichValuesWithMetrics } from '../../../../application/utils/fieldUtil
 import { getFieldById } from '../../../../application/utils/getFieldById';
 import { fieldDisplayName, valueDisplayName } from '../../../../domain/field/fieldDisplayName';
 import { hasFilterValue, relativeDateLabel } from '../../../../domain/query/sql/filters';
+import { useRegisterFilterPill } from '../../filterPills';
 
 /**
  * DropZonesGrid component
@@ -31,40 +32,12 @@ export default function DropZonesGrid() {
   const setHavingFilterDialog = usePivotStore(s => s.setHavingFilterDialog);
   const setExpressionDialog = usePivotStore(s => s.setExpressionDialog);
 
-  // Pending filter open (set by handleDrop in store, handled here in component layer)
-  const pendingFilterOpen = usePivotStore(s => s.pendingFilterOpen);
-  const setPendingFilterOpen = usePivotStore(s => s.setPendingFilterOpen);
-
   // Store actions
   const handleDropAction = usePivotStore(s => s.handleDrop);
   const handleRemoveFilter = usePivotStore(s => s.handleRemoveFilter);
   const changeAggregation = usePivotStore(s => s.changeAggregation);
 
-  // Open filter dialog after a drop adds a new filter field. The pill was committed in the
-  // same store update, so it is in the DOM when this effect runs.
-  useEffect(() => {
-    if (!pendingFilterOpen) return;
-    const { fieldName, type } = pendingFilterOpen;
-    setPendingFilterOpen(null);
-
-    const anchorEl = document.querySelector(`[data-filter-field="${fieldName}"]`) as HTMLElement;
-    const fieldItem = getFieldById(fieldName, availableFields, config);
-    if (!anchorEl || !fieldItem) return;
-
-    if (type === 'having') {
-      setHavingFilterDialog({
-        field: { name: fieldItem.id },
-        existingFilter: null,
-        anchorEl
-      });
-    } else {
-      setFilterDialog({
-        field: fieldItem,
-        existingFilter: null,
-        anchorEl
-      });
-    }
-  }, [pendingFilterOpen]);
+  const registerFilterPill = useRegisterFilterPill();
 
   // Compute enriched values locally
   const enrichedValues = useMemo(
@@ -119,21 +92,12 @@ export default function DropZonesGrid() {
     }
   };
 
-  const handleFilterClick = (fieldId: string, anchorEl: HTMLElement) => {
-    console.log('[handleFilterClick] fieldId:', fieldId);
-
+  const handleFilterClick = (fieldId: string) => {
     const fieldItem = getFieldById(fieldId, availableFields, config);
     if (!fieldItem) {
       console.error(`FieldItem not found for: ${fieldId}`);
       return;
     }
-
-    console.log('[handleFilterClick] fieldItem:', {
-      id: fieldItem.id,
-      name: fieldItem.name,
-      kind: fieldItem.kind,
-      dtype: fieldItem.dtype
-    });
 
     const existingFilter = (config.filters || []).find(f => f.field === fieldId);
 
@@ -142,33 +106,30 @@ export default function DropZonesGrid() {
       case FieldKind.DERIVED_FIELD:
       case FieldKind.CUSTOM_GROUPING:
         // Regular WHERE filter
-        console.log('[handleFilterClick] fieldItem.dtype:', fieldItem.dtype, 'type:', typeof fieldItem.dtype);
         setFilterDialog({
           field: fieldItem,
           existingFilter,
-          anchorEl
+          anchorFieldId: fieldId
         });
         break;
 
       case FieldKind.AGGREGATION:
       case FieldKind.CUSTOM_METRIC:
         // HAVING filter
-        console.log('[handleFilterClick] Opening HavingFilterDialog');
         setHavingFilterDialog({
           field: { name: fieldItem.id },
           existingFilter,
-          anchorEl
+          anchorFieldId: fieldId
         });
         break;
 
-      case FieldKind.CUSTOM_FILTER:
-        // Open expression editor
-        console.log('[handleFilterClick] Opening ExpressionDialog');
+      case FieldKind.CUSTOM_FILTER: {
         const customFilter = (config.customFilters || []).find(f => f.id === fieldId);
         if (customFilter) {
           setExpressionDialog({ type: 'filter', editing: customFilter });
         }
         break;
+      }
 
       default:
         console.error(`Unexpected field kind in filters: ${fieldItem.kind}`);
@@ -210,7 +171,7 @@ export default function DropZonesGrid() {
           const name = fieldDisplayName(fieldId, config, availableFields);
 
           return (
-            <div key={fieldId} className="relative" data-filter-field={fieldId}>
+            <div key={fieldId} className="relative" data-filter-field={fieldId} ref={registerFilterPill(fieldId)}>
               <FieldItem
                 field={fieldItem}
                 label={field.type === 'relative_date' ? `${name}: ${relativeDateLabel(field.relative, field.isNot)}` : name}
@@ -218,7 +179,7 @@ export default function DropZonesGrid() {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 onRemove={handleRemoveFilter}
-                onFilterClick={(e) => handleFilterClick(fieldId, e.currentTarget.parentElement)}
+                onFilterClick={() => handleFilterClick(fieldId)}
                 onMoveToZone={(targetZone) => handleDropAction(fieldId, 'filters', targetZone, null)}
                 className={hasActiveFilter ? 'is-active' : ''}
                 onClick={undefined}

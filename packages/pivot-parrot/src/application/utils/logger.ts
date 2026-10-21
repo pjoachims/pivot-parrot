@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- the logger is the one place that writes debug and info to the console */
 /**
  * Structured logging utility
  *

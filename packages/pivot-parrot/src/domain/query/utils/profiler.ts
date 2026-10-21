@@ -50,9 +50,6 @@ class Profiler {
       const duration = performance.now() - start;
       this._recordTiming(name, duration);
 
-      if (this.verbose) {
-      }
-
       return result;
     } catch (error) {
       const duration = performance.now() - start;
@@ -76,9 +73,6 @@ class Profiler {
       const duration = performance.now() - start;
       this._recordTiming(name, duration);
 
-      if (this.verbose) {
-      }
-
       return result;
     } catch (error) {
       const duration = performance.now() - start;
@@ -99,9 +93,6 @@ class Profiler {
     return () => {
       const duration = performance.now() - start;
       this._recordTiming(name, duration);
-
-      if (this.verbose) {
-      }
     };
   }
 
@@ -190,6 +181,7 @@ class Profiler {
    * Print report as table (if console.table is available)
    */
   printTable() {
+    // eslint-disable-next-line no-console -- prints on request
     console.table(this.getReport());
   }
 

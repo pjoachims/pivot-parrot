@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildPivotDisplayData } from '../../../domain/pivot/index';
 import { buildPivotCSV, buildDataCSV, exportPivotCSV } from '../export';
 import { computeLeafColumns } from '../columnHelpers';
+import { columnPathKey } from '../cubeIndex';
 import { dataToCSV, toCSV } from '../../../domain/query/utils/csv';
 import { DuckDBDialect } from '../../../domain/query/dialects/DuckDBDialect';
 
@@ -104,8 +105,8 @@ describe('buildPivotCSV column headers with subtotals', () => {
     rows.push({ Markt, Jahr, Monat, sum_a: 1, sum_b: 2, _grouping_Markt: Markt === null ? 1 : 0, _grouping_Jahr: Jahr === null ? 1 : 0, _grouping_Monat: Monat === null ? 1 : 0 });
   }
   const values = [{ field: 'a', aggregation: 'sum' }, { field: 'b', aggregation: 'sum' }];
-  const header = (rowFields: string[], colFields: string[], levels: number) => {
-    const d = buildPivotDisplayData(rows, rowFields, colFields, values);
+  const header = (rowFields: string[], colFields: string[], levels: number, collapsed: string[] = []) => {
+    const d = buildPivotDisplayData(rows, rowFields, colFields, values, null, {}, collapsed);
     return buildPivotCSV(d, computeLeafColumns(d), rowFields, true, true, { values }).split('\n').slice(0, levels);
   };
 
@@ -114,6 +115,14 @@ describe('buildPivotCSV column headers with subtotals', () => {
       'Row Labels,2024,2024,2024,2024,2024,2024,Grand Total,Grand Total',
       ',1,1,2,2,Subtotal,Subtotal,,',
       ',sum_a,sum_b,sum_a,sum_b,sum_a,sum_b,sum_a,sum_b'
+    ]);
+  });
+
+  it('a collapsed group: its member, then blanks down to the metric names', () => {
+    expect(header(['Markt'], ['Jahr', 'Monat', 'Σ Values'], 3, [columnPathKey([2024])])).toEqual([
+      'Row Labels,2024,2024,Grand Total,Grand Total',
+      ',,,,',
+      ',sum_a,sum_b,sum_a,sum_b'
     ]);
   });
 

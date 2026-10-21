@@ -4,6 +4,7 @@ import ChartDialog from '../charts/ChartDialog';
 import SecondaryView from '../secondary/SecondaryView';
 import ErrorBanner from '../shared/ErrorBanner';
 import { usePivotStore } from '../../application/state/store';
+import type { PivotDisplayResult } from '../../application/hooks/usePivotDisplay';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import type {
   CalculationState,
@@ -17,8 +18,7 @@ interface PivotMainPanelProps {
   // Calculation data (from hooks)
   calculation: CalculationState;
 
-  // Display data (from usePivotDisplay)
-  displayData: any;
+  displayData: PivotDisplayResult | null;
 
   // Execution config (committed config that produced displayData)
   executionConfig: any;
@@ -143,7 +143,7 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
         )}
 
         {/* Display Error (e.g., too many columns) */}
-        {displayData?.error && (
+        {displayData && 'error' in displayData && (
           <ErrorBanner
             title="Display Limit Exceeded"
             message={displayData.error}
@@ -178,7 +178,7 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
         )}
 
         {/* Data Display */}
-        {displayData && !displayData.error && !calculation.calculating && (
+        {displayData && !('error' in displayData) && !calculation.calculating && (
           <>
             <div className="split-container" style={{
               display: 'flex',
@@ -248,17 +248,14 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
                     chartConfig={chartConfig}
                     cubeResults={calculation.cubeResults}
                     config={executionConfig}
-                    fields={detectedTypes}
                     dialect={dataEngine?.getDialect()}
                     dtypes={calculation.dtypes}
                     drilldownData={drilldown.drilldownData}
-                    drilldownFilters={drilldown.drilldownFilters}
                     drilldownSQL={drilldown.drilldownSQL}
                     drilldownDtypes={drilldown.drilldownDtypes}
                     drilldownDisplayMode={secondaryDisplayMode}
                     onDrilldownDisplayModeChange={handlers.handleSecondaryDisplayModeChange}
                     onDrilldownExportCSV={drilldown.exportDrilldownCSV}
-                    fieldTypes={detectedTypes}
                     locale={locale}
                     sqlQuery={sqlPlayground.sqlQuery}
                     onSQLChange={sqlPlayground.setSQLQuery}

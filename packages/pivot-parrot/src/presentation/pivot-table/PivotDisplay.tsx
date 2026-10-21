@@ -2,17 +2,16 @@ import React, { useState, useRef, useMemo, memo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { styles } from './styles';
 import { createFormatValue, createFormatRowLabel } from '../../application/utils/formatters';
-import { ColumnHeaders } from './ColumnHeaders';
+import { ColumnHeaders, formatHeaderValue } from './ColumnHeaders';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { PivotRow, renderCells } from './PivotRow';
 import PivotDisplayHeader from './PivotDisplayHeader';
 import { ContextMenu } from '../shared/ContextMenu';
 import { ChevronContextMenu } from '../shared/ChevronContextMenu';
 import { useExpansionState } from '../../application/hooks/useExpansionState';
-import { useColumnCollapse } from '../../application/hooks/useColumnCollapse';
+import { useColumnCollapse, type ColumnCollapse } from '../../application/hooks/useColumnCollapse';
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
-import { usePivotStore } from '../../application/state/store';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 const ROW_HEIGHT = 25; // Single source of truth for row height
@@ -34,23 +33,27 @@ interface PivotDisplayProps {
   onOpenSQL?: (() => void) | null;
 }
 
-const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}, dataEngine = null, rowFields, detectedTypes = {}, derivedFieldsMap = {}, availableFields = [], config = {}, stickyHeaders = true, title = '', locale = 'en-US', onDrilldown = null, onOpenSQL = null }: PivotDisplayProps) {
+// The table lives in its own component so its hooks never sit behind the empty-data return.
+const PivotDisplay = memo(function PivotDisplay(props: PivotDisplayProps) {
+  if (!props.data?.columnConfig || !props.data.rowGroups) {
+    return <div style={styles.empty}>No data to display</div>;
+  }
+  return <PivotTable {...props} />;
+});
+
+function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFields, detectedTypes = {}, derivedFieldsMap = {}, availableFields = [], config = {}, stickyHeaders = true, title = '', locale = 'en-US', onDrilldown = null, onOpenSQL = null }: PivotDisplayProps) {
     // Read display state from store (everything PivotDisplay needs is here now)
     // No more prop drilling for display state!
     const parentRef = useRef(null);
-    const [showDebug, setShowDebug] = useState(false);
 
     // Use config values for subtotals and grand totals (default to 'both' if not set)
     const subtotalsConfig = config.subtotals || 'both';
     const grandTotalsConfig = config.grandTotals || 'both';
 
     // Expansion state management
-    const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({
-        data,
-        rowFields
-    });
+    const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({ data });
 
-    const columnCollapse = useColumnCollapse(data?.columnConfig?.groups);
+    const columnCollapse = useColumnCollapse(data.columnConfig.groups, data.columnFit);
     const [columnGroupMenu, setColumnGroupMenu] = useState<{ x: number; y: number; group: unknown[] } | null>(null);
 
     // Context menu management
@@ -75,20 +78,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     const rowFieldLabels = useMemo(() => (rowFields || []).map(f => fieldDisplayName(f, config, availableFields)), [rowFields, config, availableFields]);
     const colFieldLabels = useMemo(() => (config.columns || []).map(f => fieldDisplayName(f, config, availableFields)), [config, availableFields]);
 
-    // Expose debug toggle to window for console access
-    React.useEffect(() => {
-      window.togglePivotDebug = () => {
-        setShowDebug(prev => !prev);
-      };
-      return () => {
-        delete window.togglePivotDebug;
-      };
-    }, []);
-
-    if (!data || !data.columnConfig || !data.rowGroups) {
-      return <div style={styles.empty}>No data to display</div>;
-    }
-
     // Initialize formatters with current config and locale
     const dialect = dataEngine?.getDialect();
     const formatValue = useMemo(() => createFormatValue(config, locale, dtypes, dialect), [config, locale, dtypes, dialect]);
@@ -104,10 +93,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
 
     // Calculate max depth and collect leaf columns
     const hierarchy = data.columnConfig.hierarchy || [];
-    function getMaxDepth(nodes, currentDepth=0){
-      if(!nodes || nodes.length===0) return currentDepth;
-      return Math.max(...nodes.map(n=> getMaxDepth(n.children, currentDepth+1)));
-    }
     function collectLeaves(nodes, leaves=[]){
       nodes.forEach(node=>{
         if(node.children?.length>0) collectLeaves(node.children, leaves);
@@ -121,7 +106,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       });
       return leaves;
     }
-    const maxDepth = getMaxDepth(hierarchy);
     const leafColumns = collectLeaves(hierarchy);
 
     // Flatten tree into a list of visible rows based on expanded state
@@ -149,13 +133,10 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       data.rowGroups.forEach(group => flattenNode(group, 0));
 
       return flat;
-    }, [data.rowGroups, expanded]);
+    }, [data.rowGroups, expanded, config.showNullGroups]);
 
-    // Calculate grand total row count
     // When values in rows: grandTotal is array of {metric, values} objects
     // When values in columns: grandTotal is simple array of values
-    const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
-
     // Check if grandTotal is array of metric objects (has 'metric' property)
     const isMultiMetricGrandTotal = Array.isArray(data.grandTotal) &&
                                     data.grandTotal.length > 0 &&
@@ -173,81 +154,12 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       overscan: 10  // Render 10 extra rows above/below viewport
     });
 
-  // Build rendering debug object
-  const renderDebug = {
-    settings: {
-      subtotalsConfig,
-      grandTotalsConfig,
-      showRowSubtotals,
-      showColSubtotals,
-      showGrandTotalRow,
-      showGrandTotalCol
-    },
-    columns: {
-      leafCount: leafColumns.length,
-      leaves: leafColumns.map(l => ({
-        label: l.label || l.value,
-        isSubtotal: l.isSubtotal,
-        isGrandTotal: l.isGrandTotal
-      }))
-    },
-    rows: data.rowGroups.map(r => ({
-      label: r.groupLabel,
-      depth: r.depth,
-      hasChildren: !!(r.children?.length),
-      hasValues: !!r.values,
-      hasSubtotals: !!r.subtotals,
-      subtotalsLength: r.subtotals?.length,
-      valuesLength: r.values?.length,
-      isSubtotalRow: !!(r.subtotals && r.children?.length),
-      willRenderSubtotals: !!(r.subtotals && r.children?.length && showRowSubtotals)
-    })),
-    grandTotal: {
-      exists: !!data.grandTotal,
-      willRender: !!(showGrandTotalRow && data.grandTotal),
-      length: data.grandTotal?.length
-    }
-  };
-
   // Check if we have no real grouping (just values, no rows/cols)
   const hasRealRows = rowFields && rowFields.length > 0 && rowFields.some(f => f !== SIGMA_VALUES_ID);
   const hasRealCols = data.columnConfig.colFields && data.columnConfig.colFields.length > 0 && data.columnConfig.colFields.some(f => f !== SIGMA_VALUES_ID);
   const isJustValues = !hasRealRows && !hasRealCols && data.grandTotal;
 
   return (<div style={styles.container}>
-    {/* Debug Panel */}
-    {showDebug && <div style={{
-      position: 'fixed',
-      top: '10px',
-      right: '10px',
-      background: 'rgba(0,0,0,0.8)',
-      color: 'var(--text-inverse)',
-      padding: '10px',
-      fontSize: 'var(--text-xs)',
-      fontFamily: 'monospace',
-      zIndex: 'var(--z-overlay)' as any,
-      borderRadius: '4px'
-    }}>
-      <div style={{ borderBottom: '1px solid #666', paddingBottom: '5px', marginBottom: '5px', color: '#fbbf24' }}>Sticky Headers</div>
-      <div>Sticky Enabled: {stickyHeaders ? 'YES' : 'NO'}</div>
-      <div>Scroll Top: {parentRef.current?.scrollTop || 0}px</div>
-      <div>Table Height: {rowVirtualizer.getTotalSize()}px</div>
-      <div style={{ borderBottom: '1px solid #666', paddingBottom: '5px', marginBottom: '5px', marginTop: '5px', color: '#fbbf24' }}>Virtualization</div>
-      <div>Virtualizer Count: {rowVirtualizer.options.count}</div>
-      <div>Flattened Rows: {flattenedRows.length}</div>
-      <div>Virtual Items: {rowVirtualizer.getVirtualItems().length}</div>
-      {rowVirtualizer.getVirtualItems().length > 0 && (
-        <>
-          <div>First Index: {rowVirtualizer.getVirtualItems()[0].index}</div>
-          <div>Last Index: {rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].index}</div>
-        </>
-      )}
-      <div>Total Size: {rowVirtualizer.getTotalSize()}px</div>
-      <div>ScrollHeight: {parentRef.current?.scrollHeight || 0}px</div>
-      <div>ClientHeight: {parentRef.current?.clientHeight || 0}px</div>
-      <div>Has Scroll: {(parentRef.current?.scrollHeight || 0) > (parentRef.current?.clientHeight || 0) ? 'YES' : 'NO'}</div>
-    </div>}
-
     {/* Top Bar */}
     <PivotDisplayHeader
       data={data}
@@ -256,11 +168,11 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       locale={locale}
       dtypes={dtypes}
       dialect={dialect}
-      onDrilldown={onDrilldown}
       onOpenSQL={onOpenSQL}
     />
 
     <div style={{ padding: '8px', flex: 1, width: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <ColumnFitNotice collapse={columnCollapse} groupName={group => group.map((m, d) => formatHeaderValue(m, data.columnConfig.colFields[d], dialect, dtypes)).join(' / ')} />
       <div ref={parentRef} style={styles.wrapper}>
         <div style={{ position: 'relative' }}>
           <table style={styles.table}>
@@ -283,6 +195,7 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
             styles={styles}
             dialect={dialect}
             dtypes={dtypes}
+            collapse={columnCollapse}
             onGroupContextMenu={(e, group) => setColumnGroupMenu({ x: e.clientX, y: e.clientY, group })}
           />
         </thead>
@@ -407,7 +320,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
         onFoldAll={foldAll}
         onUnfoldAll={unfoldAll}
         levelName={chevronContextMenu.fieldName || `Level ${chevronContextMenu.depth + 1}`}
-        isExpanded={chevronContextMenu.isOpen}
       />
     )}
     {columnGroupMenu && (
@@ -420,10 +332,23 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
         onFoldAll={columnCollapse.foldAll}
         onUnfoldAll={columnCollapse.unfoldAll}
         levelName={fieldDisplayName(data.columnConfig.colFields[columnGroupMenu.group.length - 1], config, availableFields)}
-        isExpanded={!columnCollapse.isCollapsed(columnGroupMenu.group)}
       />
     )}
   </div>);
-});
+}
+
+/** Why column groups show folded that the user did not collapse, or why one did not open. */
+function ColumnFitNotice({ collapse, groupName }: { collapse: ColumnCollapse; groupName: (group: unknown[]) => string }) {
+  const { autoCollapsed, refused, limit } = collapse;
+  if (!refused && autoCollapsed.length === 0) return null;
+  const folded = autoCollapsed.length === 1 ? '1 column group' : `${autoCollapsed.length} column groups`;
+  return (
+    <div role="status" style={styles.notice}>
+      {refused
+        ? `${groupName(refused)} cannot open: the table would have more than ${limit} columns. Collapse another column group first.`
+        : `${folded} collapsed to fit the ${limit}-column limit. Expand them one at a time.`}
+    </div>
+  );
+}
 
 export default PivotDisplay;
