@@ -10,6 +10,7 @@ import { filterCustomMetrics } from '../../../application/utils/fieldUtils';
 import { buildFieldItemFilters, buildWhereCondition } from '../../../domain/query/sql/sql-builder';
 import { fieldDisplayName } from '../../../domain/field/fieldDisplayName';
 import { resolveFieldExpr } from '../../../domain/field/resolveFieldExpr';
+import { useFilterPill } from '../filterPills';
 
 /**
  * DialogsManager Component
@@ -55,6 +56,9 @@ export function DialogsManager({
   const handleCreateExpression = usePivotStore(s => s.handleCreateExpression);
   const handleAddDerivedFields = usePivotStore(s => s.handleAddDerivedFields);
   const handleApplyFilter = usePivotStore(s => s.handleApplyFilter);
+
+  const filterPill = useFilterPill(filterDialog?.anchorFieldId ?? null);
+  const havingFilterPill = useFilterPill(havingFilterDialog?.anchorFieldId ?? null);
 
   // Local state for SQL preview
   const [previewSQL, setPreviewSQL] = useState<string | null>(null);
@@ -164,7 +168,7 @@ export function DialogsManager({
             displayName={fieldDisplayName(enrichedField.id || enrichedField.name, config, availableFields)}
             fieldType={arrowType}
             existingFilter={filterDialog.existingFilter}
-            anchorEl={filterDialog.anchorEl}
+            anchorEl={filterPill}
             onApply={handleApplyFilter}
             onClose={() => setFilterDialog(null)}
             activeFilters={config.filters || []}
@@ -178,7 +182,7 @@ export function DialogsManager({
           field={havingFilterDialog.field}
           displayName={fieldDisplayName(havingFilterDialog.field.name, config, availableFields)}
           existingFilter={havingFilterDialog.existingFilter}
-          anchorEl={havingFilterDialog.anchorEl}
+          anchorEl={havingFilterPill}
           onApply={handleApplyFilter}
           onClose={() => setHavingFilterDialog(null)}
         />

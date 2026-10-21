@@ -4,6 +4,7 @@ import FieldsList from './fields-list/FieldsList';
 import { FieldOptionsActions } from './FieldOptionsActions';
 import DropZonesGrid from './drop-zones/DropZonesGrid';
 import { DialogsManager } from '../dialogs/DialogsManager';
+import { FilterPillsProvider } from '../filterPills';
 
 import type { FieldItem } from '../../../domain/field/FieldItem';
 
@@ -47,14 +48,16 @@ export function FieldOptionsSection(props: FieldOptionsSectionProps) {
 
       <FieldOptionsActions />
 
-      <DropZonesGrid />
+      <FilterPillsProvider>
+        <DropZonesGrid />
 
-      <DialogsManager
-        dataEngine={dataEngine}
-        snapshots={snapshots}
-        onManualUpdate={onManualUpdate}
-        onCreateSnapshot={onCreateSnapshot}
-      />
+        <DialogsManager
+          dataEngine={dataEngine}
+          snapshots={snapshots}
+          onManualUpdate={onManualUpdate}
+          onCreateSnapshot={onCreateSnapshot}
+        />
+      </FilterPillsProvider>
     </div>
   );
 }

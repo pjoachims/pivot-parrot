@@ -83,17 +83,17 @@ interface PivotStore {
     existingDerivedFields: string[];
     position?: { x: number; y: number };
   } | null;
+  /** Each filter dialog opens beside the Filters pill of `anchorFieldId`; the dialog layer finds the pill. */
   filterDialog: {
     field: FieldItem;
     existingFilter: Filter | null;
-    anchorEl: HTMLElement;
+    anchorFieldId: string;
   } | null;
   havingFilterDialog: {
     field: { name: string };
     existingFilter: Filter | null;
-    anchorEl: HTMLElement;
+    anchorFieldId: string;
   } | null;
-  pendingFilterOpen: { fieldName: string; type: 'filter' | 'having' } | null;
   snapshotNameDialog: boolean;
 
   // ==================== Split Pane State ====================
@@ -171,7 +171,6 @@ interface PivotStore {
   setDerivedFieldDialog: (dialog: PivotStore['derivedFieldDialog']) => void;
   setFilterDialog: (dialog: PivotStore['filterDialog']) => void;
   setHavingFilterDialog: (dialog: PivotStore['havingFilterDialog']) => void;
-  setPendingFilterOpen: (pending: PivotStore['pendingFilterOpen']) => void;
   setSnapshotNameDialog: (show: boolean) => void;
 
   // ==================== Split Pane Actions ====================
@@ -261,7 +260,6 @@ const initialState = {
   derivedFieldDialog: null,
   filterDialog: null,
   havingFilterDialog: null,
-  pendingFilterOpen: null,
   snapshotNameDialog: false,
 
   // Split Pane
@@ -462,8 +460,6 @@ export function createPivotStore(instanceKey: string = 'default') {
       setHavingFilterDialog: (dialog) =>
         set({ havingFilterDialog: dialog }, false, 'setHavingFilterDialog'),
 
-      setPendingFilterOpen: (pending) =>
-        set({ pendingFilterOpen: pending }, false, 'setPendingFilterOpen'),
 
       setSnapshotNameDialog: (show) =>
         set({ snapshotNameDialog: show }, false, 'setSnapshotNameDialog'),
@@ -533,12 +529,13 @@ export function createPivotStore(instanceKey: string = 'default') {
 
         const updates: Partial<PivotStore> = { config: result.config };
 
-        // Signal the component layer to open the filter dialog after render
-        if ((result.shouldOpenFilterDialog || result.shouldOpenHavingDialog) && result.fieldName) {
-          updates.pendingFilterOpen = {
-            fieldName: result.fieldName,
-            type: result.shouldOpenHavingDialog ? 'having' : 'filter'
-          };
+        const opened = (result.shouldOpenFilterDialog || result.shouldOpenHavingDialog) && result.fieldName
+          ? getFieldById(result.fieldName, state.availableFields, result.config)
+          : null;
+        if (opened) {
+          const dialog = { existingFilter: null, anchorFieldId: result.fieldName };
+          if (result.shouldOpenHavingDialog) updates.havingFilterDialog = { ...dialog, field: { name: opened.id } };
+          else updates.filterDialog = { ...dialog, field: opened };
         }
 
         set(updates, false, 'handleDrop');
