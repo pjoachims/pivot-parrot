@@ -38,7 +38,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     // Read display state from store (everything PivotDisplay needs is here now)
     // No more prop drilling for display state!
     const parentRef = useRef(null);
-    const [showDebug, setShowDebug] = useState(false);
 
     // Use config values for subtotals and grand totals (default to 'both' if not set)
     const subtotalsConfig = config.subtotals || 'both';
@@ -74,16 +73,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     const colFields = config.columns || [];
     const rowFieldLabels = useMemo(() => (rowFields || []).map(f => fieldDisplayName(f, config, availableFields)), [rowFields, config, availableFields]);
     const colFieldLabels = useMemo(() => (config.columns || []).map(f => fieldDisplayName(f, config, availableFields)), [config, availableFields]);
-
-    // Expose debug toggle to window for console access
-    React.useEffect(() => {
-      window.togglePivotDebug = () => {
-        setShowDebug(prev => !prev);
-      };
-      return () => {
-        delete window.togglePivotDebug;
-      };
-    }, []);
 
     if (!data || !data.columnConfig || !data.rowGroups) {
       return <div style={styles.empty}>No data to display</div>;
@@ -173,81 +162,12 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       overscan: 10  // Render 10 extra rows above/below viewport
     });
 
-  // Build rendering debug object
-  const renderDebug = {
-    settings: {
-      subtotalsConfig,
-      grandTotalsConfig,
-      showRowSubtotals,
-      showColSubtotals,
-      showGrandTotalRow,
-      showGrandTotalCol
-    },
-    columns: {
-      leafCount: leafColumns.length,
-      leaves: leafColumns.map(l => ({
-        label: l.label || l.value,
-        isSubtotal: l.isSubtotal,
-        isGrandTotal: l.isGrandTotal
-      }))
-    },
-    rows: data.rowGroups.map(r => ({
-      label: r.groupLabel,
-      depth: r.depth,
-      hasChildren: !!(r.children?.length),
-      hasValues: !!r.values,
-      hasSubtotals: !!r.subtotals,
-      subtotalsLength: r.subtotals?.length,
-      valuesLength: r.values?.length,
-      isSubtotalRow: !!(r.subtotals && r.children?.length),
-      willRenderSubtotals: !!(r.subtotals && r.children?.length && showRowSubtotals)
-    })),
-    grandTotal: {
-      exists: !!data.grandTotal,
-      willRender: !!(showGrandTotalRow && data.grandTotal),
-      length: data.grandTotal?.length
-    }
-  };
-
   // Check if we have no real grouping (just values, no rows/cols)
   const hasRealRows = rowFields && rowFields.length > 0 && rowFields.some(f => f !== SIGMA_VALUES_ID);
   const hasRealCols = data.columnConfig.colFields && data.columnConfig.colFields.length > 0 && data.columnConfig.colFields.some(f => f !== SIGMA_VALUES_ID);
   const isJustValues = !hasRealRows && !hasRealCols && data.grandTotal;
 
   return (<div style={styles.container}>
-    {/* Debug Panel */}
-    {showDebug && <div style={{
-      position: 'fixed',
-      top: '10px',
-      right: '10px',
-      background: 'rgba(0,0,0,0.8)',
-      color: 'var(--text-inverse)',
-      padding: '10px',
-      fontSize: 'var(--text-xs)',
-      fontFamily: 'monospace',
-      zIndex: 'var(--z-overlay)' as any,
-      borderRadius: '4px'
-    }}>
-      <div style={{ borderBottom: '1px solid #666', paddingBottom: '5px', marginBottom: '5px', color: '#fbbf24' }}>Sticky Headers</div>
-      <div>Sticky Enabled: {stickyHeaders ? 'YES' : 'NO'}</div>
-      <div>Scroll Top: {parentRef.current?.scrollTop || 0}px</div>
-      <div>Table Height: {rowVirtualizer.getTotalSize()}px</div>
-      <div style={{ borderBottom: '1px solid #666', paddingBottom: '5px', marginBottom: '5px', marginTop: '5px', color: '#fbbf24' }}>Virtualization</div>
-      <div>Virtualizer Count: {rowVirtualizer.options.count}</div>
-      <div>Flattened Rows: {flattenedRows.length}</div>
-      <div>Virtual Items: {rowVirtualizer.getVirtualItems().length}</div>
-      {rowVirtualizer.getVirtualItems().length > 0 && (
-        <>
-          <div>First Index: {rowVirtualizer.getVirtualItems()[0].index}</div>
-          <div>Last Index: {rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].index}</div>
-        </>
-      )}
-      <div>Total Size: {rowVirtualizer.getTotalSize()}px</div>
-      <div>ScrollHeight: {parentRef.current?.scrollHeight || 0}px</div>
-      <div>ClientHeight: {parentRef.current?.clientHeight || 0}px</div>
-      <div>Has Scroll: {(parentRef.current?.scrollHeight || 0) > (parentRef.current?.clientHeight || 0) ? 'YES' : 'NO'}</div>
-    </div>}
-
     {/* Top Bar */}
     <PivotDisplayHeader
       data={data}

@@ -99,11 +99,6 @@ export function ColumnHeaders({
     ? leaf.columnPath.map(formatMember).join(' / ')
     : leaf.isGrandTotal ? 'Grand Total' : '';
 
-  // Debug: expose leaf columns
-  if (typeof window !== 'undefined') {
-    window.debugLeafColumns = leafColumns;
-  }
-
   // Special case: no column dimensions, just metrics
   if (data.columnConfig.colFields.length === 0 && leafColumns.length > 0) {
     const specialNumRows = 1; // Only 1 header row in this case
