@@ -81,15 +81,8 @@ export function populateNodeValues(nodes, sqlRows, rowFields, columnOutline, col
         return lookupCubeValue(cubeIndex, hash, col.metric);
       });
 
-      // Parent nodes get subtotals ONLY at depth 0 (grand total) and depth 1 (first dimension)
-      if (hasChildren) {
-        if (node.depth === 0 || node.depth === 1) {
-          node.subtotals = valuesArray;
-        }
-        node.values = null;  // Parent nodes don't show values directly
-      } else {
-        node.values = valuesArray;
-      }
+      node.subtotals = hasChildren ? valuesArray : undefined;
+      node.values = hasChildren ? null : valuesArray;
     }
 
     // Recursively populate children
