@@ -220,7 +220,7 @@ export class DataEngine {
    * @param {Object} options - Query options (timeout, etc.)
    * @returns {Promise<Object>} Query result
    */
-  protected async _executeQueryImpl(sql: string, options: any = {}): Promise<QueryResult> {
+  protected async _executeQueryImpl(sql: string, _options: any = {}): Promise<QueryResult> {
     throw new Error('DataEngine._executeQueryImpl() must be implemented by subclass');
   }
 
@@ -230,7 +230,7 @@ export class DataEngine {
    * @returns {Promise<Array>} Array of column definitions:
    *   [{name: string, type: string, nullable: boolean}, ...]
    */
-  async getSchema(tableName: string): Promise<any[]> {
+  async getSchema(_tableName: string): Promise<any[]> {
     throw new Error('DataEngine.getSchema() must be implemented by subclass');
   }
 
@@ -240,7 +240,7 @@ export class DataEngine {
    * @param {string} tableName - Table name to create
    * @returns {Promise<any>} Schema information
    */
-  async loadArrowBytes(bytes: Uint8Array | ArrayBuffer, tableName: string): Promise<any> {
+  async loadArrowBytes(_bytes: Uint8Array | ArrayBuffer, _tableName: string): Promise<any> {
     throw new Error('DataEngine.loadArrowBytes() is only supported by DuckDBWASMEngine');
   }
 
@@ -250,7 +250,7 @@ export class DataEngine {
    * @param {string} tableName - Table name to create
    * @returns {Promise<any>} Schema information
    */
-  async loadArrow(arrowTable: any, tableName: string): Promise<any> {
+  async loadArrow(_arrowTable: any, _tableName: string): Promise<any> {
     throw new Error('DataEngine.loadArrow() is only supported by DuckDBWASMEngine');
   }
 
@@ -260,7 +260,7 @@ export class DataEngine {
    * @param {string} tableName - Table name to create
    * @returns {Promise<any>} Schema information
    */
-  async loadCSV(csvData: string, tableName: string): Promise<any> {
+  async loadCSV(_csvData: string, _tableName: string): Promise<any> {
     throw new Error('DataEngine.loadCSV() is only supported by DuckDBWASMEngine');
   }
 
@@ -342,7 +342,7 @@ export class DataEngine {
    *   silently fall back to row-shaped data - callers should adapt via columnarResult.ts
    * @returns {Promise<Object>} Drilldown result
    */
-  async executeDrilldown(filters, tableName = this.defaultTable, limit = 10000, detectedTypes = {}, timeout = null, availableFields = [], customGroupings = [], customFilters = [], format: 'rows' | 'arrow' = 'rows') {
+  async executeDrilldown(filters, tableName = this.defaultTable, limit = 10000, _detectedTypes = {}, timeout = null, availableFields = [], customGroupings = [], customFilters = [], format: 'rows' | 'arrow' = 'rows') {
     const dialect = this.getDialect();
 
     // Resolve custom grouping/filter expressions in drilldown filters
@@ -404,7 +404,7 @@ export class DataEngine {
    * @param {Array} schema - Schema from getSchema()
    * @returns {Object} Field type mapping {fieldName: 'integer'|'numeric'|'date'|'timestamp'|'string'|...}
    */
-  detectFieldTypes(schema): Record<string, string> {
+  detectFieldTypes(_schema): Record<string, string> {
     throw new Error('DataEngine.detectFieldTypes() must be implemented by subclass');
   }
 

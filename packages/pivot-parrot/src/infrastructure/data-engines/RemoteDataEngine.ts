@@ -1,6 +1,6 @@
 import { DataEngine } from './DataEngine';
 import { SQLDialect, DuckDBDialect, DatabricksDialect } from '../../domain/query/dialects/index';
-import { FieldItem, fromSchema } from '../../domain/field/FieldItem';
+import { fromSchema } from '../../domain/field/FieldItem';
 
 /**
  * RemoteDataEngine - Generic remote backend implementation
@@ -145,7 +145,7 @@ export class RemoteDataEngine extends DataEngine {
       if (this.cancelQueryCallback) {
         try {
           this.cancelQueryCallback();
-        } catch (e) {
+        } catch {
           // Ignore cancel errors
         }
       }
@@ -243,7 +243,7 @@ export class RemoteDataEngine extends DataEngine {
       try {
         this.cancelQueryCallback();
         cancelled = true;
-      } catch (e) {
+      } catch {
         // Ignore cancel errors
       }
     }
@@ -341,7 +341,7 @@ export class RemoteDataEngine extends DataEngine {
           action: 'closeSession',
           sessionId: this.sessionId
         });
-      } catch (e) {
+      } catch {
         // Ignore errors on close
       }
     }
