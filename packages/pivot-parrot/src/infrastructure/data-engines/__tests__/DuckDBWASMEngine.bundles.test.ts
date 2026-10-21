@@ -6,13 +6,13 @@ const JSDELIVR = {
   eh: { mainModule: 'https://cdn.jsdelivr.net/duckdb-eh.wasm', mainWorker: 'https://cdn.jsdelivr.net/duckdb-browser-eh.worker.js' }
 };
 
-function fakeDuckDB() {
+function fakeDuckDB(platform: 'eh' | 'mvp' = 'eh') {
   const instantiate = vi.fn().mockResolvedValue(undefined);
   return {
     instantiate,
     module: {
       getJsDelivrBundles: vi.fn(() => JSDELIVR),
-      selectBundle: vi.fn(async (bundles: any) => ({ ...bundles.eh, pthreadWorker: null })),
+      selectBundle: vi.fn(async (bundles: any) => ({ ...bundles[platform], pthreadWorker: null })),
       VoidLogger: class {},
       AsyncDuckDB: class {
         instantiate = instantiate;
@@ -58,5 +58,15 @@ describe('DuckDBWASMEngine bundles', () => {
 
     expect(duckdb.module.getJsDelivrBundles).toHaveBeenCalled();
     expect(duckdb.instantiate).toHaveBeenCalledWith(JSDELIVR.eh.mainModule, null);
+  });
+
+  it('passes a jsDelivr mvp fallback through unchanged next to a local eh build', async () => {
+    const duckdb = fakeDuckDB('mvp');
+    const bundles = { mvp: JSDELIVR.mvp, eh: { mainModule: '/assets/duckdb-eh.wasm', mainWorker: '/assets/duckdb-browser-eh.worker.js' } };
+
+    await new DuckDBWASMEngine(duckdb.module, { bundles }).init();
+
+    expect(duckdb.instantiate).toHaveBeenCalledWith(JSDELIVR.mvp.mainModule, null);
+    expect(workerScripts).toEqual([`importScripts("${JSDELIVR.mvp.mainWorker}");`]);
   });
 });

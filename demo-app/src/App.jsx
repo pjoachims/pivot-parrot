@@ -1,15 +1,15 @@
 import { useState, useRef } from 'react';
 import * as duckdb from '@duckdb/duckdb-wasm';
-import duckdbMvpWasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
-import duckdbMvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
 import duckdbEhWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import duckdbEhWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 import { Pivot } from 'pivot-parrot';
 // CSS is now bundled into the JS automatically - no need to import separately
 import { SAMPLE_DATA } from './sampleData';
 
+// Browsers with wasm exception handling (all current ones) load eh from the page.
+// Only older browsers fall back to mvp, so it stays on jsDelivr instead of adding 38 MB to the deploy.
 const DUCKDB_BUNDLES = {
-  mvp: { mainModule: duckdbMvpWasm, mainWorker: duckdbMvpWorker },
+  mvp: duckdb.getJsDelivrBundles().mvp,
   eh: { mainModule: duckdbEhWasm, mainWorker: duckdbEhWorker }
 };
 
