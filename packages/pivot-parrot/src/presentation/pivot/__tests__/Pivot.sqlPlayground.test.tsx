@@ -41,7 +41,7 @@ const remoteConfig = (key: string, engine: any, settings: Record<string, unknown
   ({ instanceKey: key, mode: 'remote', dataEngine: engine, initialConfig: view, settings: { autoUpdate: true, ...settings } }) as any;
 
 async function runInPlayground(sql: string) {
-  fireEvent.click(screen.getByRole('button', { name: 'SQL Playground' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'SQL Playground' }));
   const editor = await screen.findByLabelText('SQL query');
   fireEvent.change(editor, { target: { value: sql } });
   fireEvent.keyDown(editor, { key: 'Enter', ctrlKey: true });

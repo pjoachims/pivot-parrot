@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import type { GridApi, GridReadyEvent } from 'ag-grid-community';
 import { Icon } from '../shared/Icon';
 import { gridColumnDef } from '../shared/gridColumn';
 import { usePivotStore } from '../../application/state/store';
@@ -26,7 +27,8 @@ export default function SQLPlayground({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
-  const gridRef = useRef(null);
+  // Set from onGridReady only: a ref on the component would be nulled by React when the grid unmounts.
+  const gridApi = useRef<GridApi | null>(null);
   const [AgGridReact, setAgGridReact] = useState(null);
   const [gridLoaded, setGridLoaded] = useState(false);
 
@@ -74,18 +76,19 @@ export default function SQLPlayground({
   }), []);
 
   // Autosize columns when grid is ready
-  const onGridReady = (params) => {
-    gridRef.current = params.api;
+  const onGridReady = (params: GridReadyEvent) => {
+    gridApi.current = params.api;
     params.api.sizeColumnsToFit();
   };
 
   // Autosize on data change
   useEffect(() => {
-    if (gridRef.current && results && results.numRows > 0) {
-      setTimeout(() => {
-        gridRef.current.sizeColumnsToFit();
-      }, 100);
-    }
+    if (!results || results.numRows === 0) return;
+    const timer = setTimeout(() => {
+      const api = gridApi.current;
+      if (api && !api.isDestroyed()) api.sizeColumnsToFit();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [results]);
 
   const handleExecute = async () => {
@@ -211,7 +214,6 @@ export default function SQLPlayground({
           </div>
         ) : rowCount > 0 ? (
           <AgGridReact
-            ref={gridRef}
             rowData={rowData}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
