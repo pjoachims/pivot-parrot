@@ -74,6 +74,19 @@ export function checkboxTargetZone(
   return kind === FieldKind.BASE_FIELD && isNumericType(detectedTypes[fieldName]) ? 'values' : 'rows';
 }
 
+type DimensionZone = 'rows' | 'columns' | 'filters';
+const DIMENSION_ZONES: DimensionZone[] = ['rows', 'columns', 'filters'];
+
+function isDimensionZone(zone: string | null): zone is DimensionZone {
+  return DIMENSION_ZONES.includes(zone as DimensionZone);
+}
+
+function removeFromZone(config: PivotTableConfig, zone: DimensionZone, fieldName: string): PivotTableConfig {
+  return zone === 'filters'
+    ? { ...config, filters: (config.filters || []).filter(f => f.field !== fieldName) }
+    : { ...config, [zone]: config[zone].filter(f => f !== fieldName) };
+}
+
 export function buildHandleDrop(
   config: PivotTableConfig,
   availableFields: FieldItem[],
@@ -92,12 +105,8 @@ export function buildHandleDrop(
 
     // Step 2: Remove from source
     let newConfig = { ...config };
-    if (sourceZone === 'rows') {
-      newConfig.rows = config.rows.filter(f => f !== fieldName);
-    } else if (sourceZone === 'columns') {
-      newConfig.columns = config.columns.filter(f => f !== fieldName);
-    } else if (sourceZone === 'filters') {
-      newConfig.filters = (config.filters || []).filter(f => f.field !== fieldName);
+    if (isDimensionZone(sourceZone)) {
+      newConfig = removeFromZone(newConfig, sourceZone, fieldName);
     } else if (sourceZone === 'values') {
       if (sourceIndex !== null && sourceIndex >= 0 && sourceIndex < config.values.length) {
         newConfig.values = config.values.filter((_, valueIndex) => valueIndex !== sourceIndex);
@@ -119,14 +128,19 @@ export function buildHandleDrop(
     // Step 4: Add to target zone
     const insertAt = index !== null ? index : 0;
 
-    if (targetZone === 'rows' || targetZone === 'columns') {
-      // Validate: measures can't go to dimension zones
-      if (isMeasure) {
-        return { config, shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
+    if (isMeasure && (targetZone === 'rows' || targetZone === 'columns')) {
+      return { config, shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
+    }
+
+    // A field sits in at most one of Rows, Columns and Filters, so dropping it into one moves it
+    // there whatever the source; Values may hold it alongside.
+    if (isDimensionZone(targetZone)) {
+      for (const zone of DIMENSION_ZONES) {
+        if (zone !== targetZone) newConfig = removeFromZone(newConfig, zone, fieldName);
       }
-      // A dimension sits on one axis once; dropping it again moves it.
-      const otherZone = targetZone === 'rows' ? 'columns' : 'rows';
-      newConfig[otherZone] = newConfig[otherZone].filter(f => f !== fieldName);
+    }
+
+    if (targetZone === 'rows' || targetZone === 'columns') {
       newConfig[targetZone] = insertOnce(config[targetZone], fieldName, insertAt, f => f === fieldName);
 
     } else if (targetZone === 'values') {
