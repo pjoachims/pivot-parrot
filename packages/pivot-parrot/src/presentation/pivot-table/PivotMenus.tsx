@@ -64,21 +64,20 @@ export function SortMenu({
           </select>
         </div>
       </div>
-      <div className="pp-row" style={{ padding: 'var(--space-2) var(--space-3) 0', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span className="pp-label" title={columnLabel} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {columnLabel}
-        </span>
-        {columnPath && (
+      <div className="pp-label" title={columnLabel} style={{ padding: 'var(--space-2) var(--space-3) 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {columnLabel}
+      </div>
+      {columnPath && (
+        <div style={{ padding: 'var(--space-1) var(--space-3) 0' }}>
           <button
             type="button"
             className="pp-btn pp-btn--quiet pp-btn--sm"
-            style={{ flexShrink: 0 }}
             onClick={() => onSortChange({ valueKey: sortConfig.valueKey, direction: sortConfig.direction })}
           >
             Use Grand Total
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
