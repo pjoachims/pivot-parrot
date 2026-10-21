@@ -22,6 +22,7 @@ export function SortMenu({
   };
 
   const columnPath = sortConfig.valueKey && sortConfig.columnPath?.length ? sortConfig.columnPath : null;
+  const columnLabel = `In column: ${columnPath ? columnPath.map(m => (m === null || m === '' ? '(Blank)' : String(m))).join(' / ') : 'Grand Total'}`;
 
   const valueFields = data?.columnConfig?.valueFields || [];
 
@@ -36,7 +37,7 @@ export function SortMenu({
   }
 
   return (
-    <div className="pp-menu" style={{ minWidth: '240px', paddingBottom: 'var(--space-3)' }} onClick={(e) => e.stopPropagation()}>
+    <div className="pp-menu" style={{ minWidth: '240px', maxWidth: '320px', paddingBottom: 'var(--space-3)' }} onClick={(e) => e.stopPropagation()}>
       <div className="pp-menu-title">Sort Rows</div>
       <div className="pp-row" style={{ padding: 'var(--space-1) var(--space-3) 0' }}>
         <div className="pp-field">
@@ -64,13 +65,14 @@ export function SortMenu({
         </div>
       </div>
       <div className="pp-row" style={{ padding: 'var(--space-2) var(--space-3) 0', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span className="pp-label">
-          In column: {columnPath ? columnPath.map(m => (m === null || m === '' ? '(Blank)' : String(m))).join(' / ') : 'Grand Total'}
+        <span className="pp-label" title={columnLabel} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {columnLabel}
         </span>
         {columnPath && (
           <button
             type="button"
             className="pp-btn pp-btn--quiet pp-btn--sm"
+            style={{ flexShrink: 0 }}
             onClick={() => onSortChange({ valueKey: sortConfig.valueKey, direction: sortConfig.direction })}
           >
             Use Grand Total
