@@ -101,9 +101,9 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
   // Use useMemo so engines update when config changes
   const queryEngine = useMemo(() => cfg.dataEngine, [cfg.dataEngine]);
   const dataEngine = useMemo(() => {
-    if (cfg.duckdb) return new DuckDBWASMEngine(cfg.duckdb);
+    if (cfg.duckdb) return new DuckDBWASMEngine(cfg.duckdb, { bundles: cfg.duckdbBundles });
     return cfg.dataEngine;
-  }, [cfg.duckdb, cfg.dataEngine]);
+  }, [cfg.duckdb, cfg.duckdbBundles, cfg.dataEngine]);
 
   // Dispose of engines constructed by this component (cfg.duckdb was
   // provided, so the memo above built a fresh DuckDBWASMEngine) when

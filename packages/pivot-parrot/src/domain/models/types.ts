@@ -1,3 +1,4 @@
+import type { DuckDBBundles } from '@duckdb/duckdb-wasm';
 import { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import type { FieldItem as PivotFieldItem } from '../field/FieldItem';
 
@@ -236,6 +237,7 @@ export interface PivotConfig {
   // Data & Engine
   dataEngine?: DataEngine;
   duckdb?: DuckDBInstance;  // Legacy DuckDB WASM module
+  duckdbBundles?: DuckDBBundles;  // Where `duckdb` loads its wasm and worker files from; jsDelivr when absent
   data?: DataInput;         // Arrow bytes, CSV, JSON, etc.
   mode?: 'local' | 'remote';
 

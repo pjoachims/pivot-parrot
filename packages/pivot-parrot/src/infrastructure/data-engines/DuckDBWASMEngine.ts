@@ -1,4 +1,5 @@
-import { DataEngine } from './DataEngine';
+import type { DuckDBBundles } from '@duckdb/duckdb-wasm';
+import { DataEngine, type DataEngineOptions } from './DataEngine';
 import { DuckDBDialect } from '../../domain/query/dialects/index';
 import { fromSchema } from '../../domain/field/FieldItem';
 
@@ -12,16 +13,23 @@ import { fromSchema } from '../../domain/field/FieldItem';
  * - Full in-browser OLAP operations
  */
 
+export interface DuckDBWASMEngineOptions extends DataEngineOptions {
+  /** Where to load the DuckDB wasm and worker files from; jsDelivr when absent. */
+  bundles?: DuckDBBundles;
+}
+
 export class DuckDBWASMEngine extends DataEngine {
   public duckdb: any;
+  protected _bundles: DuckDBBundles | undefined;
   public db: any;
   public conn: any;
   protected _loadingLock: Map<string, Promise<void>>;
   protected _dialect: DuckDBDialect;
 
-  constructor(duckdb: any, options: any = {}) {
+  constructor(duckdb: any, { bundles, ...options }: DuckDBWASMEngineOptions = {}) {
     super(options); // Initialize base class with cache, tracking, etc.
     this.duckdb = duckdb;
+    this._bundles = bundles;
     this.db = null;
     this.conn = null;
 
@@ -46,18 +54,19 @@ export class DuckDBWASMEngine extends DataEngine {
   async init() {
     if (this.db && this.conn) return; // Already initialized
 
-    const JSDELIVR_BUNDLES = this.duckdb.getJsDelivrBundles();
-    const bundle = await this.duckdb.selectBundle(JSDELIVR_BUNDLES);
+    const bundle = await this.duckdb.selectBundle(this._bundles ?? this.duckdb.getJsDelivrBundles());
+    // The worker runs from a blob: URL, so a root-relative bundle path would not resolve inside it.
+    const absolute = (url: string | null) => url && new URL(url, document.baseURI).href;
 
     // Use Blob URL to avoid CORS issues with CDN workers
     const workerUrl = URL.createObjectURL(
-      new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" })
+      new Blob([`importScripts("${absolute(bundle.mainWorker)}");`], { type: "text/javascript" })
     );
     const worker = new Worker(workerUrl);
     const logger = new this.duckdb.VoidLogger();
 
     this.db = new this.duckdb.AsyncDuckDB(logger, worker);
-    await this.db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    await this.db.instantiate(absolute(bundle.mainModule), absolute(bundle.pthreadWorker));
 
     this.conn = await this.db.connect();
   }

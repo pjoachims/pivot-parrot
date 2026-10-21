@@ -109,6 +109,24 @@ import * as duckdb from '@duckdb/duckdb-wasm';
 <Pivot config={{ mode: 'local', duckdb, data: arrowBytes }} />
 ```
 
+DuckDB loads its wasm and worker files from jsDelivr by default. To serve them yourself, for example offline, pass `duckdbBundles`. DuckDB picks the `eh` build when the browser supports wasm exception handling, which every current browser does, and falls back to `mvp` otherwise. Each build is over 30 MB, so serving only `eh` and leaving `mvp` on jsDelivr keeps the deploy small. With Vite:
+
+```jsx
+import ehWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
+import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
+
+const duckdbBundles = {
+  mvp: duckdb.getJsDelivrBundles().mvp,
+  eh: { mainModule: ehWasm, mainWorker: ehWorker },
+};
+
+<Pivot config={{ mode: 'local', duckdb, duckdbBundles, data: arrowBytes }} />
+```
+
+To work fully offline in older browsers too, import `duckdb-mvp.wasm` and `duckdb-browser-mvp.worker.js` the same way for `mvp`.
+
+Define `duckdbBundles` outside the component. A new object on every render restarts DuckDB.
+
 `config.settings` takes, among others:
 
 - `autoUpdate` (default `true`): re-run the pivot on every layout change.

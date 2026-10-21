@@ -48,6 +48,38 @@ describe('handleDrop keeps a dimension in one place', () => {
   });
 });
 
+describe('rows, columns and filters hold a field at most once among them', () => {
+  it('moves a row field to Filters when it is sent there from the list', () => {
+    const result = buildHandleDrop(config({ rows: ['region'], columns: [] }), available, types)('region', 'available', 'filters', null);
+    expect(result.config.rows).toEqual([]);
+    expect(result.config.filters).toEqual([{ field: 'region', type: 'equal' }]);
+    expect(result.shouldOpenFilterDialog).toBe(true);
+  });
+
+  it('moves a column field to Filters when it is sent there from the list', () => {
+    const { config: c } = buildHandleDrop(config(), available, types)('region', 'available', 'filters', 0);
+    expect(c.columns).toEqual([]);
+    expect(c.filters.map((f: any) => f.field)).toEqual(['region']);
+  });
+
+  it('drops the filter of a field sent from the list to rows, as dragging it out of Filters does', () => {
+    const base = config({ filters: [{ field: 'shop', type: 'in', values: ['A'] }] });
+    const drop = buildHandleDrop(base, available, types);
+    const fromList = drop('shop', 'available', 'rows', 1).config;
+    expect(fromList.rows).toEqual(['city', 'shop']);
+    expect(fromList.filters).toEqual([]);
+    expect(fromList).toEqual(drop('shop', 'filters', 'rows', 1, 0).config);
+  });
+
+  it('keeps the field in Values when it moves to Filters', () => {
+    const base = config({ rows: ['sales'], columns: [], values: [{ field: 'sales', aggregation: 'Sum' }] });
+    const { config: c } = buildHandleDrop(base, available, types)('sales', 'available', 'filters', 0);
+    expect(c.rows).toEqual([]);
+    expect(c.values).toEqual([{ field: 'sales', aggregation: 'Sum' }]);
+    expect(c.filters.map((f: any) => f.field)).toEqual(['sales']);
+  });
+});
+
 describe('an aggregation moved from Values to Filters stays one field', () => {
   const withQty = () => config({ values: [{ field: 'qty', aggregation: 'Sum' }] });
   const typesWithQty = { ...types, qty: 'int64' };

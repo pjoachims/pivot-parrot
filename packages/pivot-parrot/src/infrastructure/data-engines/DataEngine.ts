@@ -2,7 +2,7 @@ import { Mutex } from 'async-mutex';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { profiler } from '../../domain/query/utils/profiler';
 
-interface DataEngineOptions {
+export interface DataEngineOptions {
   cacheSize?: number;
   defaultTable?: string;
 }
