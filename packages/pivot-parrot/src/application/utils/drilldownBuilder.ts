@@ -131,15 +131,14 @@ function buildColumnFilters(
 ): DimensionFilter[] {
   const filters: DimensionFilter[] = [];
 
-  if (!leaf.path || !colFields) return filters;
+  if (!leaf.columnPath || !colFields) return filters;
 
-  colFields.forEach((field, index) => {
-    const fieldName = extractFieldName(field);
-    if (fieldName === SIGMA_VALUES_ID || leaf.path[index] === undefined) return;
+  colFields.map(extractFieldName).filter(f => f !== SIGMA_VALUES_ID).forEach((fieldName, index) => {
+    if (leaf.columnPath[index] === undefined) return;
 
     const sqlExpr = getDerivedFieldSQL(fieldName, availableFields, derivedFieldsMap, config);
     const sourceField = getSourceField(fieldName, derivedFieldsMap);
-    const value = leaf.path[index];
+    const value = leaf.columnPath[index];
     const typeName = resolveTypeName(fieldName, dtypes, config);
 
     filters.push({
