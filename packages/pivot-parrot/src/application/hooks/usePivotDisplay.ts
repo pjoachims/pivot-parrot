@@ -1,6 +1,11 @@
 import { useMemo, useRef } from 'react';
-import { buildPivotDisplayData } from '../../domain/pivot';
+import { buildPivotDisplayData, countDisplayColumns, type PivotDisplayData } from '../../domain/pivot';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
+
+const MAX_COLUMNS = 100;
+
+/** The table to show, or why it is not shown. */
+export type PivotDisplayResult = PivotDisplayData | { error: string };
 
 /**
  * Custom hook to build pivot display from query results
@@ -18,8 +23,8 @@ export function usePivotDisplay(
   enrichedValues: any[],
   sortConfig: any,
   collapsedColumns: string[] = []
-) {
-  const lastDisplayRef = useRef<any>(null);
+): PivotDisplayResult | null {
+  const lastDisplayRef = useRef<PivotDisplayResult | null>(null);
 
   return useMemo(() => {
     if (!queryResult || !executionConfig) return null;
@@ -42,21 +47,16 @@ export function usePivotDisplay(
     const rowFieldNames = executionConfig.rows.map((f: any) => typeof f === 'string' ? f : f.id);
     const colFieldNames = executionConfig.columns.map((f: any) => typeof f === 'string' ? f : f.id);
 
-    // Check column count BEFORE building display
-    const MAX_COLUMNS = 100;
-    if (colFieldNames.length > 0) {
-      const uniqueColCombos = new Set();
-      cubeResults.forEach((row: any) => {
-        const colKey = colFieldNames.map((field: string) => row[field]).join('|');
-        uniqueColCombos.add(colKey);
+    // Count the columns before the full build: a too-wide table is never built
+    if (colFieldNames.some((f: string) => f !== SIGMA_VALUES_ID)) {
+      const { subtotals = 'both', grandTotals = 'both' } = executionConfig;
+      const columnCount = countDisplayColumns(cubeResults, rowFieldNames, colFieldNames, enrichedValues, collapsedColumns, {
+        showColSubtotals: subtotals === 'col' || subtotals === 'both',
+        showGrandTotalCol: grandTotals === 'col' || grandTotals === 'both'
       });
-
-      const metricsPerMember = rowFieldNames.includes(SIGMA_VALUES_ID) ? 1 : enrichedValues.length;
-      const estimatedColumns = uniqueColCombos.size * metricsPerMember;
-      if (estimatedColumns > MAX_COLUMNS) {
-        // Return error object instead of throwing (prevents React crash)
+      if (columnCount > MAX_COLUMNS) {
         return {
-          error: `Too many columns to display (~${estimatedColumns.toLocaleString()}). Maximum is ${MAX_COLUMNS}. Try adding filters or reducing column fields.`
+          error: `Too many columns to display (${columnCount.toLocaleString()}). Maximum is ${MAX_COLUMNS}. Try adding filters, collapsing column groups or reducing column fields.`
         };
       }
     }
@@ -74,5 +74,5 @@ export function usePivotDisplay(
     // Store for future comparisons
     lastDisplayRef.current = newDisplay;
     return newDisplay;
-  }, [queryResult, queryResult?.revision, sortConfig, collapsedColumns, executionConfig?.rows, executionConfig?.columns, enrichedValues]);
+  }, [queryResult, queryResult?.revision, sortConfig, collapsedColumns, executionConfig?.rows, executionConfig?.columns, executionConfig?.subtotals, executionConfig?.grandTotals, enrichedValues]);
 }

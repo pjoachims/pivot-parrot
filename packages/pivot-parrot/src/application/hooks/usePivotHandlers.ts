@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { usePivotStore, type ChartConfig } from '../state/store';
 import type { useSnapshots } from './useSnapshots';
 import { computeLeafColumns } from '../utils/columnHelpers';
+import type { PivotDisplayResult } from './usePivotDisplay';
 import { buildPivotCSV } from '../../application/utils/export';
 import { dataToCSV } from '../../domain/query/utils/csv';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
@@ -12,7 +13,7 @@ import { fromPlainJSON } from '../../domain/snapshot/json';
 
 interface UsePivotHandlersProps {
   calculation: any;
-  displayData: any;
+  displayData: PivotDisplayResult | null;
   dialect?: SQLDialect | null;
   snapshots: ReturnType<typeof useSnapshots>;
   drilldown: any;
@@ -181,7 +182,7 @@ export function usePivotHandlers({
       }
 
       // 3. Add expected_output.csv
-      if (displayData) {
+      if (displayData && !('error' in displayData)) {
         const rowFieldNames = config.rows.map((f: any) => typeof f === 'string' ? f : f.id);
         const leafCols = computeLeafColumns(displayData, true, true);
         const expectedOutputCSV = buildPivotCSV(
