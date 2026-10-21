@@ -34,7 +34,15 @@ interface PivotDisplayProps {
   onOpenSQL?: (() => void) | null;
 }
 
-const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}, dataEngine = null, rowFields, detectedTypes = {}, derivedFieldsMap = {}, availableFields = [], config = {}, stickyHeaders = true, title = '', locale = 'en-US', onDrilldown = null, onOpenSQL = null }: PivotDisplayProps) {
+// The table lives in its own component so its hooks never sit behind the empty-data return.
+const PivotDisplay = memo(function PivotDisplay(props: PivotDisplayProps) {
+  if (!props.data?.columnConfig || !props.data.rowGroups) {
+    return <div style={styles.empty}>No data to display</div>;
+  }
+  return <PivotTable {...props} />;
+});
+
+function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFields, detectedTypes = {}, derivedFieldsMap = {}, availableFields = [], config = {}, stickyHeaders = true, title = '', locale = 'en-US', onDrilldown = null, onOpenSQL = null }: PivotDisplayProps) {
     // Read display state from store (everything PivotDisplay needs is here now)
     // No more prop drilling for display state!
     const parentRef = useRef(null);
@@ -74,10 +82,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
     const rowFieldLabels = useMemo(() => (rowFields || []).map(f => fieldDisplayName(f, config, availableFields)), [rowFields, config, availableFields]);
     const colFieldLabels = useMemo(() => (config.columns || []).map(f => fieldDisplayName(f, config, availableFields)), [config, availableFields]);
 
-    if (!data || !data.columnConfig || !data.rowGroups) {
-      return <div style={styles.empty}>No data to display</div>;
-    }
-
     // Initialize formatters with current config and locale
     const dialect = dataEngine?.getDialect();
     const formatValue = useMemo(() => createFormatValue(config, locale, dtypes, dialect), [config, locale, dtypes, dialect]);
@@ -93,10 +97,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
 
     // Calculate max depth and collect leaf columns
     const hierarchy = data.columnConfig.hierarchy || [];
-    function getMaxDepth(nodes, currentDepth=0){
-      if(!nodes || nodes.length===0) return currentDepth;
-      return Math.max(...nodes.map(n=> getMaxDepth(n.children, currentDepth+1)));
-    }
     function collectLeaves(nodes, leaves=[]){
       nodes.forEach(node=>{
         if(node.children?.length>0) collectLeaves(node.children, leaves);
@@ -110,7 +110,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       });
       return leaves;
     }
-    const maxDepth = getMaxDepth(hierarchy);
     const leafColumns = collectLeaves(hierarchy);
 
     // Flatten tree into a list of visible rows based on expanded state
@@ -140,11 +139,8 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       return flat;
     }, [data.rowGroups, expanded]);
 
-    // Calculate grand total row count
     // When values in rows: grandTotal is array of {metric, values} objects
     // When values in columns: grandTotal is simple array of values
-    const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
-
     // Check if grandTotal is array of metric objects (has 'metric' property)
     const isMultiMetricGrandTotal = Array.isArray(data.grandTotal) &&
                                     data.grandTotal.length > 0 &&
@@ -344,6 +340,6 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
       />
     )}
   </div>);
-});
+}
 
 export default PivotDisplay;

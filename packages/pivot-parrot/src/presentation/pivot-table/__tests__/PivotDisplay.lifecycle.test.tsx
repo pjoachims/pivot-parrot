@@ -50,3 +50,14 @@ it('puts no debug globals on window, so pivots on one page cannot clobber each o
   expect('debugLeafColumns' in window).toBe(false);
   expect('togglePivotDebug' in window).toBe(false);
 });
+
+it('renders the table when data arrives after an empty render, and the empty state when it goes', () => {
+  const view = renderDisplay({ data: {} });
+  expect(view.getByText('No data to display')).toBeInTheDocument();
+
+  view.rerender({ data });
+  expect(view.getByText('North')).toBeInTheDocument();
+
+  view.rerender({ data: {} });
+  expect(view.getByText('No data to display')).toBeInTheDocument();
+});
