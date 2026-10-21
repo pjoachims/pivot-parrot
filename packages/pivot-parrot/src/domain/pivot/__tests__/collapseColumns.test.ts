@@ -59,14 +59,15 @@ it('a collapsed group is one column per metric holding the group total', () => {
   expect(columnsAt(display, ['Office']).length).toBeGreaterThan(2);
 });
 
-it('collapses a group below the first column field, where no subtotal column exists', () => {
+it('collapses a group below the first column field: its subtotal and members become one column', () => {
   const dims = ['category', 'region', 'year'];
   const open = buildPivotDisplayData(cube(facts, dims), [], dims, [values[0]], null, {});
-  expect(open._columnOutline.some((c: any) => c.path.length === 2)).toBe(false);
+  expect(open._columnOutline.filter((c: any) => c.path[0] === 'Furniture' && c.path[1] === 'East')).toHaveLength(3);
+  expect(open._columnOutline.find((c: any) => columnPathKey(c.path) === columnPathKey(['Furniture', 'East']))).toMatchObject({ isSubtotal: true });
 
   const display = buildPivotDisplayData(cube(facts, dims), [], dims, [values[0]], null, {}, [columnPathKey(['Furniture', 'East'])]);
-  const at = display._columnOutline.findIndex((c: any) => c.path.length === 2);
-  expect(display._columnOutline[at]).toMatchObject({ path: ['Furniture', 'East'], isCollapsed: true });
+  const at = display._columnOutline.findIndex((c: any) => columnPathKey(c.path) === columnPathKey(['Furniture', 'East']));
+  expect(display._columnOutline[at]).toMatchObject({ path: ['Furniture', 'East'], isCollapsed: true, isSubtotal: false });
   expect(display.grandTotal[at]).toBe(1100);
   expect(display._columnOutline.filter((c: any) => c.path[0] === 'Furniture' && c.path[1] === 'East')).toHaveLength(1);
 });

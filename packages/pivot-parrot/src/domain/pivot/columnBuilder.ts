@@ -125,8 +125,8 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
     const pathKey = safeStringify(path);
     if (!seenPaths.has(pathKey)) {
       seenPaths.add(pathKey);
-      // Only mark as subtotal if: (1) it's shorter than full path, AND (2) it's at depth 1 (first dimension) OR depth 0 (grand total)
-      const isSubtotal = path.length < colFields.length && (path.length === 0 || path.length === 1);
+      // Every prefix the cube aggregated is a subtotal (or, empty, the grand total)
+      const isSubtotal = path.length < colFields.length;
       const entry = { path, isSubtotal, depth: path.length };
       allPaths.push(entry);
       pathIndex.set(pathKey, entry);

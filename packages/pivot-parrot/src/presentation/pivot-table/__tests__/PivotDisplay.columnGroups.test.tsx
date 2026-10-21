@@ -185,3 +185,42 @@ it('lays headers out from the data while a new config waits for its results', ()
   );
   expectHeaderGrid();
 });
+
+const threeLevels: Fact[] = [
+  { year: 2023, category: 'Furniture', region: 'East', segment: 'Home', sales: 700 },
+  { year: 2024, category: 'Furniture', region: 'East', segment: 'Corp', sales: 400 },
+  { year: 2024, category: 'Furniture', region: 'West', segment: 'Home', sales: 1200 },
+  { year: 2023, category: 'Office', region: 'East', segment: 'Corp', sales: 30 }
+];
+const oneValue = [{ field: 'sales', aggregation: 'sum' }];
+const collapseFurnitureEast = () => fireEvent.click(screen.getAllByRole('button', { name: 'Collapse East' })[0]);
+
+it.each([
+  ['values after the columns', ['year'], ['category', 'region', 'segment']],
+  ['values first', ['year'], ['Σ Values', 'category', 'region', 'segment']],
+  ['values between the columns', ['year'], ['category', 'Σ Values', 'region', 'segment']],
+  ['values in rows', ['year', 'Σ Values'], ['category', 'region', 'segment']]
+])('three column fields show a subtotal for each group at each level, aligned, with %s', (_, rows, columns) => {
+  renderPivot(threeLevels, { rows, columns, values: oneValue });
+  // Furniture/East, Furniture/West, Furniture, Office/East, Office
+  expect(headerCells('Subtotal')).toHaveLength(5);
+  expectHeaderGrid();
+
+  collapseFurnitureEast();
+  expect(headerCells('Subtotal')).toHaveLength(4);
+  expectHeaderGrid();
+});
+
+it('a sort on a collapsed group moves to that group\'s subtotal column when it expands', () => {
+  const store = renderPivot(threeLevels, { rows: ['year'], columns: ['category', 'region', 'segment'], values: oneValue });
+  collapseFurnitureEast();
+  fireEvent.click(screen.getByRole('button', { name: 'Sort by sum_sales, Furniture / East' }));
+  expect(store.getState().sortConfig).toMatchObject({ direction: 'desc', columnPath: ['Furniture', 'East'] });
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Expand East' })[0]);
+  // Expanded, the one column at Furniture / East is its subtotal; its members are one level deeper
+  const sorted = screen.getByRole('button', { name: 'Sort by sum_sales, Furniture / East' }).closest('th')!;
+  expect(sorted).toHaveAttribute('aria-sort', 'descending');
+  expect(screen.getAllByRole('button', { name: /^Sort by sum_sales, Furniture \/ East \// })).toHaveLength(2);
+  expect(document.querySelectorAll('thead th[aria-sort]')).toHaveLength(1);
+});
