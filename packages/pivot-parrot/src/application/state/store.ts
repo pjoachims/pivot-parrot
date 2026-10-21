@@ -53,6 +53,8 @@ interface PivotStore {
 
   // ==================== Display State ====================
   sortConfig: SortConfig;
+  /** columnPathKey of each collapsed column group; not persisted, like row expansion. */
+  collapsedColumns: string[];
   chartConfig: ChartConfig | null;
 
   // ==================== UI State ====================
@@ -144,6 +146,7 @@ interface PivotStore {
 
   // ==================== Display Actions ====================
   setSort: (sort: SortConfig) => void;
+  setCollapsedColumns: (keys: string[]) => void;
   setChartConfig: (config: ChartConfig | null) => void;
 
   // ==================== UI Actions ====================
@@ -235,6 +238,7 @@ const initialState = {
 
   // Display
   sortConfig: { valueKey: null, direction: 'desc' as const },
+  collapsedColumns: [],
   chartConfig: null,
 
   // UI
@@ -393,6 +397,9 @@ export function createPivotStore(instanceKey: string = 'default') {
       // ==================== Display Actions ====================
       setSort: (sortConfig) =>
         set({ sortConfig }, false, 'setSort'),
+
+      setCollapsedColumns: (collapsedColumns) =>
+        set({ collapsedColumns }, false, 'setCollapsedColumns'),
 
       setChartConfig: (chartConfig) =>
         set({ chartConfig }, false, 'setChartConfig'),

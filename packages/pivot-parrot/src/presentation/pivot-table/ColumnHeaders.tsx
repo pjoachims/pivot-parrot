@@ -1,8 +1,9 @@
 import React from 'react';
-import { SIGMA_VALUES_ID } from '../../domain/models/types';
 import type { SortConfig } from '../../domain/models/types';
 import { usePivotStore } from '../../application/state/store';
 import { columnPathKey } from '../../application/utils/cubeIndex';
+import { useColumnCollapse } from '../../application/hooks/useColumnCollapse';
+import { Icon } from '../shared/Icon';
 
 /**
  * Format a column header value based on field type
@@ -49,9 +50,10 @@ function isSortedBy(leaf, sortConfig: SortConfig): boolean {
   return columnPathKey(leaf.columnPath ?? []) === columnPathKey(sortConfig.columnPath ?? []);
 }
 
-function SortableHeader({ leaf, label, columnName, style, colSpan = 1, rowSpan = 1, sortConfig, onSort }) {
-  const sorted = isSortedBy(leaf, sortConfig) ? sortConfig.direction : null;
-  const name = [leaf.metric != null && leaf.label, columnName].filter(Boolean).join(', ');
+/** A header cell; a leaf's cell sorts the rows, a group's cell may carry its chevron. */
+function HeaderCell({ label, style, colSpan = 1, rowSpan = 1, leaf = null, columnName = '', sortConfig = null, onSort = null, chevron = null }) {
+  const sorted = leaf && isSortedBy(leaf, sortConfig) ? sortConfig.direction : null;
+  const name = leaf && [leaf.metric != null && leaf.label, columnName].filter(Boolean).join(', ');
   return (
     <th
       style={style}
@@ -59,10 +61,15 @@ function SortableHeader({ leaf, label, columnName, style, colSpan = 1, rowSpan =
       rowSpan={rowSpan}
       aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
     >
-      <button type="button" className="pp-sort-header" aria-label={`Sort by ${name}`} onClick={() => onSort(leaf)}>
-        {label}
-        {sorted && <span aria-hidden="true">{sorted === 'asc' ? ' ↑' : ' ↓'}</span>}
-      </button>
+      <div>
+        {chevron}
+        {leaf ? (
+          <button type="button" className="pp-sort-header" aria-label={`Sort by ${name}`} onClick={() => onSort(leaf)}>
+            {label}
+            {sorted && <span aria-hidden="true">{sorted === 'asc' ? ' ↑' : ' ↓'}</span>}
+          </button>
+        ) : label}
+      </div>
     </th>
   );
 }
@@ -75,19 +82,21 @@ export function ColumnHeaders({
   data,
   leafColumns,
   rowFields,
-  colFields,
   rowFieldLabels,
   colFieldLabels,
   title,
   styles,
   dialect,
-  dtypes
+  dtypes,
+  onGroupContextMenu = null
 }) {
   const sortConfig = usePivotStore((s) => s.sortConfig);
   const setSort = usePivotStore((s) => s.setSort);
+  const collapse = useColumnCollapse(data.columnConfig.groups);
   const onSort = (leaf) => setSort(nextSortForLeaf(leaf, sortConfig, data.columnConfig.valueFields || []));
+  const formatMember = (member, d) => formatHeaderValue(member, data.columnConfig.colFields[d], dialect, dtypes);
   const columnName = (leaf) => leaf.columnPath?.length
-    ? leaf.columnPath.map((member, i) => formatHeaderValue(member, colFields[i], dialect, dtypes)).join(' / ')
+    ? leaf.columnPath.map(formatMember).join(' / ')
     : leaf.isGrandTotal ? 'Grand Total' : '';
 
   // Debug: expose leaf columns
@@ -147,7 +156,7 @@ export function ColumnHeaders({
             </div>
           </th>
           {leafColumns.map((leaf, i) => (
-            <SortableHeader
+            <HeaderCell
               key={i}
               leaf={leaf}
               label={leaf.label || leaf.metric || leaf.value}
@@ -162,144 +171,100 @@ export function ColumnHeaders({
     );
   }
 
+  // Laid out from the data, not the config: a new config shows the previous data until its results arrive.
   // When values are in rows, we don't need an extra row for metric names
-  const valuesInRows = rowFields && rowFields.some(f => f === SIGMA_VALUES_ID);
+  const { colFields: dimFields, valuesIndex, valuesInRows } = data.columnConfig;
   const numHeaderRows = valuesInRows
-    ? Math.max(data.columnConfig.colFields.length, 1)  // Just dimension rows
-    : Math.max(data.columnConfig.colFields.length + 1, 1);  // Dimensions + metric row
+    ? Math.max(dimFields.length, 1)  // Just dimension rows
+    : Math.max(dimFields.length + 1, 1);  // Dimensions + metric row
+  // The header row of the metric names; column fields after Σ Values sit one row lower
+  const metricRow = valuesIndex >= 0 ? valuesIndex : dimFields.length;
+  const rowOfDim = (d) => (valuesInRows || d < metricRow ? d : d + 1);
 
   const headerRows = [];
   for (let rowIdx = 0; rowIdx < numHeaderRows; rowIdx++) {
     headerRows.push([]);
   }
 
-  // Process each leaf column
-  leafColumns.forEach((leaf, leafIdx) => {
-    const path = leaf.path || [];
-
-    if (leaf.isGrandTotal) {
-      // Grand Total column
-      if (valuesInRows || numHeaderRows === 1) {
-        // Values in rows OR no column dimensions: just show the label once
-        headerRows[0].push({
-          value: leaf.label || leaf.value || 'Total',
-          colSpan: 1,
-          rowSpan: numHeaderRows,
-          isGrandTotal: true,
-          isSubtotal: false,
-          leaf
-        });
-      } else {
-        // Values in columns with multiple header rows
-        // Fill all rows except the last with "Grand Total"
-        for (let r = 0; r < numHeaderRows - 1; r++) {
-          headerRows[r].push({
-            value: 'Grand Total',
-            shared: true,
-            isSubtotal: false,
-            isGrandTotal: true
-          });
-        }
-        // Last row: metric name
-        headerRows[numHeaderRows - 1].push({
-          value: leaf.label || leaf.metric,
-          isSubtotal: false,
-          isGrandTotal: true,
-          leaf
-        });
-      }
-    } else if (leaf.isSubtotal) {
-      // Subtotal column - use displayPath just like detail columns
-      const displayPath = leaf.displayPath || path;
-      const subtotalDepth = path.length; // Depth of this subtotal
-
-      // Add displayPath values to their respective rows
-      displayPath.forEach((p, idx) => {
-        if (idx < headerRows.length) {
-          headerRows[idx].push({
-            value: p,
-            shared: true,
-            isSubtotal: false,
-            isGrandTotal: false
-          });
-        }
-      });
-
-      // If displayPath doesn't fill all header rows, add "Subtotal" label for remaining rows
-      if (displayPath.length < numHeaderRows) {
-        headerRows[displayPath.length].push({
-          value: 'Subtotal',
-          colSpan: 1,
-          rowSpan: numHeaderRows - displayPath.length,
-          isSubtotal: true,
-          isGrandTotal: false,
-          leaf
-        });
-      }
-    } else {
-      // Regular detail column
-      // Use displayPath if available (contains labels), otherwise fall back to path (contains IDs)
-      const displayPath = leaf.displayPath || path;
-
-      // The last entry is this leaf's own cell: never merged, it is the sort target.
-      displayPath.forEach((p, idx) => {
-        // Safety check: only add to rows that exist
-        if (idx < headerRows.length) {
-          const isLeafCell = idx === displayPath.length - 1;
-          headerRows[idx].push({
-            value: p,
-            shared: !isLeafCell,
-            isSubtotal: false,
-            isGrandTotal: false,
-            ...(isLeafCell && { leaf })
-          });
-        }
-      });
+  /**
+   * A leaf's header cells top to bottom: one per column member, plus its metric
+   * name when values are in columns. `dims` and `metric` identify the cell, so
+   * cells merge only within one group; `group` marks a cell heading a group.
+   */
+  const entriesOf = (leaf) => {
+    const path = leaf.columnPath ?? leaf.path ?? [];
+    const entries = path.map((member, d) => ({
+      row: rowOfDim(d),
+      dim: d,
+      value: member,
+      dims: path.slice(0, d + 1),
+      metric: !valuesInRows && d >= metricRow ? leaf.metric : null,
+      group: d + 1 < dimFields.length ? path.slice(0, d + 1) : null
+    }));
+    if (!valuesInRows) {
+      entries.push({ row: metricRow, value: leaf.label || leaf.metric, dims: path.slice(0, metricRow), metric: leaf.metric, group: null, fixedLabel: true });
     }
+    return entries.sort((a, b) => a.row - b.row);
+  };
+  const mergeKeyOf = (entry, suffix = '') => `${columnPathKey(entry.dims)}|${entry.metric ?? ''}${suffix}`;
+
+  leafColumns.forEach((leaf) => {
+    if (leaf.isGrandTotal) {
+      if (valuesInRows || numHeaderRows === 1) {
+        headerRows[0].push({ value: leaf.label || leaf.value || 'Total', rowSpan: numHeaderRows, isGrandTotal: true, fixedLabel: true, leaf });
+      } else {
+        for (let r = 0; r < numHeaderRows - 1; r++) {
+          headerRows[r].push({ value: 'Grand Total', mergeKey: 'grand-total', isGrandTotal: true, fixedLabel: true });
+        }
+        headerRows[numHeaderRows - 1].push({ value: leaf.label || leaf.metric, isGrandTotal: true, fixedLabel: true, leaf });
+      }
+      return;
+    }
+
+    const entries = entriesOf(leaf);
+    entries.forEach((entry, i) => {
+      const isLast = i === entries.length - 1;
+      const nextRow = isLast ? numHeaderRows : entries[i + 1].row;
+      const subtotalBelow = leaf.isSubtotal && nextRow > entry.row + 1;
+      const isLeafCell = isLast && !subtotalBelow;
+      headerRows[entry.row].push({
+        value: entry.value,
+        dim: entry.dim,
+        // A collapsed group's cells stretch over the rows its hidden members had
+        rowSpan: leaf.isCollapsed ? nextRow - entry.row : 1,
+        mergeKey: isLeafCell ? null : mergeKeyOf(entry),
+        group: entry.group,
+        fixedLabel: entry.fixedLabel,
+        ...(isLeafCell && { leaf })
+      });
+      // A subtotal names itself in the rows its members would take
+      if (subtotalBelow) {
+        headerRows[entry.row + 1].push({
+          value: 'Subtotal',
+          rowSpan: nextRow - entry.row - 1,
+          isSubtotal: true,
+          fixedLabel: true,
+          mergeKey: isLast ? null : mergeKeyOf(entry, '|subtotal'),
+          ...(isLast && { leaf })
+        });
+      }
+    });
   });
 
-  // Helper to compare header values
-  const compareHeaderValues = (val1, val2) => val1 === val2;
-
-  // Merge consecutive identical headers in each row
-  const mergedRows = headerRows.map((row, rowIdx) => {
+  // Neighbouring cells of one group (same path) merge into one spanning cell
+  const mergedRows = headerRows.map(row => {
     const merged = [];
-    let i = 0;
-    while (i < row.length) {
-      const cell = row[i];
-      if (cell.shared) {
-        let span = 1;
-        while (i + span < row.length && row[i + span].shared && compareHeaderValues(row[i + span].value, cell.value)) {
-          span++;
-        }
-        // Mark first cell of each unique value at this level
-        merged.push({ ...cell, colSpan: span, rowSpan: 1, isFirstOfLevel: i === 0 || merged.length === 0 || !compareHeaderValues(merged[merged.length - 1].value, cell.value), fieldLevel: rowIdx });
-        i += span;
+    row.forEach(cell => {
+      const rowSpan = cell.rowSpan ?? 1;
+      const last = merged[merged.length - 1];
+      if (cell.mergeKey && last?.mergeKey === cell.mergeKey && last.rowSpan === rowSpan) {
+        last.colSpan += 1;
       } else {
-        merged.push({ ...cell, isFirstOfLevel: false });
-        i++;
+        merged.push({ ...cell, colSpan: 1, rowSpan });
       }
-    }
+    });
     return merged;
   });
-
-  const hasColFields = data.columnConfig.colFields.length > 0;
-
-  // Track which field level we're on for each merged row
-  let fieldLevelForRow = [];
-  if (hasColFields) {
-    // First row is field level 0
-    fieldLevelForRow.push(0);
-    // Subsequent rows increment field level
-    for (let i = 1; i < mergedRows.length; i++) {
-      const fieldIdx = i;
-      if (fieldIdx < data.columnConfig.colFields.length) {
-        fieldLevelForRow.push(fieldIdx);
-      } else {
-        fieldLevelForRow.push(null); // No field for this row
-      }
-    }
-  }
 
   return (
     <>
@@ -367,37 +332,42 @@ export function ColumnHeaders({
                 };
               }
 
-              // Get the field for this level to use for formatting
-              const field = colFields[rowIdx] || null;
-              const formattedValue = formatHeaderValue(h.value, field, dialect, dtypes);
+              const label = h.fixedLabel ? h.value : formatMember(h.value, h.dim);
+              const group = h.group && collapse.canCollapse(h.group) ? h.group : null;
+              const groupCollapsed = group && collapse.isCollapsed(group);
+              const chevron = group && (
+                <button
+                  type="button"
+                  className="pp-expand-btn"
+                  style={styles.expandButton}
+                  aria-expanded={!groupCollapsed}
+                  aria-label={`${groupCollapsed ? 'Expand' : 'Collapse'} ${label}`}
+                  onClick={() => collapse.toggle(group)}
+                  onContextMenu={(e) => {
+                    if (!onGroupContextMenu) return;
+                    e.preventDefault();
+                    // The menu closes on any contextmenu reaching the document, this one included
+                    e.stopPropagation();
+                    onGroupContextMenu(e, group);
+                  }}
+                >
+                  <Icon name={groupCollapsed ? 'chevron-right' : 'chevron-down'} style={{ pointerEvents: 'none' }} />
+                </button>
+              );
 
-              const cellKey = `${rowIdx}-${i}`;
-              if (h.leaf) {
-                return (
-                  <SortableHeader
-                    key={cellKey}
-                    leaf={h.leaf}
-                    label={formattedValue}
-                    columnName={columnName(h.leaf)}
-                    style={headerStyle}
-                    colSpan={h.colSpan || 1}
-                    rowSpan={h.rowSpan || 1}
-                    sortConfig={sortConfig}
-                    onSort={onSort}
-                  />
-                );
-              }
-              if (h.rowSpan && h.rowSpan > 1) {
-                return (
-                  <th key={cellKey} style={headerStyle} colSpan={h.colSpan || 1} rowSpan={h.rowSpan}>
-                    <div>{formattedValue}</div>
-                  </th>
-                );
-              }
               return (
-                <th key={cellKey} style={headerStyle} colSpan={h.colSpan || 1}>
-                  <div>{formattedValue}</div>
-                </th>
+                <HeaderCell
+                  key={`${rowIdx}-${i}`}
+                  label={label}
+                  style={headerStyle}
+                  colSpan={h.colSpan}
+                  rowSpan={h.rowSpan}
+                  leaf={h.leaf ?? null}
+                  columnName={h.leaf ? columnName(h.leaf) : ''}
+                  sortConfig={sortConfig}
+                  onSort={onSort}
+                  chevron={chevron}
+                />
               );
             })}
           </tr>

@@ -4,7 +4,7 @@
  */
 
 import { toMetricKey, toMetricLabel } from './utils';
-import { isGrouped, safeStringify } from '../../application/utils/cubeIndex';
+import { isGrouped, safeStringify, columnPathKey } from '../../application/utils/cubeIndex';
 
 const isNumeric = (v: unknown): v is number | bigint => typeof v === 'number' || typeof v === 'bigint';
 
@@ -23,6 +23,56 @@ function compareMembers(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b));
 }
 
+/** The column members a CUBE row aggregates: its column fields up to the first grouped one. */
+function columnPathOf(row, colFields) {
+  const path = [];
+  for (const field of colFields) {
+    // Handle both Number and BigInt for grouping columns (BigInt in remote mode with Arrow)
+    if (isGrouped(row[`_grouping_${field}`])) break;
+    path.push(row[field]);
+  }
+  return path;
+}
+
+/**
+ * Column groups that can collapse: member paths above the last column field
+ * that the cube aggregated. Without CUBE (no subtotals) there are none.
+ */
+export function columnGroups(sqlRows, colFields) {
+  const groups = new Map();
+  sqlRows.forEach(row => {
+    const path = columnPathOf(row, colFields);
+    if (path.length > 0 && path.length < colFields.length) groups.set(columnPathKey(path), path);
+  });
+  return [...groups.values()];
+}
+
+/**
+ * Replace each collapsed group's columns (its descendants and its subtotal)
+ * with one column at the group's path, where the first of them stood. The
+ * outermost collapsed group wins.
+ */
+function collapseGroups(paths, collapsed) {
+  if (collapsed.size === 0) return paths;
+  const emitted = new Set();
+  const result = [];
+  paths.forEach(entry => {
+    let group = null;
+    for (let len = 1; len <= entry.path.length && !group; len++) {
+      if (collapsed.has(columnPathKey(entry.path.slice(0, len)))) group = entry.path.slice(0, len);
+    }
+    if (!group) {
+      result.push(entry);
+      return;
+    }
+    const key = columnPathKey(group);
+    if (emitted.has(key)) return;
+    emitted.add(key);
+    result.push({ path: group, isSubtotal: false, isCollapsed: true, depth: group.length });
+  });
+  return result;
+}
+
 /**
  * Build ordered column outline (flat list of all columns including subtotals)
  *
@@ -32,9 +82,10 @@ function compareMembers(a: unknown, b: unknown): number {
  * @param {number} valuesIndex - Position of Σ Values in columns (-1 if not in columns)
  * @param {boolean} valuesInRows - Whether values are in rows instead
  * @param {Object} dtypes - Column name → DTYPE enum mapping
+ * @param {Set<string>} collapsed - columnPathKey of each collapsed group
  * @returns {Array<Object>} Ordered column definitions
  */
-export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex, valuesInRows, dtypes = {}) {
+export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex, valuesInRows, dtypes = {}, collapsed = new Set()) {
   const columns = [];
 
   // No column dimensions - just metrics
@@ -70,21 +121,7 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
   const pathIndex = new Map();
 
   sqlRows.forEach(row => {
-    const path = [];
-
-    for (let i = 0; i < colFields.length; i++) {
-      const field = colFields[i];
-      const groupingValue = row[`_grouping_${field}`];
-      // Handle both Number and BigInt for grouping columns (BigInt in remote mode with Arrow)
-      const isDimGrouped = isGrouped(groupingValue);
-
-      if (isDimGrouped) {
-        break;
-      }
-
-      path.push(row[field]);
-    }
-
+    const path = columnPathOf(row, colFields);
     const pathKey = safeStringify(path);
     if (!seenPaths.has(pathKey)) {
       seenPaths.add(pathKey);
@@ -203,7 +240,7 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
     });
   }
 
-  const combos = pathsInOrder;
+  const combos = collapseGroups(pathsInOrder, collapsed);
 
   if (valuesInRows) {
     // Values in rows: columns are just dimensions (no metrics)
@@ -233,17 +270,11 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
         const metric = toMetricKey(v);
         const label = toMetricLabel(v);
         combos.forEach(comboObj => {
-          const combo = comboObj.path;
-          // Build displayPath: replace metric ID with label in the path
-          const displayPath = [label, ...combo];
           columns.push({
-            path: combo,
-            displayPath,  // For display in headers
+            path: comboObj.path,
             metric,
             label,
             value: label,  // For formatting
-            beforePath: [],
-            afterPath: combo,
             isSubtotal: comboObj.isSubtotal,
             depth: comboObj.depth
           });
@@ -253,20 +284,14 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
       // Values at end: dimensions first, then metrics
       // Order: dim1/metric1, dim1/metric2, dim2/metric1, dim2/metric2
       combos.forEach(comboObj => {
-        const combo = comboObj.path;
         valueFields.forEach(v => {
           const metric = toMetricKey(v);
           const label = toMetricLabel(v);
-          // Build displayPath: dimensions + label (not ID)
-          const displayPath = [...combo, label];
           columns.push({
-            path: combo,
-            displayPath,  // For display in headers
+            path: comboObj.path,
             metric,
             label,
             value: label,  // For formatting
-            beforePath: combo,
-            afterPath: [],
             isSubtotal: comboObj.isSubtotal,
             depth: comboObj.depth
           });
@@ -296,16 +321,11 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
           const metric = toMetricKey(v);
           const label = toMetricLabel(v);
           pairs.forEach(({ before, after, isSubtotal, depth }) => {
-            // Build displayPath: before + label + after
-            const displayPath = [...before, label, ...after];
             columns.push({
               path: [...before, ...after],
-              displayPath,  // For display in headers
               metric,
               label,
               value: label,  // For formatting
-              beforePath: before,
-              afterPath: after,
               isSubtotal,
               depth
             });
@@ -313,6 +333,13 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
         });
       });
     }
+  }
+
+  const collapsedPaths = new Set(combos.filter(c => c.isCollapsed).map(c => columnPathKey(c.path)));
+  if (collapsedPaths.size > 0) {
+    columns.forEach(col => {
+      if (collapsedPaths.has(columnPathKey(col.path))) col.isCollapsed = true;
+    });
   }
 
   return columns;
@@ -482,11 +509,7 @@ function markLeafNodes(tree, columnOutline) {
           node.label = col.label;
           node.metric = col.metric;
           node.columnPath = col.path;
-
-          // Also copy displayPath from outline to tree node
-          if (col.displayPath) {
-            node.displayPath = col.displayPath;
-          }
+          node.isCollapsed = col.isCollapsed || false;
 
           outlineIndex++;
         }
@@ -623,6 +646,7 @@ function buildDimensionTree(columnOutline, colFields) {
         node.label = col.label;
         node.metric = col.metric;
         node.columnPath = col.path;
+        node.isCollapsed = col.isCollapsed || false;
       }
 
       currentLevel = node.children;
