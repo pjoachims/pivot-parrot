@@ -137,7 +137,7 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
       data.rowGroups.forEach(group => flattenNode(group, 0));
 
       return flat;
-    }, [data.rowGroups, expanded]);
+    }, [data.rowGroups, expanded, config.showNullGroups]);
 
     // When values in rows: grandTotal is array of {metric, values} objects
     // When values in columns: grandTotal is simple array of values

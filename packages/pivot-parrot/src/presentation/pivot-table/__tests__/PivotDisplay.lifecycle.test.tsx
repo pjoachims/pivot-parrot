@@ -61,3 +61,15 @@ it('renders the table when data arrives after an empty render, and the empty sta
   view.rerender({ data: {} });
   expect(view.getByText('No data to display')).toBeInTheDocument();
 });
+
+it('hides and shows the blank row group as showNullGroups toggles, with the data unchanged', () => {
+  const view = renderDisplay({ data });
+  expect(view.getByText('(Blank)')).toBeInTheDocument();
+
+  view.rerender({ data, config: { ...config, showNullGroups: false } });
+  expect(view.queryByText('(Blank)')).toBeNull();
+  expect(view.getByText('North')).toBeInTheDocument();
+
+  view.rerender({ data, config: { ...config, showNullGroups: true } });
+  expect(view.getByText('(Blank)')).toBeInTheDocument();
+});
