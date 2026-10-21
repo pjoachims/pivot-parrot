@@ -16,8 +16,23 @@
     }
   },
   "rules": {
-    "no-unused-vars": "warn",
-    "no-console": "warn",
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "no-console": [
+      "warn",
+      {
+        "allow": [
+          "warn",
+          "error"
+        ]
+      }
+    ],
     "no-undef": "error",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn"
@@ -26,7 +41,8 @@
     {
       "files": [
         "*.ts",
-        "*.tsx"
+        "*.tsx",
+        "*.jsx"
       ],
       "parser": "@typescript-eslint/parser",
       "plugins": [
@@ -35,7 +51,14 @@
       "rules": {
         "no-undef": "off",
         "no-unused-vars": "off",
-        "@typescript-eslint/no-unused-vars": "warn",
+        "@typescript-eslint/no-unused-vars": [
+          "warn",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "ignoreRestSiblings": true
+          }
+        ],
         "no-redeclare": "off",
         "@typescript-eslint/no-redeclare": "error"
       }

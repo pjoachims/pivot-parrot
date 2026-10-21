@@ -25,7 +25,6 @@ interface FieldOptionsSectionProps {
 
 export function FieldOptionsSection(props: FieldOptionsSectionProps) {
   const {
-    onFieldsChanged,
     onManualUpdate,
     onCreateSnapshot,
     snapshots = [],

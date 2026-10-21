@@ -97,7 +97,6 @@ export function useFieldsListLogic() {
     event.stopPropagation();
     const existingDerivedFields = derivedFieldsMap[fieldName] || [];
     const fieldType = detectedTypes[fieldName];
-    console.log('[FieldsList] handleShowDerivedDialog', { fieldName, fieldType, existingDerivedFields });
     setDerivedFieldDialog({ fieldName, fieldType: String(fieldType), existingDerivedFields });
   }, [derivedFieldsMap, detectedTypes, setDerivedFieldDialog]);
 

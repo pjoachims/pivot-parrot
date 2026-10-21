@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { transformBarLineChart } from '../BarLineChart';
-import cubeFixtures from './fixtures/cube-results.json';
 import { Arrow } from '../../../domain/types/ArrowTypes';
 
 describe('BarLineChart', () => {

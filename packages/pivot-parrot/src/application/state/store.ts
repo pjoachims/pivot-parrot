@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
-import type { PivotTableConfig, SortConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
+import type { PivotTableConfig, SortConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates } from '../../domain/models/types';
 import { FieldKind } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
 import type { ColumnFolds } from '../../domain/pivot/columnFit';
@@ -14,7 +14,6 @@ import {
   buildHandleRemoveFilter,
   buildHandleCreateExpression,
   buildChangeAggregation,
-  buildHandleAddDerivedFields,
   buildDeleteCustomExpression,
   buildRemoveFieldFromAllZones
 } from './actions';

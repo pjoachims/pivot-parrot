@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Popover from '../shared/Popover';
 import { getAvailableFilters, getDefaultFilterType, getFilterCategory } from '../../../application/utils/filterConfig';
 import { Icon } from '../../shared/Icon';
@@ -206,10 +206,6 @@ export function FilterDialog({
       setSelectedValues([...selectedValues, trimmedValue]);
       setCustomValue('');
     }
-  };
-
-  const handleRemoveValue = (val) => {
-    setSelectedValues(selectedValues.filter(v => v !== val));
   };
 
   const DEFAULT_DISPLAY_LIMIT = 100;

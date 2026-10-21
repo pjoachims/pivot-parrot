@@ -79,7 +79,6 @@ export function countDisplayColumns(
     valueFields,
     colFields.indexOf(SIGMA_VALUES_ID),
     rowFields.includes(SIGMA_VALUES_ID),
-    {},
     new Set(collapsedColumns)
   );
   return outline.filter(col => {
@@ -134,7 +133,6 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
         valueFields,
         colValuesIndex,
         valuesInRows,
-        dtypes,
         new Set(collapsedColumns)
       )
     );
@@ -156,8 +154,7 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
         sqlRows,
         actualRowFields,
         valueFields,
-        rowValuesIndex,
-        dtypes
+        rowValuesIndex
       )
     );
 

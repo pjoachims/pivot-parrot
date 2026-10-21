@@ -82,7 +82,7 @@ const WarningIcon = () => (
   </svg>
 );
 
-export default function ChartView({ chartConfig, cubeResults, config, fields, dialect, dtypes, locale = 'en-US' }) {
+export default function ChartView({ chartConfig, cubeResults, config, dialect, dtypes, locale = 'en-US' }) {
   // Read from store
   const activeView = usePivotStore((s) => s.activeView);
   const secondaryDisplayMode = usePivotStore((s) => s.secondaryDisplayMode);
@@ -262,11 +262,11 @@ export default function ChartView({ chartConfig, cubeResults, config, fields, di
       try {
         // Use react() for updates (more efficient than newPlot)
         plotlyRef.current.react(chartRef.current, chartData, layout, plotConfig);
-      } catch (plotlyError) {
+      } catch {
         // Fallback to newPlot if react fails
         try {
           plotlyRef.current.newPlot(chartRef.current, chartData, layout, plotConfig);
-        } catch (fallbackError) {
+        } catch {
           throw new Error('Failed to render chart');
         }
       }
@@ -277,13 +277,14 @@ export default function ChartView({ chartConfig, cubeResults, config, fields, di
         plotlyRef.current.purge(chartRef.current);
       }
     }
-  }, [chartConfig, cubeResults, config, plotlyLoaded, themeVersion, locale]);
+  }, [chartConfig, cubeResults, config, plotlyLoaded, themeVersion, locale, dialect, dtypes]);
 
   // Cleanup on unmount
   useEffect(() => {
+    const chart = chartRef.current;
     return () => {
-      if (chartRef.current && plotlyRef.current) {
-        plotlyRef.current.purge(chartRef.current);
+      if (chart && plotlyRef.current) {
+        plotlyRef.current.purge(chart);
       }
     };
   }, []);

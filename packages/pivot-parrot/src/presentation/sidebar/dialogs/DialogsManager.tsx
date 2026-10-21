@@ -64,7 +64,6 @@ export function DialogsManager({
   const [previewSQL, setPreviewSQL] = useState<string | null>(null);
 
   // Detected dtype for custom groupings (cached)
-  const [customGroupingDtypes, setCustomGroupingDtypes] = useState<Record<string, string>>({});
 
   // Generate SQL preview when dialog opens or config changes
   useEffect(() => {

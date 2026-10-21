@@ -28,7 +28,6 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
   const [quarterFormat, setQuarterFormat] = useState('q'); // 'q', 'numeric'
 
   const isTimestamp = fieldType === 'timestamp';
-  const isDate = fieldType === 'date';
 
   // Quote the field name for SQL
   const quotedField = dialect.quoteIdentifier(fieldName);
@@ -59,12 +58,6 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
     { id: 'month', label: 'Month', sql: strategy.getDatePart('month') },
     { id: 'quarter', label: 'Quarter', sql: strategy.getDatePart('quarter') },
     { id: 'year', label: 'Year', sql: strategy.getDatePart('year') }
-  ];
-
-  const timeOptions = [
-    { id: 'hour', label: 'Hour', sql: strategy.getTimePart('hour') },
-    { id: 'minute', label: 'Minute', sql: strategy.getTimePart('minute') },
-    { id: 'second', label: 'Second', sql: strategy.getTimePart('second') }
   ];
 
   // Time bucketing for timestamps (use dialect functions)
@@ -214,10 +207,8 @@ export default function DerivedFieldsDialog({ fieldName, displayName, fieldType,
   };
 
   const addSelected = () => {
-    console.log('[DerivedFieldsDialog] addSelected called', { selected, selectedLength: selected.length });
     if (selected.length === 0) return;
     const fields = selected.map(id => generateFieldDefinition(id));
-    console.log('[DerivedFieldsDialog] Calling onAdd with fields:', fields);
     onAdd(fields);
     onClose();
   };

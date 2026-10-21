@@ -14,19 +14,16 @@ export default function SecondaryView({
   chartConfig,
   cubeResults,
   config,
-  fields,
   dialect,
   dtypes,
 
   // Drilldown props
   drilldownData,
-  drilldownFilters,
   drilldownSQL,
   drilldownDtypes,
   drilldownDisplayMode,
   onDrilldownDisplayModeChange,
   onDrilldownExportCSV,
-  fieldTypes,
   locale,
 
   // SQL Playground props
@@ -42,7 +39,6 @@ export default function SecondaryView({
         chartConfig={chartConfig}
         cubeResults={cubeResults}
         config={config}
-        fields={fields}
         dialect={dialect}
         dtypes={dtypes}
         locale={locale}
@@ -54,7 +50,6 @@ export default function SecondaryView({
     return (
       <DrilldownView
         drilldownData={drilldownData}
-        filters={drilldownFilters}
         sql={drilldownSQL}
         dtypes={drilldownDtypes}
         onExportCSV={onDrilldownExportCSV}

@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useMemo, useImperativeHandle, forwardRef, useRef, useContext } from 'react';
+import React, { useEffect, useMemo, useImperativeHandle, forwardRef, useRef, useContext } from 'react';
 import { DuckDBWASMEngine } from '../../infrastructure/data-engines/DuckDBWASMEngine';
-import { hashData } from '../../domain/query/utils/cache';
-import { dataToCSV } from '../../domain/query/utils/csv';
 import { FieldItem } from '../../domain/field/FieldItem';
 import { hasFilterValue } from '../../domain/query/sql/filters';
 import ErrorBoundary from '../shared/ErrorBoundary';
-import { ProgressIndicator } from '../shared/ProgressIndicator';
 import { useSplitPane } from '../../application/hooks/useSplitPane';
 import { useSnapshots } from '../../application/hooks/useSnapshots';
 import { useDrilldown } from '../../application/hooks/useDrilldown';
@@ -15,11 +12,8 @@ import { usePivotDisplay } from '../../application/hooks/usePivotDisplay';
 import { useQueryProgress } from '../../application/hooks/useQueryProgress';
 import { useDevMode } from '../../application/hooks/useDevMode';
 import { profiler } from '../../domain/query/utils/profiler';
-import { computeLeafColumns } from '../../application/utils/columnHelpers';
-import JSZip from 'jszip';
 import type { PivotConfig, PivotTableConfig, PivotView } from '../../domain/models/types';
 import { toPlainJSON } from '../../domain/snapshot/json';
-import { FieldKind } from '../../domain/models/types';
 import { NormalizedPivotConfig } from '../../domain/models/NormalizedPivotConfig';
 import { usePivotStore, usePivotInstanceKey, PivotStoreContext, createPivotStore } from '../../application/state/store';
 import { usePivotHandlers } from '../../application/hooks/usePivotHandlers';
@@ -29,29 +23,6 @@ import { PivotMainPanel } from './PivotMainPanel';
 import { createLogger } from '../../application/utils/logger';
 
 const logger = createLogger('Pivot');
-
-// Notification levels with consistent colors
-const notificationLevels = {
-  info: { background: '#6b7280', color: '#ffffff' },      // grey
-  warning: { background: '#f5a623', color: '#1a1a1a' },   // yellow
-  error: { background: '#ef4444', color: '#ffffff' },     // red
-  success: { background: '#10b981', color: '#ffffff' }    // green
-};
-
-const getNotificationStyle = (level = 'info') => ({
-  position: 'absolute',
-  top: '20px',
-  left: '50%',
-  transform: 'translateX(-50%)',
-  ...notificationLevels[level],
-  padding: '12px 24px',
-  borderRadius: 'var(--radius-md)',
-  fontWeight: 500,
-  fontSize: '14px',
-  zIndex: 'var(--z-dropdown)',
-  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-  pointerEvents: 'none'
-});
 
 /**
  * PivotInner - Internal component with all pivot logic
@@ -92,14 +63,10 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
   const executionConfig = usePivotStore((s) => s.executionConfig);
   const availableFields = usePivotStore((s) => s.availableFields);
   const detectedTypes = usePivotStore((s) => s.detectedTypes);
-  const dataHash = usePivotStore((s) => s.dataHash);
 
-  const dataLoading = usePivotStore((s) => s.dataLoading);
   const initComplete = usePivotStore((s) => s.initComplete);
-  const sidebarCollapsed = usePivotStore((s) => s.sidebarCollapsed);
   const activeView = usePivotStore((s) => s.activeView);
   const secondaryDisplayMode = usePivotStore((s) => s.secondaryDisplayMode);
-  const showChartDialog = usePivotStore((s) => s.showChartDialog);
   const chartConfig = usePivotStore((s) => s.chartConfig);
   const sortConfig = usePivotStore((s) => s.sortConfig);
   const collapsedColumns = usePivotStore((s) => s.collapsedColumns);
@@ -111,21 +78,12 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
 
   // Get actions from store
   const setConfig = usePivotStore((s) => s.setConfig);
-  const updateConfig = usePivotStore((s) => s.updateConfig);
   const commitConfig = usePivotStore((s) => s.commitConfig);
   const setAvailableFields = usePivotStore((s) => s.setAvailableFields);
   const setDetectedTypes = usePivotStore((s) => s.setDetectedTypes);
   const setDialect = usePivotStore((s) => s.setDialect);
   const setInitComplete = usePivotStore((s) => s.setInitComplete);
   const setDataLoading = usePivotStore((s) => s.setDataLoading);
-  const setSidebarCollapsed = usePivotStore((s) => s.setSidebarCollapsed);
-  const setActiveView = usePivotStore((s) => s.setActiveView);
-  const setSecondaryDisplayMode = usePivotStore((s) => s.setSecondaryDisplayMode);
-  const setShowChartDialog = usePivotStore((s) => s.showChartDialog ? s.closeChartDialog : s.openChartDialog);
-  const openChartDialog = usePivotStore((s) => s.openChartDialog);
-  const closeChartDialog = usePivotStore((s) => s.closeChartDialog);
-  const setChartConfig = usePivotStore((s) => s.setChartConfig);
-  const setSortConfig = usePivotStore((s) => s.setSort);
   const setAutoUpdate = usePivotStore((s) => s.setAutoUpdate);
   const toggleSidebar = usePivotStore((s) => s.toggleSidebar);
 
@@ -180,7 +138,7 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
     dataVersion,
     engine: queryEngine || dataEngine,
     isRemoteMode: isRemoteConnection,
-    onExecutionComplete: (executedCfg, cubeResults) => {
+    onExecutionComplete: () => {
       commitConfig();
     }
   });
@@ -430,7 +388,9 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
     } else {
       logger.warn('No initialization path - missing engines');
     }
-  }, [cfg.data, dataEngine, queryEngine, storeApi, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig]);
+    // applyInitialConfig is a new function each render and reads its config from a ref; depending on it would re-run initialization on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.data, dataEngine, queryEngine, storeApi, loadDataAction, setAvailableFields, setDetectedTypes, setDialect, setDataLoading, setInitComplete, setCalculationError, setConfig, instanceKey]);
 
 
   // Chart gracefully handles config changes via error handling in ChartView

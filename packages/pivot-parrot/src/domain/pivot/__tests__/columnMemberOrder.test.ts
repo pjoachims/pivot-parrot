@@ -6,7 +6,7 @@ const sum = [{ field: 'x', aggregation: 'sum' }];
 function memberOrder(members: unknown[], withGrandTotal: boolean) {
   const rows: any[] = members.map((m, i) => ({ month: m, sum_x: i, _grouping_month: 0 }));
   if (withGrandTotal) rows.push({ month: null, sum_x: 99, _grouping_month: 1 });
-  return buildColumnOutline(rows, ['month'], sum, -1, false, {})
+  return buildColumnOutline(rows, ['month'], sum, -1, false)
     .map(c => c.path[0] ?? 'total');
 }
 

@@ -19,7 +19,6 @@ export default function FieldItem({
   ...props
 }) {
   const fieldId = typeof field === 'string' ? field : field.id;
-  const isCustom = typeof field === 'object' && field.isCustom;
 
   const isDateField = detectedTypes[fieldId] === 'date';
   const isAvailableZone = zone === 'available';

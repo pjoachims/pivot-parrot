@@ -42,18 +42,20 @@ export function usePivotCalculation({
   const revisionRef = useRef(0);
 
   // Enrich executionConfig values inline with custom metric details
+  const values = executionConfig?.values;
+  const customMetrics = executionConfig?.customMetrics;
   const enrichedValues = useMemo(() => {
-    if (!executionConfig) return [];
-    return executionConfig.values.map(v => {
+    if (!values) return [];
+    return values.map(v => {
       if (v.isCustom) {
-        const metric = (executionConfig.customMetrics || []).find(m => m.id === v.field);
+        const metric = (customMetrics || []).find(m => m.id === v.field);
         if (metric) {
           return { ...v, name: metric.name, expr: metric.expr, format: metric.format };
         }
       }
       return v;
     });
-  }, [executionConfig?.values, executionConfig?.customMetrics]);
+  }, [values, customMetrics]);
 
   /**
    * Compute fields hash for cache key (order-independent)
@@ -84,7 +86,7 @@ export function usePivotCalculation({
 
     try {
       data._cubeIndex = cubeIndex;
-    } catch (e) {
+    } catch {
       // Array may be frozen from cache
     }
 

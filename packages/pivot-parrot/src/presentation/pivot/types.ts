@@ -4,7 +4,6 @@
  * This file defines clean interfaces for component props, avoiding 'any' wherever possible.
  */
 
-import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import type { PivotTableConfig } from '../../domain/models/types';
 import type { ColumnarResult } from '../../application/utils/columnarResult';
 

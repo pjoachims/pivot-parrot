@@ -18,7 +18,7 @@ const COPY_FEEDBACK_DURATION_MS = 2000; // Duration to show "Copied!" feedback
  * read the actual values lazily per cell through per-column valueGetters - the
  * underlying data never gets flattened into per-row objects.
  */
-export default function DrilldownView({ drilldownData: result, filters, sql, dtypes = {}, onExportCSV, drilldownDisplayMode, onDrilldownDisplayModeChange, locale = 'en-US' }) {
+export default function DrilldownView({ drilldownData: result, sql, dtypes = {}, onExportCSV, drilldownDisplayMode, onDrilldownDisplayModeChange, locale = 'en-US' }) {
   const gridRef = useRef(null);
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const selectedColumns = usePivotStore((s) => s.drilldownSelectedColumns);
@@ -74,7 +74,7 @@ export default function DrilldownView({ drilldownData: result, filters, sql, dty
         setSelectedColumns(merged);
       }
     }
-  }, [availableColumns]);
+  }, [availableColumns, selectedColumns, setSelectedColumns]);
 
   // ag-grid's client-side row model needs a rowData array, but each entry is
   // just a tiny ordinal object - the real values are read lazily per cell via

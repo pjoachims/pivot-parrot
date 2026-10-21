@@ -1,7 +1,6 @@
 import React from 'react';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
-  normalizeField,
   sanitizeFieldName,
   getMetricLabel,
   getMetricFormat,
@@ -9,7 +8,7 @@ import {
   hoverValue,
   plotlySeparators
 } from './chartUtils';
-import { createCellHash, lookupCubeValue, safeStringify } from '../../application/utils/cubeIndex';
+import { createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
 import { TreemapTrace } from './types';
 
 // ============================================================================

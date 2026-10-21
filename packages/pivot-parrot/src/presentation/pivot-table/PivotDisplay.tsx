@@ -12,7 +12,6 @@ import { useExpansionState } from '../../application/hooks/useExpansionState';
 import { useColumnCollapse, type ColumnCollapse } from '../../application/hooks/useColumnCollapse';
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
-import { usePivotStore } from '../../application/state/store';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
 
 const ROW_HEIGHT = 25; // Single source of truth for row height
@@ -169,7 +168,6 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
       locale={locale}
       dtypes={dtypes}
       dialect={dialect}
-      onDrilldown={onDrilldown}
       onOpenSQL={onOpenSQL}
     />
 
@@ -322,7 +320,6 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
         onFoldAll={foldAll}
         onUnfoldAll={unfoldAll}
         levelName={chevronContextMenu.fieldName || `Level ${chevronContextMenu.depth + 1}`}
-        isExpanded={chevronContextMenu.isOpen}
       />
     )}
     {columnGroupMenu && (
@@ -335,7 +332,6 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
         onFoldAll={columnCollapse.foldAll}
         onUnfoldAll={columnCollapse.unfoldAll}
         levelName={fieldDisplayName(data.columnConfig.colFields[columnGroupMenu.group.length - 1], config, availableFields)}
-        isExpanded={!columnCollapse.isCollapsed(columnGroupMenu.group)}
       />
     )}
   </div>);

@@ -31,7 +31,7 @@ const valueFields = [
 
 describe('buildColumnTree leaf order', () => {
   it('yields one leaf per outline column, in outline order, with merged siblings', () => {
-    const outline = buildColumnOutline(rows, colFields, valueFields, -1, false, {});
+    const outline = buildColumnOutline(rows, colFields, valueFields, -1, false);
     const tree = buildColumnTree(outline, colFields, valueFields, -1, false);
     const leaves = collectLeaves(tree);
 

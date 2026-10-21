@@ -81,11 +81,10 @@ function collapseGroups(paths, collapsed) {
  * @param {Array<Object>} valueFields - Value field configurations
  * @param {number} valuesIndex - Position of Σ Values in columns (-1 if not in columns)
  * @param {boolean} valuesInRows - Whether values are in rows instead
- * @param {Object} dtypes - Column name → DTYPE enum mapping
  * @param {Set<string>} collapsed - columnPathKey of each collapsed group
  * @returns {Array<Object>} Ordered column definitions
  */
-export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex, valuesInRows, dtypes = {}, collapsed = new Set()) {
+export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex, valuesInRows, collapsed = new Set()) {
   const columns = [];
 
   // No column dimensions - just metrics
@@ -175,7 +174,7 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
     // Get children at this level, grouped by first dimension value
     const childGroups = new Map();
 
-    node.children.forEach((child, key) => {
+    node.children.forEach((child) => {
       const firstValue = child.path[node.depth];
       if (!childGroups.has(firstValue)) {
         childGroups.set(firstValue, []);
@@ -369,7 +368,6 @@ export function buildColumnTree(columnOutline, colFields, valueFields, valuesInd
   const effectiveValuesIndex = valuesIndex !== -1 ? valuesIndex : colFields.length;
 
   const tree = [];
-  const grouped = new Map();
 
   // Sibling lookup index: currentLevel array -> Map<key, node>. Replaces
   // repeated Array.prototype.find() scans (O(children) per lookup, O(n^2)

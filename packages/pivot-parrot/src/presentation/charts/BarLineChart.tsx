@@ -3,7 +3,6 @@ import { Icon } from '../shared/Icon';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import {
   normalizeField,
-  selectChartData,
   groupData,
   sanitizeFieldName,
   getMetricLabel,
@@ -212,9 +211,6 @@ export function transformBarLineChart(chartData, chartConfig, locale = 'en-US') 
 
   // TRANSFORM: Create Plotly traces for each metric
   const traces = [];
-
-  // Track if we have multiple metrics to adjust hover
-  const hasMultipleMetrics = metrics.length > 1;
 
   metrics.forEach((metric) => {
     const cubeColumnName = sanitizeFieldName(metric.field, config);

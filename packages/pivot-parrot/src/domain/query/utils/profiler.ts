@@ -181,6 +181,7 @@ class Profiler {
    * Print report as table (if console.table is available)
    */
   printTable() {
+    // eslint-disable-next-line no-console -- prints on request
     console.table(this.getReport());
   }
 

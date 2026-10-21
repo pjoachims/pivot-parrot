@@ -40,16 +40,17 @@ export function usePivotDisplay(
   expandedColumns: string[] = []
 ): PivotDisplayResult | null {
   const lastDisplayRef = useRef<PivotDisplayResult | null>(null);
+  const { rows, columns, subtotals = 'both', grandTotals = 'both' } = executionConfig ?? {};
 
   return useMemo(() => {
-    if (!queryResult || !executionConfig) return null;
+    if (!queryResult || !rows) return null;
 
     const { cubeResults, dtypes, fieldsHash: resultFieldsHash } = queryResult;
 
     // Compute order-independent hash of current fields
     const currentFieldsHash = [
-      ...executionConfig.rows.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== SIGMA_VALUES_ID),
-      ...executionConfig.columns.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== SIGMA_VALUES_ID)
+      ...rows.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== SIGMA_VALUES_ID),
+      ...columns.map((f: any) => typeof f === 'string' ? f : f.id).filter((f: string) => f !== SIGMA_VALUES_ID)
     ].sort().join(',');
 
     // Check if dimensions changed (fields added/removed vs just rearranged)
@@ -59,15 +60,14 @@ export function usePivotDisplay(
     }
 
     // Same fields, possibly rearranged - rebuild with current executionConfig
-    const rowFieldNames = executionConfig.rows.map((f: any) => typeof f === 'string' ? f : f.id);
-    const colFieldNames = executionConfig.columns.map((f: any) => typeof f === 'string' ? f : f.id);
+    const rowFieldNames = rows.map((f: any) => typeof f === 'string' ? f : f.id);
+    const colFieldNames = columns.map((f: any) => typeof f === 'string' ? f : f.id);
 
     // Fit the columns before the full build: a too-wide table is never built
     let collapsed = collapsedColumns;
     let columnFit: ColumnFitView | undefined;
     const dimColFields = colFieldNames.filter((f: string) => f !== SIGMA_VALUES_ID);
     if (dimColFields.length > 0) {
-      const { subtotals = 'both', grandTotals = 'both' } = executionConfig;
       const visibility = {
         showColSubtotals: subtotals === 'col' || subtotals === 'both',
         showGrandTotalCol: grandTotals === 'col' || grandTotals === 'both'
@@ -108,5 +108,5 @@ export function usePivotDisplay(
     // Store for future comparisons
     lastDisplayRef.current = newDisplay;
     return newDisplay;
-  }, [queryResult, queryResult?.revision, sortConfig, collapsedColumns, expandedColumns, executionConfig?.rows, executionConfig?.columns, executionConfig?.subtotals, executionConfig?.grandTotals, enrichedValues]);
+  }, [queryResult, sortConfig, collapsedColumns, expandedColumns, rows, columns, subtotals, grandTotals, enrichedValues]);
 }
