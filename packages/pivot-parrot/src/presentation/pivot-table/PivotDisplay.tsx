@@ -9,6 +9,7 @@ import PivotDisplayHeader from './PivotDisplayHeader';
 import { ContextMenu } from '../shared/ContextMenu';
 import { ChevronContextMenu } from '../shared/ChevronContextMenu';
 import { useExpansionState } from '../../application/hooks/useExpansionState';
+import { useColumnCollapse } from '../../application/hooks/useColumnCollapse';
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
 import { usePivotStore } from '../../application/state/store';
@@ -48,6 +49,9 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
         data,
         rowFields
     });
+
+    const columnCollapse = useColumnCollapse(data?.columnConfig?.groups);
+    const [columnGroupMenu, setColumnGroupMenu] = useState<{ x: number; y: number; group: unknown[] } | null>(null);
 
     // Context menu management
     const {
@@ -273,13 +277,13 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
             data={data}
             leafColumns={leafColumns}
             rowFields={rowFields || []}
-            colFields={colFields}
             rowFieldLabels={rowFieldLabels}
             colFieldLabels={colFieldLabels}
             title={title}
             styles={styles}
             dialect={dialect}
             dtypes={dtypes}
+            onGroupContextMenu={(e, group) => setColumnGroupMenu({ x: e.clientX, y: e.clientY, group })}
           />
         </thead>
         <tbody>
@@ -404,6 +408,19 @@ const PivotDisplay = memo(function PivotDisplay({ data, cubeResults, dtypes = {}
         onUnfoldAll={unfoldAll}
         levelName={chevronContextMenu.fieldName || `Level ${chevronContextMenu.depth + 1}`}
         isExpanded={chevronContextMenu.isOpen}
+      />
+    )}
+    {columnGroupMenu && (
+      <ChevronContextMenu
+        x={columnGroupMenu.x}
+        y={columnGroupMenu.y}
+        onClose={() => setColumnGroupMenu(null)}
+        onFoldLevel={() => columnCollapse.foldLevel(columnGroupMenu.group.length)}
+        onUnfoldLevel={() => columnCollapse.unfoldLevel(columnGroupMenu.group.length)}
+        onFoldAll={columnCollapse.foldAll}
+        onUnfoldAll={columnCollapse.unfoldAll}
+        levelName={fieldDisplayName(data.columnConfig.colFields[columnGroupMenu.group.length - 1], config, availableFields)}
+        isExpanded={!columnCollapse.isCollapsed(columnGroupMenu.group)}
       />
     )}
   </div>);

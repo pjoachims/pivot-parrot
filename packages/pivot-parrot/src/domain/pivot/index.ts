@@ -4,7 +4,7 @@
  */
 
 import { toMetricKey, toMetricLabel } from './utils';
-import { buildColumnOutline, buildColumnTree } from './columnBuilder';
+import { buildColumnOutline, buildColumnTree, columnGroups } from './columnBuilder';
 import { buildRowTree } from './rowBuilder';
 import { populateNodeValues } from './valuePopulator';
 import { buildCubeIndex, createCellHash, lookupCubeValue } from '../../application/utils/cubeIndex';
@@ -13,7 +13,7 @@ import { SIGMA_VALUES_ID } from '../models/types';
 
 /**
  * Sort each level of the row tree by one value, in place. `sortValue` gives a
- * node's total for that value (all columns aggregated). The level of metric rows
+ * node's value in the sorted column. The level of metric rows
  * (Σ Values in rows, `metricDepth`) keeps the order of the Values zone.
  */
 function sortRowTree(nodes, direction, sortValue, metricDepth) {
@@ -56,15 +56,16 @@ function sortRowTree(nodes, direction, sortValue, metricDepth) {
  * @param {Array<string>} rowFields - Row dimension fields (may include 'Σ Values')
  * @param {Array<string>} colFields - Column dimension fields (may include 'Σ Values')
  * @param {Array<Object>} valueFields - Value field configurations
- * @param {Object} sortConfig - Sort configuration { valueKey, direction }
+ * @param {Object} sortConfig - Sort configuration { valueKey, direction, columnPath? }
  * @param {Object} dtypes - Column name → engine type name mapping
+ * @param {Iterable<string>} collapsedColumns - columnPathKey of each collapsed column group
  * @returns {Object} Pivot display data structure
  */
-export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields, sortConfig = null, dtypes = {}) {
+export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields, sortConfig = null, dtypes = {}, collapsedColumns = []) {
   return profiler.profile('buildPivotDisplayData', () => {
     if (!sqlRows?.length) {
       return {
-        columnConfig: { colFields: [], hierarchy: [], valueFields: [] },
+        columnConfig: { colFields: [], hierarchy: [], valueFields: [], groups: [] },
         rowGroups: [],
         grandTotal: null
       };
@@ -94,7 +95,8 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
         valueFields,
         colValuesIndex,
         valuesInRows,
-        dtypes
+        dtypes,
+        new Set(collapsedColumns)
       )
     );
 
@@ -139,7 +141,7 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
     if (sortConfig && sortConfig.valueKey) {
       const sortValue = node => {
         const dimPath = valuesInRows ? node.path.filter((_, i) => i !== rowValuesIndex) : node.path;
-        const hash = createCellHash(dimPath, actualRowFields, [], actualColFields);
+        const hash = createCellHash(dimPath, actualRowFields, sortConfig.columnPath ?? [], actualColFields);
         return lookupCubeValue(cubeIndex, hash, sortConfig.valueKey);
       };
       profiler.profile('sortRowTree', () =>
@@ -183,7 +185,10 @@ export function buildPivotDisplayData(sqlRows, rowFields, colFields, valueFields
       columnConfig: {
         colFields: actualColFields,
         hierarchy: columnTree,  // Hierarchical tree for headers
-        valueFields: valueFields.map(toMetricKey)
+        valueFields: valueFields.map(toMetricKey),
+        valuesIndex: colValuesIndex,  // Position of Σ Values among the column fields, -1 if not in columns
+        valuesInRows,
+        groups: columnGroups(sqlRows, actualColFields)  // Column groups that can collapse
       },
       rowGroups: rowTree,
       grandTotal: grandTotalRow,

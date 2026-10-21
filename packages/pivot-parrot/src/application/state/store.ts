@@ -1,11 +1,12 @@
 import { createContext, useContext } from 'react';
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
-import type { PivotTableConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
+import type { PivotTableConfig, SortConfig, Filter, CustomMetric, CustomFilter, CustomGrouping, PrimitiveValue, SavedViewStates, DerivedField } from '../../domain/models/types';
 import { FieldKind } from '../../domain/models/types';
 import type { FieldItem } from '../../domain/field/FieldItem';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import { hashData } from '../../domain/query/utils/cache';
+import { bigIntReplacer, bigIntReviver } from '../../domain/snapshot/json';
 import {
   buildHandleDrop,
   buildHandleApplyFilter,
@@ -23,11 +24,6 @@ import { getFieldById } from '../../application/utils/getFieldById';
 export interface UniqueValues {
   values: (string | number | boolean | null)[];
   truncated: boolean;
-}
-
-export interface SortConfig {
-  valueKey: string | null;
-  direction: 'asc' | 'desc';
 }
 
 export interface ChartConfig {
@@ -57,6 +53,8 @@ interface PivotStore {
 
   // ==================== Display State ====================
   sortConfig: SortConfig;
+  /** columnPathKey of each collapsed column group; not persisted, like row expansion. */
+  collapsedColumns: string[];
   chartConfig: ChartConfig | null;
 
   // ==================== UI State ====================
@@ -148,6 +146,7 @@ interface PivotStore {
 
   // ==================== Display Actions ====================
   setSort: (sort: SortConfig) => void;
+  setCollapsedColumns: (keys: string[]) => void;
   setChartConfig: (config: ChartConfig | null) => void;
 
   // ==================== UI Actions ====================
@@ -239,6 +238,7 @@ const initialState = {
 
   // Display
   sortConfig: { valueKey: null, direction: 'desc' as const },
+  collapsedColumns: [],
   chartConfig: null,
 
   // UI
@@ -397,6 +397,9 @@ export function createPivotStore(instanceKey: string = 'default') {
       // ==================== Display Actions ====================
       setSort: (sortConfig) =>
         set({ sortConfig }, false, 'setSort'),
+
+      setCollapsedColumns: (collapsedColumns) =>
+        set({ collapsedColumns }, false, 'setCollapsedColumns'),
 
       setChartConfig: (chartConfig) =>
         set({ chartConfig }, false, 'setChartConfig'),
@@ -699,7 +702,8 @@ export function createPivotStore(instanceKey: string = 'default') {
       }),
       {
         name: `pivot-preferences-${instanceKey}`,
-        storage: createJSONStorage(() => localStorage),
+        // A sort column's members can be BigInt, which plain JSON cannot write.
+        storage: createJSONStorage(() => localStorage, { replacer: bigIntReplacer, reviver: bigIntReviver }),
         // Only persist UI preferences, not data or calculations
         partialize: (state) => ({
           // Layout & UI preferences

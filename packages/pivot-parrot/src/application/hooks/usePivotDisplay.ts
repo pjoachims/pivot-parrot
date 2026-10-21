@@ -10,12 +10,14 @@ import { SIGMA_VALUES_ID } from '../../domain/models/types';
  * @param executionConfig - The config that produced the queryResult
  * @param enrichedValues - Values with custom metric details merged in
  * @param sortConfig - How to sort the pivot table
+ * @param collapsedColumns - columnPathKey of each collapsed column group
  */
 export function usePivotDisplay(
   queryResult: any,
   executionConfig: any,
   enrichedValues: any[],
-  sortConfig: any
+  sortConfig: any,
+  collapsedColumns: string[] = []
 ) {
   const lastDisplayRef = useRef<any>(null);
 
@@ -65,11 +67,12 @@ export function usePivotDisplay(
       colFieldNames,
       enrichedValues,
       sortConfig,
-      dtypes
+      dtypes,
+      collapsedColumns
     );
 
     // Store for future comparisons
     lastDisplayRef.current = newDisplay;
     return newDisplay;
-  }, [queryResult, queryResult?.revision, sortConfig, executionConfig?.rows, executionConfig?.columns, enrichedValues]);
+  }, [queryResult, queryResult?.revision, sortConfig, collapsedColumns, executionConfig?.rows, executionConfig?.columns, enrichedValues]);
 }

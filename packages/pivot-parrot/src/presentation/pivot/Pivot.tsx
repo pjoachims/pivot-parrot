@@ -102,6 +102,7 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
   const showChartDialog = usePivotStore((s) => s.showChartDialog);
   const chartConfig = usePivotStore((s) => s.chartConfig);
   const sortConfig = usePivotStore((s) => s.sortConfig);
+  const collapsedColumns = usePivotStore((s) => s.collapsedColumns);
   const sqlHistory = usePivotStore((s) => s.sqlHistory);
 
   // Get state from store (UI preferences)
@@ -188,7 +189,8 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
     calculation.queryResult,
     executionConfig,
     calculation.enrichedValues,
-    sortConfig
+    sortConfig,
+    collapsedColumns
   );
 
   const drilldown = useDrilldown(

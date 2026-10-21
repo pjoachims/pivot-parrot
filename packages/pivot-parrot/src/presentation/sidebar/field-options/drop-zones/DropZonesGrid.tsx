@@ -40,35 +40,30 @@ export default function DropZonesGrid() {
   const handleRemoveFilter = usePivotStore(s => s.handleRemoveFilter);
   const changeAggregation = usePivotStore(s => s.changeAggregation);
 
-  // Open filter dialog after a drop adds a new filter field
+  // Open filter dialog after a drop adds a new filter field. The pill was committed in the
+  // same store update, so it is in the DOM when this effect runs.
   useEffect(() => {
     if (!pendingFilterOpen) return;
     const { fieldName, type } = pendingFilterOpen;
     setPendingFilterOpen(null);
 
-    const rafId = requestAnimationFrame(() => {
-      const anchorEl = document.querySelector(`[data-filter-field="${fieldName}"]`) as HTMLElement;
-      if (!anchorEl) return;
+    const anchorEl = document.querySelector(`[data-filter-field="${fieldName}"]`) as HTMLElement;
+    const fieldItem = getFieldById(fieldName, availableFields, config);
+    if (!anchorEl || !fieldItem) return;
 
-      const fieldItem = getFieldById(fieldName, availableFields, config);
-      if (!fieldItem) return;
-
-      if (type === 'having') {
-        setHavingFilterDialog({
-          field: { name: fieldItem.id },
-          existingFilter: null,
-          anchorEl
-        });
-      } else {
-        setFilterDialog({
-          field: fieldItem,
-          existingFilter: null,
-          anchorEl
-        });
-      }
-    });
-
-    return () => cancelAnimationFrame(rafId);
+    if (type === 'having') {
+      setHavingFilterDialog({
+        field: { name: fieldItem.id },
+        existingFilter: null,
+        anchorEl
+      });
+    } else {
+      setFilterDialog({
+        field: fieldItem,
+        existingFilter: null,
+        anchorEl
+      });
+    }
   }, [pendingFilterOpen]);
 
   // Compute enriched values locally

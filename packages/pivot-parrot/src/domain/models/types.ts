@@ -287,6 +287,16 @@ export interface ViewState {
 }
 
 /**
+ * Rows are ordered by `valueKey` in one column: the column whose members are
+ * `columnPath`, or the Grand Total column when it is absent.
+ */
+export interface SortConfig {
+  valueKey: string | null;
+  direction: 'asc' | 'desc';
+  columnPath?: unknown[];
+}
+
+/**
  * What recreates a pivot screen: its config and view state, never its result
  * data. Restoring re-runs the query, so numbers are always current and no data
  * leaves the engine. `v` lets a host that stores views migrate old ones.
@@ -296,7 +306,7 @@ export interface PivotView {
   config: PivotTableConfig;
   /** Derived fields (date parts, bins) the config may use; they live outside the config. */
   derivedFields: FieldItem[];
-  sortConfig: { valueKey: string | null; direction: 'asc' | 'desc' };
+  sortConfig: SortConfig;
   activeView: 'chart' | 'drilldown' | 'sql' | null;
   secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
   chartConfig: unknown | null;
