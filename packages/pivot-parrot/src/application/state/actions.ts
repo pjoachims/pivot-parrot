@@ -326,11 +326,6 @@ export function buildDeleteCustomExpression(
     values: config.values.filter(v => getFieldId(v.field) !== expressionId)
   };
 
-  // Also remove from filters if it's a custom filter
-  if (type === 'filter') {
-    newConfig.filters = (config.filters || []).filter(f => f.field !== expressionId);
-  }
-
   // Apply auto-management since deleting a metric could change values count
   return autoManageValuesField(newConfig);
 }
