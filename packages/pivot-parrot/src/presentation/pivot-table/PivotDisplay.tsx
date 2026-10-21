@@ -52,10 +52,7 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
     const grandTotalsConfig = config.grandTotals || 'both';
 
     // Expansion state management
-    const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({
-        data,
-        rowFields
-    });
+    const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({ data });
 
     const columnCollapse = useColumnCollapse(data?.columnConfig?.groups);
     const [columnGroupMenu, setColumnGroupMenu] = useState<{ x: number; y: number; group: unknown[] } | null>(null);

@@ -91,14 +91,3 @@ export function collapseAll(): ExpandedState {
   return {};
 }
 
-/**
- * Toggle expansion for nodes at a specific field depth
- */
-export function toggleFieldLevel(
-  nodes: TreeNode[],
-  currentExpanded: ExpandedState,
-  fieldDepth: number,
-  shouldExpand: boolean
-): ExpandedState {
-  return setLevelExpansion(nodes, currentExpanded, fieldDepth, shouldExpand);
-}

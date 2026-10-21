@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { setLevelExpansion, expandAll, collapseAll, toggleFieldLevel, pruneExpanded } from '../utils/treeOperations';
+import { setLevelExpansion, expandAll, collapseAll, pruneExpanded } from '../utils/treeOperations';
 
 interface TreeNode {
   children?: TreeNode[];
@@ -13,12 +13,10 @@ interface TreeNode {
 
 interface UseExpansionStateProps {
   data: { rowGroups: TreeNode[] };
-  rowFields?: string[];
 }
 
-export function useExpansionState({ data, rowFields }: UseExpansionStateProps) {
+export function useExpansionState({ data }: UseExpansionStateProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [fieldExpanded, setFieldExpanded] = useState<Record<string, boolean>>({});
 
   const [prevRowGroups, setPrevRowGroups] = useState(data.rowGroups);
   if (prevRowGroups !== data.rowGroups) {
@@ -32,22 +30,6 @@ export function useExpansionState({ data, rowFields }: UseExpansionStateProps) {
   const toggle = useCallback((key: string) => {
     setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
-
-  /**
-   * Toggle all nodes at a specific field level
-   */
-  const toggleField = useCallback((fieldName: string) => {
-    const isCurrentlyExpanded = fieldExpanded[fieldName] !== false;
-    const newExpandedState = !isCurrentlyExpanded;
-
-    setFieldExpanded(prev => ({ ...prev, [fieldName]: newExpandedState }));
-
-    const fieldDepth = (rowFields || []).indexOf(fieldName);
-    if (fieldDepth === -1) return;
-
-    const newExpanded = toggleFieldLevel(data.rowGroups, expanded, fieldDepth, newExpandedState);
-    setExpanded(newExpanded);
-  }, [data.rowGroups, expanded, fieldExpanded, rowFields]);
 
   /**
    * Fold all nodes at a specific depth
@@ -82,9 +64,7 @@ export function useExpansionState({ data, rowFields }: UseExpansionStateProps) {
 
   return {
     expanded,
-    fieldExpanded,
     toggle,
-    toggleField,
     foldLevel,
     unfoldLevel,
     foldAll,
