@@ -1,12 +1,11 @@
 import React from 'react';
 import { useFieldsListLogic } from './useFieldsListLogic';
-import { AvailableFieldsSection } from './AvailableFieldsSection';
-import { CustomMetricsSection } from './CustomMetricsSection';
+import { FieldTree } from './FieldTree';
 import { CustomFiltersSection } from './CustomFiltersSection';
 import { CustomGroupingsSection } from './CustomGroupingsSection';
 import { ActiveAggregationsSection } from './ActiveAggregationsSection';
 import FieldRenameDialog from '../../dialogs/FieldRenameDialog';
-import { filterAvailableFields, filterCustomMetrics } from '../../../../application/utils/fieldUtils';
+import { filterCustomMetrics } from '../../../../application/utils/fieldUtils';
 import { fieldDisplayName } from '../../../../domain/field/fieldDisplayName';
 
 /**
@@ -44,47 +43,30 @@ export default function FieldsList() {
   } = useFieldsListLogic();
 
   // Compute filtered lists locally
-  const availableFieldsFiltered = filterAvailableFields(availableFields, derivedFieldsMap, searchQuery);
-  const customMetrics = filterCustomMetrics(config.customMetrics || [], searchQuery);
   const customFilters = filterCustomMetrics(config.customFilters || [], searchQuery);
   const customGroupings = filterCustomMetrics(config.customGroupings || [], searchQuery);
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--surface-bg)' }}>
       <div style={{ padding: '0 var(--space-1) var(--space-2)' }}>
-        {availableFieldsFiltered.length === 0 && customMetrics.length === 0 && searchQuery ? (
-          <div className="pp-hint" style={{ textAlign: 'center', padding: 'var(--space-4) 0' }}>
-            No fields matching "{searchQuery}"
-          </div>
-        ) : null}
-
-        {/* Available Fields Section */}
-        <AvailableFieldsSection
-          fields={availableFieldsFiltered}
+        <FieldTree
+          fields={availableFields}
+          metrics={config.customMetrics || []}
           searchQuery={searchQuery}
+          config={config}
           checkedFields={checkedFields}
+          checkedMetrics={checkedMetrics}
           derivedFieldsMap={derivedFieldsMap}
           detectedTypes={detectedTypes}
-          config={config}
           onToggleField={handleFieldCheckboxChange}
+          onToggleMetric={handleCustomMetricCheckboxChange}
           onMoveToZone={handleMoveFieldToZone}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onRename={handleRenameClick}
           onShowDerived={handleShowDerivedDialog}
-        />
-
-        {/* Custom Metrics Section */}
-        <CustomMetricsSection
-          customMetrics={customMetrics}
-          searchQuery={searchQuery}
-          checkedMetrics={checkedMetrics}
-          onToggleMetric={handleCustomMetricCheckboxChange}
-          onMoveToZone={handleMoveFieldToZone}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onEdit={(metric) => handleEditExpression(metric, 'metric')}
-          onDelete={(metric) => handleDeleteExpression(metric, 'metric')}
+          onEditMetric={(metric) => handleEditExpression(metric, 'metric')}
+          onDeleteMetric={(metric) => handleDeleteExpression(metric, 'metric')}
         />
 
         {/* Custom Groupings Section */}

@@ -167,6 +167,29 @@ const open = (view: PivotView) => pivot.current?.loadView(view);
 <Pivot ref={pivot} config={{ mode: 'local', duckdb, data: arrowBytes, settings: { showSnapshots: false } }} />
 ```
 
+### Field folders
+
+Give a field a `path` and the field list shows it in folders, like Excel's PivotTable field list on a cube. A path is an array of folder names from the top, so a name may contain any character, `/` included. Folders open and close on click and stay that way while the component lives. A search shows every hit with its folders open and also matches folder names. A field without a path sits at the top level, and without any path the list stays flat.
+
+Base fields take it on the remote schema, custom metrics on their definition:
+
+```js
+new RemoteDataEngine({
+  executeQuery,
+  schema: [
+    { name: 'brand', type: 'VARCHAR', path: ['Article'] },
+    { name: 'category_1', type: 'VARCHAR', path: ['Article', 'Category'] },
+    { name: 'region', type: 'VARCHAR' },
+  ],
+});
+
+initialConfig.customMetrics = [
+  { id: 'margin', name: 'Margin', expr: 'SUM(profit) / SUM(revenue)', path: ['Measures', 'Margin'] },
+];
+```
+
+In local mode the fields come from the data, so only custom metrics carry a path there.
+
 ### Relative date filters
 
 A date or timestamp field can be filtered relative to today: Today, Yesterday, Last 7 days, This week, Previous month, or any Last/Previous N days, weeks, months, quarters or years. Weeks start on Monday. "Last" periods include the current one, "Previous" periods are complete ones. The filter is stored as `{ type: 'relative_date', relative: { mode, n, unit } }`, never as dates, and the engine resolves it against its own `current_date` on every query, so a saved view filtered to "Last 7 days" shows the seven days up to the day you open it. In remote mode that is the server's today.

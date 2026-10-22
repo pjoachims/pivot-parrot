@@ -14,3 +14,9 @@ it('a new format replaces the old one', () => {
   const next = updateCustomMetric(config, 'm1', 'Margin', 'a / b', { type: 'number', decimals: 0 }, 'metric');
   expect(next.customMetrics[0].format).toEqual({ type: 'number', decimals: 0 });
 });
+
+it('editing a metric keeps its folder path', () => {
+  const inFolder = { customMetrics: [{ id: 'm1', name: 'Margin', expr: 'a / b', path: ['Measures', 'Margin'] }] };
+  const next = updateCustomMetric(inFolder, 'm1', 'Margin %', 'a / b * 100', undefined, 'metric');
+  expect(next.customMetrics[0].path).toEqual(['Measures', 'Margin']);
+});

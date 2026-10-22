@@ -19,7 +19,7 @@ import { fromSchema } from '../../domain/field/FieldItem';
  *     },
  *     sessionId: 'abc-123',
  *     dialect: 'duckdb',
- *     schema: [{name: 'id', type: 'bigint'}, {name: 'name', type: 'string'}]
+ *     schema: [{name: 'id', type: 'bigint'}, {name: 'name', type: 'string', path: ['Customer']}]
  *   });
  */
 export class RemoteDataEngine extends DataEngine {
@@ -76,7 +76,8 @@ export class RemoteDataEngine extends DataEngine {
       return fromSchema({
         name: col.name,
         type: detectedType,  // Arrow type (e.g., 'date32', 'int64', 'string')
-        originalType: col.type  // Native database type (e.g., 'DATE', 'BIGINT', 'VARCHAR')
+        originalType: col.type,  // Native database type (e.g., 'DATE', 'BIGINT', 'VARCHAR')
+        path: col.path
       });
     });
   }

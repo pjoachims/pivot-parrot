@@ -114,6 +114,7 @@ export interface CustomMetric {
   name: string;
   expr: string;
   format?: ValueFormat;
+  path?: string[];  // Folders in the field list, from the top
 }
 
 /**

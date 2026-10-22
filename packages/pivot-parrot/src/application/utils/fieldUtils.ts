@@ -93,29 +93,6 @@ export function enrichValuesWithMetrics(config) {
 }
 
 /**
- * Filter available fields based on search query
- * Excludes Σ Values and derived fields
- */
-export function filterAvailableFields(availableFields, derivedFieldsMap, searchQuery) {
-  const allDerivedFields = Object.values(derivedFieldsMap).flat();
-  const filtered = availableFields.filter(field => {
-    const fieldId = typeof field === 'string' ? field : field.id;
-    return fieldId !== SIGMA_VALUES_ID && !allDerivedFields.includes(fieldId);
-  });
-
-  if (!searchQuery.trim()) {
-    return filtered;
-  }
-
-  const query = searchQuery.toLowerCase();
-  return filtered.filter(field => {
-    const fieldId = typeof field === 'string' ? field : field.id;
-    const fieldName = typeof field === 'string' ? field : (field.name || field.id);
-    return fieldId.toLowerCase().includes(query) || fieldName.toLowerCase().includes(query);
-  });
-}
-
-/**
  * Filter custom metrics based on search query
  */
 export function filterCustomMetrics(customMetrics, searchQuery) {

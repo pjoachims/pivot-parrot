@@ -69,6 +69,7 @@ interface PivotStore {
 
   // Field Options UI State
   searchQuery: string;
+  openFolders: string[];  // field-list folder keys (fieldTree PATH_SEP-joined paths) shown open
   dragOverZone: string | null;
   insertionIndex: number | null;
   showSnapshots: boolean;
@@ -163,6 +164,7 @@ interface PivotStore {
 
   // Field Options UI Actions
   setSearchQuery: (query: string) => void;
+  toggleFolder: (key: string) => void;
   setDragOverZone: (zone: string | null) => void;
   setInsertionIndex: (index: number | null) => void;
   setShowSnapshots: (show: boolean) => void;
@@ -253,6 +255,7 @@ const initialState = {
 
   // Field Options UI
   searchQuery: '',
+  openFolders: [],
   dragOverZone: null,
   insertionIndex: null,
   showSnapshots: false,
@@ -437,6 +440,13 @@ export function createPivotStore(instanceKey: string = 'default') {
       // Field Options UI Actions
       setSearchQuery: (query) =>
         set({ searchQuery: query }, false, 'setSearchQuery'),
+
+      toggleFolder: (key) =>
+        set(state => ({
+          openFolders: state.openFolders.includes(key)
+            ? state.openFolders.filter(k => k !== key)
+            : [...state.openFolders, key]
+        }), false, 'toggleFolder'),
 
       setDragOverZone: (zone) =>
         set({ dragOverZone: zone }, false, 'setDragOverZone'),
