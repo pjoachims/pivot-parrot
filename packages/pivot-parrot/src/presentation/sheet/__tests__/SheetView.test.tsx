@@ -1,5 +1,5 @@
 import React from 'react';
-import { it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import SheetView from '../SheetView';
 
@@ -77,4 +77,78 @@ it('a formula typed in lower case computes, and the cell and the state hold it i
   expect(ws.getValue('E2', true)).toBe('gut');
   act(() => ws.setValueFromCoords(5, 1, '=concatenate("sag ""hi""",a2)'));
   expect(ws.getValueFromCoords(5, 1)).toBe('=CONCATENATE("sag ""hi""",A2)');
+});
+
+describe('point mode', () => {
+  const type = (input: HTMLInputElement, text: string) => {
+    act(() => {
+      input.value += text;
+      input.setSelectionRange(input.value.length, input.value.length);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+  const key = (input: HTMLInputElement, k: string, shiftKey = false) =>
+    act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true })); });
+  const click = (td: HTMLElement, shiftKey = false) =>
+    act(() => { td.dispatchEvent(new MouseEvent('mousedown', { shiftKey, buttons: 1, bubbles: true, cancelable: true })); });
+  const outlined = (sheet: ReturnType<typeof mount>) =>
+    [...sheet.container.querySelectorAll('.pp-sheet-ref')].map(el => (el as HTMLElement).dataset.ref);
+  const edit = async (sheet: ReturnType<typeof mount>, x: number, y: number) => {
+    const td = sheet.ws().getCellFromCoords(x, y);
+    click(td);
+    act(() => sheet.ws().openEditor(td, true));
+    await act(() => new Promise(r => setTimeout(r)));
+    return { td, input: td.children[0] as HTMLInputElement };
+  };
+
+  it('a click and arrow keys put references into the formula, outlined while editing', async () => {
+    const sheet = mount(q1, {});
+    const { td, input } = await edit(sheet, 3, 1);
+    type(input, '=');
+    click(sheet.ws().getCellFromCoords(1, 1));
+    expect(input.value).toBe('=B2');
+    expect(sheet.ws().edition).not.toBeNull();
+    type(input, '/');
+    key(input, 'ArrowLeft');
+    key(input, 'ArrowLeft');
+    key(input, 'ArrowDown');
+    key(input, 'ArrowDown');
+    expect(input.value).toBe('=B2/B4');
+    expect(outlined(sheet)).toEqual(['B2', 'B4']);
+
+    act(() => sheet.ws().closeEditor(td, true));
+    expect(sheet.ws().getValue('D2', true)).toBe('0.6');
+    expect(sheet.onCellsChange).toHaveBeenLastCalledWith({ D2: '=B2/B4' });
+  });
+
+  it('shift extends the picked reference to a range', async () => {
+    const sheet = mount(q1, {});
+    const { td, input } = await edit(sheet, 3, 1);
+    type(input, '=SUM(');
+    click(sheet.ws().getCellFromCoords(1, 1));
+    click(sheet.ws().getCellFromCoords(1, 2), true);
+    expect(input.value).toBe('=SUM(B2:B3');
+    key(input, 'ArrowDown', true);
+    expect(input.value).toBe('=SUM(B2:B4');
+    type(input, ')');
+    act(() => sheet.ws().closeEditor(td, true));
+    expect(sheet.ws().getValue('D2', true)).toBe('400');
+  });
+
+  it('where no reference may go, a click leaves the editor as jspreadsheet does', async () => {
+    const sheet = mount(q1, {});
+    const { input } = await edit(sheet, 3, 1);
+    type(input, '=B2*2');
+    click(sheet.ws().getCellFromCoords(1, 2));
+    expect(sheet.ws().edition).toBeNull();
+    expect(sheet.ws().getValue('D2', true)).toBe('240');
+  });
+
+  it('a selected formula cell shows its references outlined', () => {
+    const sheet = mount(q1, { D2: '=B2/SUM(B2:B3)' });
+    act(() => sheet.ws().updateSelectionFromCoords(3, 1, 3, 1));
+    expect(outlined(sheet)).toEqual(['B2', 'B2:B3']);
+    act(() => sheet.ws().updateSelectionFromCoords(0, 0, 0, 0));
+    expect(outlined(sheet)).toEqual([]);
+  });
 });

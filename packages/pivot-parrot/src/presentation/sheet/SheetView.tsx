@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import jspreadsheet from 'jspreadsheet-ce';
 import 'jsuites/dist/jsuites.css';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';
@@ -13,6 +14,16 @@ import {
   summarize,
   type SheetCells
 } from '../../domain/sheet/sheet';
+import {
+  formulaReferences,
+  putReference,
+  rangeAddress,
+  referenceSlot,
+  spanOf,
+  step,
+  type ArrowKey,
+  type Cell
+} from '../../domain/sheet/formula';
 
 export interface SheetViewProps {
   /** The pivot's visual layout, written read-only from A1. */
@@ -31,6 +42,13 @@ const MIN_ROWS = 60;
 type Worksheet = any;
 
 interface Rect { x0: number; y0: number; x1: number; y1: number }
+
+/** The reference last picked into the open formula editor: where it sits in the text and the cells it names. */
+interface Pick { slot: [number, number]; anchor: Cell; active: Cell }
+
+const ARROWS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+/** One colour per reference of the formula being looked at, as Excel does. */
+const REF_COLORS = ['#1f6feb', '#d1242f', '#8250df', '#1a7f37', '#bf3989', '#9a6700', '#0a7ea4'];
 
 /**
  * The pivot result as a greyed, read-only range in a spreadsheet, with the
@@ -55,6 +73,9 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
   const [selection, setSelection] = useState<Rect | null>(null);
   const [draft, setDraft] = useState('');
   const [revision, setRevision] = useState(0);
+  // The text of the open cell editor, while one is open.
+  const [editText, setEditText] = useState<string | null>(null);
+  const pickRef = useRef<Pick | null>(null);
 
   const format = useMemo(() => {
     const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
@@ -123,6 +144,15 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
         secureFormulas: true
       }],
       contextMenu: () => [],
+      oneditionstart: () => {
+        pickRef.current = null;
+        // The editor element is created right after this event.
+        setTimeout(() => setEditText(editorOf(wsRef.current)?.value ?? null));
+      },
+      oneditionend: () => {
+        pickRef.current = null;
+        setEditText(null);
+      },
       onchange: (_ws: Worksheet, _td: HTMLTableCellElement, x: string | number, y: string | number, value: unknown) => {
         if (writingRef.current) return;
         const next = editCell(rangeRef.current, cellsRef.current, cellAddress(Number(x), Number(y)), value == null ? '' : String(value));
@@ -149,6 +179,67 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
     wsRef.current = null;
   }, []);
 
+  // Point mode: while the cell editor holds a formula and the caret sits where a
+  // reference may go, a click or an arrow key puts a cell's address there, shift
+  // a range. Jspreadsheet itself would close the editor on a click and ignore arrows.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const put = (input: HTMLInputElement | HTMLTextAreaElement, slot: [number, number], anchor: Cell, active: Cell) => {
+      const { text, caret } = putReference(input.value, slot, rangeAddress(spanOf(anchor, active)));
+      input.value = text;
+      input.setSelectionRange(caret, caret);
+      pickRef.current = { slot: [slot[0], caret], anchor, active };
+      setEditText(text);
+    };
+    // The open pick, if the slot is still the one it filled (typing an operator starts a new one).
+    const openPick = (slot: [number, number]) => {
+      const pick = pickRef.current;
+      return pick && pick.slot[0] === slot[0] && pick.slot[1] === slot[1] ? pick : null;
+    };
+    const slotOf = (input: HTMLInputElement | HTMLTextAreaElement) =>
+      referenceSlot(input.value, input.selectionStart ?? input.value.length);
+
+    const onMouseDown = (e: MouseEvent) => {
+      const ws = wsRef.current;
+      const input = editorOf(ws);
+      const td = (e.target as Element).closest?.('td[data-x][data-y]') as HTMLTableCellElement | null;
+      if (!input || !td || td.contains(input)) return;
+      const slot = slotOf(input);
+      if (!slot) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const cell = { x: Number(td.dataset.x), y: Number(td.dataset.y) };
+      const pick = openPick(slot);
+      put(input, slot, e.shiftKey && pick ? pick.anchor : cell, cell);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      const ws = wsRef.current;
+      const input = editorOf(ws);
+      if (!input || e.target !== input || !ARROWS.has(e.key)) return;
+      const slot = slotOf(input);
+      if (!slot) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const pick = openPick(slot);
+      const from = pick?.active ?? { x: Number(ws.edition[2]), y: Number(ws.edition[3]) };
+      const width = ws.options.data[0]?.length ?? 1;
+      const to = step(from, e.key as ArrowKey, width, ws.options.data.length);
+      put(input, slot, e.shiftKey ? (pick?.anchor ?? from) : to, to);
+    };
+    const onInput = (e: Event) => {
+      if (e.target === editorOf(wsRef.current)) setEditText((e.target as HTMLInputElement).value);
+    };
+    host.addEventListener('mousedown', onMouseDown, true);
+    host.addEventListener('keydown', onKeyDown, true);
+    host.addEventListener('input', onInput, true);
+    return () => {
+      host.removeEventListener('mousedown', onMouseDown, true);
+      host.removeEventListener('keydown', onKeyDown, true);
+      host.removeEventListener('input', onInput, true);
+    };
+  }, []);
+
   const active = selection ? { x: selection.x0, y: selection.y0 } : null;
   const activeIsPivot = !!active && inPivot(range, active.x, active.y);
 
@@ -170,6 +261,34 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
     }
     return summarize(values);
   }, [selection, range, revision]); // eslint-disable-line react-hooks/exhaustive-deps -- revision: a typed cell changed in the worksheet
+
+  // The references of the formula being edited, or else of the selected formula cell, outlined in colour.
+  const shownFormula = editText ?? (active && !activeIsPivot && draft.startsWith('=') ? draft : null);
+  const references = useMemo(() => formulaReferences(shownFormula ?? ''), [shownFormula]);
+  const content: HTMLElement | null = wsRef.current?.content ?? null;
+  const outlines = content && references.length > 0 ? references.flatMap((r, i) => {
+    const first = wsRef.current.getCellFromCoords(r.x0, r.y0) as HTMLElement | null;
+    const last = wsRef.current.getCellFromCoords(r.x1, r.y1) as HTMLElement | null;
+    if (!first || !last) return [];
+    const base = content.getBoundingClientRect();
+    const a = first.getBoundingClientRect();
+    const b = last.getBoundingClientRect();
+    const colorIndex = references.findIndex(other => rangeAddress(other) === rangeAddress(r));
+    return [(
+      <div
+        key={i}
+        className="pp-sheet-ref"
+        data-ref={rangeAddress(r)}
+        style={{
+          left: a.left - base.left + content.scrollLeft,
+          top: a.top - base.top + content.scrollTop,
+          width: b.right - a.left,
+          height: b.bottom - a.top,
+          borderColor: REF_COLORS[colorIndex % REF_COLORS.length]
+        }}
+      />
+    )];
+  }) : null;
 
   const commitDraft = () => {
     const ws = wsRef.current;
@@ -195,6 +314,7 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
         />
       </div>
       <div ref={hostRef} className="pp-sheet-grid" />
+      {content && outlines && createPortal(outlines, content)}
       <div className="pp-sheet-status" role="status">
         <span className="pp-sheet-status-note">
           {covered.length > 0
@@ -211,4 +331,10 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
       </div>
     </div>
   );
+}
+
+/** The input of the worksheet's open cell editor. */
+function editorOf(ws: Worksheet): HTMLInputElement | HTMLTextAreaElement | null {
+  const el = ws?.edition?.[0]?.children?.[0];
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el : null;
 }

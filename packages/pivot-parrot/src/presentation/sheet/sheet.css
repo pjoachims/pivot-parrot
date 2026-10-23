@@ -88,3 +88,15 @@
   display: flex;
   gap: var(--space-4, 16px);
 }
+
+.pp-sheet-grid .jss_content {
+  position: relative;
+}
+
+.pp-sheet-ref {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  border: 2px solid;
+  pointer-events: none;
+}
