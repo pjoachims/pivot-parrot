@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildPivotDisplayData } from '../../../domain/pivot/index';
-import { buildPivotCSV, buildDataCSV, exportPivotCSV } from '../export';
+import { buildPivotCSV, buildPivotGrid, buildDataCSV, exportPivotCSV } from '../export';
 import { computeLeafColumns } from '../columnHelpers';
 import { columnPathKey } from '../cubeIndex';
 import { dataToCSV, toCSV } from '../../../domain/query/utils/csv';
@@ -227,5 +227,40 @@ describe('buildPivotCSV without column subtotals', () => {
       });
     }
     expect(wrong).toEqual([]);
+  });
+});
+
+describe('buildPivotGrid with a date dimension', () => {
+  const dialect = new DuckDBDialect();
+  const umsatz = { values: [config.values[0]], customMetrics: [config.customMetrics[0]] };
+  const jan = Date.UTC(2024, 0, 1);
+  const feb = Date.UTC(2024, 1, 1);
+  const rows = [
+    { Tag: jan, m1: 10, _grouping_Tag: 0 },
+    { Tag: feb, m1: 20, _grouping_Tag: 0 },
+    { Tag: null, m1: 30, _grouping_Tag: 1 }
+  ];
+
+  it('writes row members as the table shows them, not as epoch milliseconds', () => {
+    const dtypes = { Tag: 'date32<DAY>' };
+    const d = buildPivotDisplayData(rows, ['Tag'], ['Σ Values'], umsatz.values, null, dtypes);
+    const grid = buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, true, umsatz, dtypes, dialect);
+    expect(grid.map(r => r[0])).toEqual(['Row Labels', '2024-01-01', '2024-02-01', 'Grand Total']);
+  });
+
+  it('writes a timestamp member with its time', () => {
+    const dtypes = { Tag: 'timestamp<MICROSECOND>' };
+    const ts = [{ Tag: jan + 3_600_000, m1: 10, _grouping_Tag: 0 }];
+    const d = buildPivotDisplayData(ts, ['Tag'], ['Σ Values'], umsatz.values, null, dtypes);
+    expect(buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, false, umsatz, dtypes, dialect)[1][0]).toBe('2024-01-01 01:00:00');
+  });
+
+  it('writes column members as the table shows them', () => {
+    const dtypes = { Tag: 'date32<DAY>' };
+    const d = buildPivotDisplayData(rows, [], ['Tag', 'Σ Values'], umsatz.values, null, dtypes);
+    const grid = buildPivotGrid(d, computeLeafColumns(d), [], true, true, umsatz, dtypes, dialect);
+    expect(grid[0]).toContain('2024-01-01');
+    expect(grid[0]).toContain('2024-02-01');
+    expect(grid.flat().some(c => c === jan || c === String(jan))).toBe(false);
   });
 });

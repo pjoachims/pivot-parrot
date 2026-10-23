@@ -120,6 +120,12 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
   }
 
   const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
+  // A dimension member as the table shows it: the dialect renders a typed value (a date's epoch ms as 2024-01-01).
+  const member = (value, field: string | undefined) => {
+    if (value === null || value === undefined) return '';
+    const typeName = field ? dtypes[field] : undefined;
+    return typeName && dialect ? String(dialect.toDisplay(value, typeName)) : String(value);
+  };
 
   const lines: CsvCell[][] = [];
   const valuesIndex = (rowFields || []).indexOf(SIGMA_VALUES_ID);
@@ -146,9 +152,9 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
         } else if (leaf.isGrandTotal) {
           row.push(level === 0 ? 'Grand Total' : '');
         } else if (leaf.isSubtotal) {
-          row.push(level < path.length ? path[level] : level === path.length ? 'Subtotal' : '');
+          row.push(level < path.length ? member(path[level], colFields[level]) : level === path.length ? 'Subtotal' : '');
         } else if (level < path.length) {
-          row.push(path[level]);
+          row.push(member(path[level], colFields[level]));
         } else {
           row.push(level === metricLevel ? getMetricName(leaf.metric) : '');
         }
@@ -171,10 +177,7 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
     if (config?.showNullGroups === false && (row.groupLabel === '(null)' || row.groupLabel === null)) return;
 
     const indent = '    '.repeat(depth); // 4 spaces per level
-    // Export raw row label without formatting - handle false, 0, "" correctly
-    const labelValue = row.groupLabel;
-    const labelStr = (labelValue === null || labelValue === undefined) ? '' : String(labelValue);
-    const label = indent + labelStr;
+    const label = indent + (depth === valuesIndex ? member(row.groupLabel, undefined) : member(row.label, rowFields?.[depth]));
 
     // Determine which values to show
     const hasKids = row.children && row.children.length > 0;
