@@ -1,4 +1,4 @@
-import type { PivotGrid, PivotGridColumn, PivotGridRow } from '../../application/utils/export';
+import type { PivotGrid, PivotGridColumn, PivotGridGroup, PivotGridRow } from '../../application/utils/export';
 
 /**
  * Sheet mode: the pivot result is written read-only from A1, and the user's own
@@ -15,7 +15,7 @@ export type SheetCells = Record<string, string>;
 /**
  * The pivot written as a range from A1. `percent` lists the addresses whose number is a fraction shown as %.
  * `rowKinds` and `colKinds` say what each row and column of the range is (see PivotGrid);
- * `columnGroups` holds, by address, the header cells that open and close a column group.
+ * `rowGroups` and `columnGroups` hold, by address, the label cells that open and close a row or column group.
  */
 export interface PivotRange {
   values: SheetValue[][];
@@ -24,8 +24,17 @@ export interface PivotRange {
   percent: Set<string>;
   rowKinds: PivotGridRow[];
   colKinds: PivotGridColumn[];
-  columnGroups: Map<string, { key: string; open: boolean }>;
+  rowGroups: Map<string, GroupToggle>;
+  columnGroups: Map<string, GroupToggle>;
 }
+
+/** A group's toggle: its expansion key and whether its members are shown. */
+export interface GroupToggle {
+  key: string;
+  open: boolean;
+}
+
+const byAddress = (groups: PivotGridGroup[]) => new Map(groups.map(g => [cellAddress(g.col, g.row), { key: g.key, open: g.open }]));
 
 /** The area of the pivot a cell belongs to, styled apart like an Excel PivotTable style. */
 export type PivotCellRole = 'header' | 'rowLabel' | 'value' | 'subtotal' | 'grandTotal';
@@ -84,7 +93,8 @@ export function pivotRange(grid: PivotGrid): PivotRange {
     percent,
     rowKinds: grid.rows,
     colKinds: grid.columns,
-    columnGroups: new Map(grid.columnGroups.map(g => [cellAddress(g.col, g.row), { key: g.key, open: g.open }]))
+    rowGroups: byAddress(grid.rowGroups),
+    columnGroups: byAddress(grid.columnGroups)
   };
 }
 
@@ -96,7 +106,7 @@ export function pivotCellStyle(range: PivotRange, x: number, y: number): PivotCe
   const role: PivotCellRole =
     row === 'header' ? 'header'
     : row === 'total' || col === 'total' ? 'grandTotal'
-    : row === 'group' || col === 'subtotal' ? 'subtotal'
+    : row === 'subtotal' || col === 'subtotal' ? 'subtotal'
     : col === 'label' ? 'rowLabel'
     : 'value';
   return {

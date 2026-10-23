@@ -38,6 +38,7 @@ export type {
   NewSavedView,
   SnapshotStore
 } from './domain/models/types';
+export type { RowLayout } from './application/utils/export';
 export { createMemorySnapshotStore } from './domain/snapshot/memoryStore';
 
 // Export domain layer for advanced usage

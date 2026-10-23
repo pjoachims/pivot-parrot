@@ -105,6 +105,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
 
     const { data } = composeSheet(range, cells, Math.max(MIN_COLS, range.cols + SPARE_COLS), Math.max(MIN_ROWS, range.rows + SPARE_ROWS));
     const width = data[0]?.length ?? MIN_COLS;
+    const labelColumns = range.colKinds.filter(kind => kind === 'label').length;
 
     // Numbers stay raw in the data (formulas read them); only their display is formatted.
     // A formula's result is already in the cell when this runs, so it is formatted too and kept in data-raw.
@@ -142,15 +143,17 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
         toggle.setAttribute('aria-label', `${group.open ? 'Collapse' : 'Expand'} ${label}`);
         td.replaceChildren(toggle, label);
       };
-      const columnGroup = rangeRef.current.columnGroups.get(cellAddress(x, y));
+      const { columnGroups, rowGroups, rowKinds, colKinds } = rangeRef.current;
+      const columnGroup = columnGroups.get(cellAddress(x, y));
       if (columnGroup) return withToggle('column', columnGroup, String(value));
-      const row = rangeRef.current.rowKinds[y];
-      if (rangeRef.current.colKinds[x] !== 'label' || !row || (row.kind !== 'item' && row.kind !== 'group')) return;
-      // The label's depth as an indent (its leading spaces collapse in HTML); a group gets its toggle in front.
+      const row = rowKinds[y];
+      if (colKinds[x] !== 'label' || !row || (row.kind !== 'item' && row.kind !== 'subtotal')) return;
+      // In the one label column of the compact form, the label's depth as an indent (its leading spaces collapse in HTML).
       const label = String(value).trimStart();
-      td.style.paddingLeft = `${4 + row.depth * 16}px`;
-      if (row.kind === 'item') td.textContent = label;
-      else withToggle('row', row, label);
+      if (labelColumns === 1) td.style.paddingLeft = `${4 + row.depth * 16}px`;
+      const rowGroup = rowGroups.get(cellAddress(x, y));
+      if (rowGroup) withToggle('row', rowGroup, label);
+      else td.textContent = label;
     };
 
     writingRef.current = true;
@@ -164,7 +167,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
         data,
         minDimensions: [width, data.length],
         defaultColWidth: 110,
-        columns: Array.from({ length: width }, (_, x) => ({ width: x === 0 ? 180 : 96, render })),
+        columns: Array.from({ length: width }, (_, x) => ({ width: range.colKinds[x] !== 'label' ? 96 : labelColumns === 1 ? 180 : 140, render })),
         tableOverflow: true,
         tableHeight: '100%',
         tableWidth: '100%',

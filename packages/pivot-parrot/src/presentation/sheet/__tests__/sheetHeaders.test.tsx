@@ -125,7 +125,7 @@ describe('the sheet\'s column headers are the table\'s, wherever Σ Values sits'
     const config = { rows: ['region'], columns: ['Σ Values', 'category', 'product'], values };
     const data = buildPivotDisplayData(cubeRows, config.rows, config.columns, values);
     expect(layoutCSV(data, config).split(/\r?\n/).slice(0, 3).map(l => l.split(',').slice(0, 4))).toEqual([
-      ['Row Labels', 'sum_sales', 'sum_sales', 'sum_sales'],
+      ['region', 'sum_sales', 'sum_sales', 'sum_sales'],
       ['', 'Home', 'Home', 'Home'],
       ['', 'Lamp', 'Sofa', 'Subtotal']
     ]);

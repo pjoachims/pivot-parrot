@@ -314,3 +314,19 @@ it('a snapshot keeps sheet mode and the cells typed next to the pivot, and resto
   expect(store.getState().mainView).toBe('table');
   expect(store.getState().sheetCells).toEqual({});
 });
+
+it('a snapshot keeps the sheet\'s report layout; a view saved without one restores compact', async () => {
+  const snapshotStore = fakeStore();
+  const { store, hook, backend } = setup(snapshotStore);
+  await showPivot(store, backend);
+  await act(async () => store.getState().setSheetLayout({ form: 'tabular', repeatLabels: true }));
+  await act(async () => hook.result.current.handlers.handleCreateSnapshot('tabular'));
+  expect(snapshotStore.save.mock.calls[0][0].view.sheet).toEqual({ show: false, cells: {}, layout: { form: 'tabular', repeatLabels: true } });
+
+  await act(async () => store.getState().setSheetLayout({ form: 'compact' }));
+  await act(async () => hook.result.current.handlers.handleLoadSnapshot('srv-1'));
+  expect(store.getState().sheetLayout).toEqual({ form: 'tabular', repeatLabels: true });
+
+  await act(async () => hook.result.current.handlers.applyView(savedQ2.view));
+  expect(store.getState().sheetLayout).toEqual({ form: 'compact' });
+});

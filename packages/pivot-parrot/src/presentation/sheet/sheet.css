@@ -62,7 +62,9 @@
   display: none;
 }
 
-.pp-sheet-grid > div {
+/* Every box from the grid down to .jss_content takes the grid's height, so .jss_content scrolls. */
+.pp-sheet-grid > div,
+.pp-sheet-grid .jtabs-content {
   height: 100%;
 }
 

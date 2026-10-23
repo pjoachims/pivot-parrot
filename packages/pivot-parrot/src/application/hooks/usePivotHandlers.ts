@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { usePivotStore, type ChartConfig } from '../state/store';
 import type { useSnapshots } from './useSnapshots';
 import type { PivotDisplayResult } from './usePivotDisplay';
-import { layoutCSV } from '../../application/utils/export';
+import { DEFAULT_ROW_LAYOUT, layoutCSV } from '../../application/utils/export';
 import { dataToCSV } from '../../domain/query/utils/csv';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { FieldKind } from '../../domain/models/types';
@@ -56,6 +56,8 @@ export function usePivotHandlers({
   const sheetCells = usePivotStore((s) => s.sheetCells);
   const setMainView = usePivotStore((s) => s.setMainView);
   const setSheetCells = usePivotStore((s) => s.setSheetCells);
+  const sheetLayout = usePivotStore((s) => s.sheetLayout);
+  const setSheetLayout = usePivotStore((s) => s.setSheetLayout);
 
   // ==================== SNAPSHOT HANDLERS ====================
   /** The screen as a saved view; null before the first query has been committed. */
@@ -71,11 +73,11 @@ export function usePivotHandlers({
       chartConfig: chartConfig ?? null,
       splitPosition: splitPane.splitPosition,
       drilldownFilters: drilldown.drilldownFilters ?? null,
-      ...(mainView === 'sheet' || Object.keys(sheetCells).length > 0
-        ? { sheet: { show: mainView === 'sheet', cells: sheetCells } }
+      ...(mainView === 'sheet' || Object.keys(sheetCells).length > 0 || sheetLayout.form !== 'compact'
+        ? { sheet: { show: mainView === 'sheet', cells: sheetCells, ...(sheetLayout.form !== 'compact' ? { layout: sheetLayout } : {}) } }
         : {})
     };
-  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, mainView, sheetCells]);
+  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, mainView, sheetCells, sheetLayout]);
 
   const handleCreateSnapshot = useCallback((name?: string) => {
     const view = buildView();
@@ -109,10 +111,11 @@ export function usePivotHandlers({
     splitPane.setSplitPosition(view.splitPosition);
     setMainView(view.sheet?.show ? 'sheet' : 'table');
     setSheetCells(view.sheet?.cells ?? {});
+    setSheetLayout(view.sheet?.layout ?? DEFAULT_ROW_LAYOUT);
 
     drilldown.clearDrilldown();
     setPendingDrilldown(view.drilldownFilters);
-  }, [availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane, setMainView, setSheetCells]);
+  }, [availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane, setMainView, setSheetCells, setSheetLayout]);
 
   const handleLoadSnapshot = useCallback((snapshotId: string) => {
     const saved = snapshots.snapshots.find(s => s.id === snapshotId);

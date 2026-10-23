@@ -47,5 +47,5 @@ it('the test-fixture zip carries the cube rows and the expected pivot CSV', asyn
   await act(() => result.current.handleDownloadTestFixtureZip());
 
   expect(files['cube_results.csv']).toBe('region,sum_sales,_grouping_region\nNord,1.5,0\n,1.5,1');
-  expect(files['expected_output.csv']).toBe('Row Labels,sum_sales\nNord,1.5\nGrand Total,1.5');
+  expect(files['expected_output.csv']).toBe('region,sum_sales\nNord,1.5\nGrand Total,1.5');
 });

@@ -1,6 +1,7 @@
 import type { DuckDBBundles } from '@duckdb/duckdb-wasm';
 import { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import type { FieldItem as PivotFieldItem } from '../field/FieldItem';
+import type { RowLayout } from '../../application/utils/export';
 
 // Primitive value types that can appear in data
 export type PrimitiveValue = string | number | boolean | null;
@@ -318,8 +319,11 @@ export interface PivotView {
   splitPosition: number;
   /** The cell the drilldown was opened on; restoring re-queries its rows. */
   drilldownFilters: DimensionFilters | null;
-  /** Sheet mode: shown as a sheet, and the user's own cells by A1 address. Absent: the table, no cells. */
-  sheet?: { show: boolean; cells: Record<string, string> };
+  /**
+   * Sheet mode: shown as a sheet, the user's own cells by A1 address, and the report layout (absent: compact).
+   * Absent: the table, no cells.
+   */
+  sheet?: { show: boolean; cells: Record<string, string>; layout?: RowLayout };
 }
 
 export interface SavedView {

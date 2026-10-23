@@ -20,6 +20,7 @@ import {
 import { autoManageValuesField } from '../../application/utils/fieldUtils';
 import { getFieldById } from '../../application/utils/getFieldById';
 import type { SheetCells } from '../../domain/sheet/sheet';
+import { DEFAULT_ROW_LAYOUT, type RowLayout } from '../utils/export';
 
 /** A field's fetched unique values; truncated when the fetch hit its cap. */
 export interface UniqueValues {
@@ -68,6 +69,8 @@ interface PivotStore {
   mainView: 'table' | 'sheet';
   /** The user's sheet-mode cells by A1 address, as typed. */
   sheetCells: SheetCells;
+  /** The sheet's report layout of the row labels (Compact, Outline, Tabular), also the "Visual Layout" CSV's. */
+  sheetLayout: RowLayout;
   /** The pivot rows shown open, by their expansion key (see rowKey); shared by the table and the sheet. */
   expanded: Record<string, boolean>;
   showChartDialog: boolean;
@@ -166,6 +169,7 @@ interface PivotStore {
   setSecondaryDisplayMode: (mode: 'hidden' | 'full' | 'split-below' | 'split-right') => void;
   setMainView: (view: 'table' | 'sheet') => void;
   setSheetCells: (cells: SheetCells) => void;
+  setSheetLayout: (layout: RowLayout) => void;
   setExpanded: (expanded: Record<string, boolean>) => void;
   toggleExpanded: (key: string) => void;
   openChartDialog: () => void;
@@ -262,6 +266,7 @@ const initialState = {
   secondaryDisplayMode: 'split-below' as const,
   mainView: 'table' as const,
   sheetCells: {},
+  sheetLayout: DEFAULT_ROW_LAYOUT,
   expanded: {},
   showChartDialog: false,
   showSQLTooltip: false,
@@ -443,6 +448,9 @@ export function createPivotStore(instanceKey: string = 'default') {
 
       setSheetCells: (cells) =>
         set({ sheetCells: cells }, false, 'setSheetCells'),
+
+      setSheetLayout: (layout) =>
+        set({ sheetLayout: layout }, false, 'setSheetLayout'),
 
       setExpanded: (expanded) =>
         set({ expanded }, false, 'setExpanded'),

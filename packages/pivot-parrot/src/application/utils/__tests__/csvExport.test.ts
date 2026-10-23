@@ -44,11 +44,11 @@ describe('toCSV', () => {
 
 describe('buildPivotCSV', () => {
   it('writes German Excel conventions for de-DE', () => {
-    expect(pivotCSV('de-DE')).toBe('Row Labels;Umsatz €;Quote\nKöln;1234,5;12,34%\nGrand Total;1333,5;20%');
+    expect(pivotCSV('de-DE')).toBe('Märkte;Umsatz €;Quote\nKöln;1234,5;12,34%\nGrand Total;1333,5;20%');
   });
 
   it('keeps the en default except that percentages carry their percent sign', () => {
-    expect(pivotCSV()).toBe('Row Labels,Umsatz €,Quote\nKöln,1234.5,12.34%\nGrand Total,1333.5,20%');
+    expect(pivotCSV()).toBe('Märkte,Umsatz €,Quote\nKöln,1234.5,12.34%\nGrand Total,1333.5,20%');
   });
 
   it('writes percents in subtotal and grand-total columns of a column hierarchy', () => {
@@ -69,7 +69,7 @@ describe('buildPivotCSV with Σ Values in rows', () => {
   it('writes one row per metric, its percent, and one grand-total row per metric', () => {
     const d = buildPivotDisplayData(cubeRows.slice(0, 1).concat(cubeRows[2]), ['Märkte', 'Σ Values'], [], config.values);
     expect(buildPivotCSV(d, d._columnOutline, ['Märkte', 'Σ Values'], true, true, config, 'de-DE').split('\n')).toEqual([
-      'Row Labels;Grand Total',
+      'Märkte / Values;Grand Total',
       'Köln;',
       '    Umsatz €;1234,5',
       '    Quote;12,34%',
@@ -87,7 +87,7 @@ describe('buildPivotCSV with Σ Values in rows', () => {
     ];
     const d = buildPivotDisplayData(rows, ['Σ Values', 'Markt'], ['Jahr'], config.values);
     expect(buildPivotCSV(d, d._columnOutline, ['Σ Values', 'Markt'], true, true, config, 'de-DE').split('\n')).toEqual([
-      'Row Labels;2024;Grand Total',
+      'Values / Markt;2024;Grand Total',
       'Umsatz €;10;10',
       '    Köln;10;10',
       'Quote;10%;10%',
@@ -113,7 +113,7 @@ describe('buildPivotCSV column headers with subtotals', () => {
 
   it('Σ Values in columns: subtotal under its member, metric names on the last level', () => {
     expect(header(['Markt'], ['Jahr', 'Monat', 'Σ Values'], 3)).toEqual([
-      'Row Labels,2024,2024,2024,2024,2024,2024,Grand Total,Grand Total',
+      'Markt,2024,2024,2024,2024,2024,2024,Grand Total,Grand Total',
       ',1,1,2,2,Subtotal,Subtotal,,',
       ',sum_a,sum_b,sum_a,sum_b,sum_a,sum_b,sum_a,sum_b'
     ]);
@@ -121,7 +121,7 @@ describe('buildPivotCSV column headers with subtotals', () => {
 
   it('a collapsed group: its member, then blanks down to the metric names', () => {
     expect(header(['Markt'], ['Jahr', 'Monat', 'Σ Values'], 3, [columnPathKey([2024])])).toEqual([
-      'Row Labels,2024,2024,Grand Total,Grand Total',
+      'Markt,2024,2024,Grand Total,Grand Total',
       ',,,,',
       ',sum_a,sum_b,sum_a,sum_b'
     ]);
@@ -129,7 +129,7 @@ describe('buildPivotCSV column headers with subtotals', () => {
 
   it('Σ Values in rows: subtotal under its member, no metric level', () => {
     expect(header(['Markt', 'Σ Values'], ['Jahr', 'Monat'], 3)).toEqual([
-      'Row Labels,2024,2024,2024,Grand Total',
+      'Markt / Values,2024,2024,2024,Grand Total',
       ',1,2,Subtotal,',
       'Köln,,,,'
     ]);
@@ -166,7 +166,7 @@ describe('DECIMAL cells from Arrow', () => {
     const rows = arrowRows.map(r => ({ ...r, Preis: r.Preis && 'teuer' }));
     const d = buildPivotDisplayData(rows, ['Preis'], ['Σ Values'], config.values, null, dtypes);
     expect(buildPivotCSV(d, d._columnOutline, ['Preis'], true, true, config, 'de-DE', dtypes, dialect).split('\n')).toEqual([
-      'Row Labels;Umsatz €;Quote',
+      'Preis;Umsatz €;Quote',
       'teuer;1234,5;12,34%',
       'Grand Total;-0,05;50%'
     ]);
@@ -195,8 +195,8 @@ describe('exportPivotCSV', () => {
       reader.readAsArrayBuffer(blob!);
     });
     const bytes = new Uint8Array(buffer);
-    expect([...bytes.slice(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 'R'.charCodeAt(0)]);
-    expect(new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)).toBe('\uFEFFRow Labels;Umsatz €;Quote\nKöln;1234,5;12,34%');
+    expect([...bytes.slice(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 'M'.charCodeAt(0)]);
+    expect(new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)).toBe('\uFEFFMärkte;Umsatz €;Quote\nKöln;1234,5;12,34%');
   });
 });
 
@@ -245,7 +245,7 @@ describe('buildPivotGrid with a date dimension', () => {
     const dtypes = { Tag: 'date32<DAY>' };
     const d = buildPivotDisplayData(rows, ['Tag'], ['Σ Values'], umsatz.values, null, dtypes);
     const grid = buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, true, umsatz, dtypes, dialect).cells;
-    expect(grid.map(r => r[0])).toEqual(['Row Labels', '2024-01-01', '2024-02-01', 'Grand Total']);
+    expect(grid.map(r => r[0])).toEqual(['Tag', '2024-01-01', '2024-02-01', 'Grand Total']);
   });
 
   it('writes a timestamp member with its time', () => {
