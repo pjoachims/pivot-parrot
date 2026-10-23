@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SortMenu } from './PivotMenus';
 import { exportDataCSV, exportPivotCSV } from '../../application/utils/export';
-import { usePivotStore } from '../../application/state/store';
+import { usePivotStore, usePivotSheetModeEnabled } from '../../application/state/store';
 import ErrorBanner from '../shared/ErrorBanner';
 import { useClickOutside } from '../shared/useClickOutside';
 import { Icon, type IconName } from '../shared/Icon';
@@ -36,6 +36,9 @@ export default function PivotDisplayHeader({
   const chartConfig = usePivotStore((s) => s.chartConfig);
   const openChartDialog = usePivotStore((s) => s.openChartDialog);
   const setSecondaryDisplayMode = usePivotStore((s) => s.setSecondaryDisplayMode);
+  const sheetModeEnabled = usePivotSheetModeEnabled();
+  const mainView = usePivotStore((s) => s.mainView);
+  const setMainView = usePivotStore((s) => s.setMainView);
 
   const chartDisplayMode = activeView === 'chart' ? secondaryDisplayMode : 'hidden';
   const hasChart = !!chartConfig;
@@ -88,26 +91,6 @@ export default function PivotDisplayHeader({
   useClickOutside('.export-menu-container', () => setShowExportMenu(false));
   useClickOutside('.chart-mode-menu-container', () => setShowChartModeMenu(false));
 
-  // Helper to compute leaf columns for CSV export
-  function computeLeafColumns(displayData) {
-    if (!displayData || !displayData.columnConfig) return [];
-
-    const hierarchy = displayData.columnConfig.hierarchy || [];
-
-    function collectLeaves(nodes, leaves = []) {
-      nodes.forEach(node => {
-        if (node.children?.length > 0) {
-          collectLeaves(node.children, leaves);
-        } else {
-          leaves.push(node);
-        }
-      });
-      return leaves;
-    }
-
-    return collectLeaves(hierarchy);
-  }
-
   const handleExportData = () => {
     if (cubeResults && cubeResults.length > 0) {
       exportDataCSV({ cubeResults }, config, locale, dtypes, dialect);
@@ -120,9 +103,7 @@ export default function PivotDisplayHeader({
 
   const handleExportLayout = () => {
     if (data && config) {
-      const rowFieldNames = config.rows.map(f => typeof f === 'string' ? f : f.id);
-      const leafCols = computeLeafColumns(data);
-      exportPivotCSV(data, leafCols, rowFieldNames, true, config.showGrandTotal !== false, config, locale, dtypes, dialect);
+      exportPivotCSV(data, config, locale, dtypes, dialect);
       setShowExportMenu(false);
     }
   };
@@ -265,6 +246,27 @@ export default function PivotDisplayHeader({
               SQL
               <Icon name="terminal" />
             </button>
+          </>
+        )}
+
+        {sheetModeEnabled && (
+          <>
+            {separator}
+            <div role="group" aria-label="Show as" style={{ display: 'flex' }}>
+              {(['table', 'sheet'] as const).map(view => (
+                <button
+                  key={view}
+                  onClick={() => setMainView(view)}
+                  className="pp-btn pp-btn--quiet pp-btn--sm"
+                  aria-pressed={mainView === view}
+                  title={view === 'table' ? 'Show as pivot table' : 'Show as spreadsheet: the result read-only, your own cells and formulas next to it'}
+                  style={mainView === view ? { color: 'var(--color-accent)', fontWeight: 600 } : undefined}
+                >
+                  {view === 'table' ? 'Table' : 'Sheet'}
+                  <Icon name={view === 'table' ? 'table' : 'hash'} />
+                </button>
+              ))}
+            </div>
           </>
         )}
       </div>

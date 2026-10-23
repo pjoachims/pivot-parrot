@@ -6,6 +6,7 @@ import { Icon } from '../../../shared/Icon';
 
 interface AvailableFieldItemProps {
   field: FieldItem;
+  depth?: number;            // folder depth in the field tree
   isChecked: boolean;
   isDerivedField: boolean;
   canHaveDerivedFields: boolean;
@@ -25,6 +26,7 @@ interface AvailableFieldItemProps {
  */
 export function AvailableFieldItem({
   field,
+  depth = 0,
   isChecked,
   isDerivedField,
   canHaveDerivedFields,
@@ -43,7 +45,7 @@ export function AvailableFieldItem({
       draggable={true}
       onDragStart={(e) => onDragStart(e, field.id)}
       onDragEnd={onDragEnd}
-      style={isDerivedField ? { paddingLeft: 'calc(var(--space-2) + 19px)' } : undefined}
+      style={depth || isDerivedField ? { paddingLeft: `calc(var(--space-2) + ${depth * 16 + (isDerivedField ? 19 : 0)}px)` } : undefined}
     >
       <input
         type="checkbox"

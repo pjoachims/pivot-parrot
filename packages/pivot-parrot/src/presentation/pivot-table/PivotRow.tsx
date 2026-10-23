@@ -27,8 +27,7 @@ export function renderCells(vals, leafColumns, styles, formatValue, rowMetric = 
       cellStyle = styles.dataCell;
     }
 
-    // Use array index directly (long-to-wide transformation)
-    const value = vals?.[i];
+    const value = vals?.[leaf.valueIndex];
 
     // Use the metric identifier for format lookup
     // When values are in rows, rowMetric contains the metric identifier from the row path

@@ -532,7 +532,7 @@ const Pivot = forwardRef<PivotHandle, { config?: PivotConfig; children?: React.R
   }
 
   return (
-    <PivotStoreContext.Provider value={{ store: storeRef.current, instanceKey, locale: pivotConfig.settings?.locale }}>
+    <PivotStoreContext.Provider value={{ store: storeRef.current, instanceKey, locale: pivotConfig.settings?.locale, sheetMode: pivotConfig.settings?.enableSheetMode ?? false }}>
       <PivotInner config={pivotConfig} ref={ref} />
       {children}
     </PivotStoreContext.Provider>

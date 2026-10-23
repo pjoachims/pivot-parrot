@@ -2,9 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import JSZip from 'jszip';
 import { usePivotStore, type ChartConfig } from '../state/store';
 import type { useSnapshots } from './useSnapshots';
-import { computeLeafColumns } from '../utils/columnHelpers';
 import type { PivotDisplayResult } from './usePivotDisplay';
-import { buildPivotCSV } from '../../application/utils/export';
+import { layoutCSV } from '../../application/utils/export';
 import { dataToCSV } from '../../domain/query/utils/csv';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { FieldKind } from '../../domain/models/types';
@@ -53,6 +52,10 @@ export function usePivotHandlers({
   const sortConfig = usePivotStore((s) => s.sortConfig);
   const setSort = usePivotStore((s) => s.setSort);
   const setAvailableFields = usePivotStore((s) => s.setAvailableFields);
+  const mainView = usePivotStore((s) => s.mainView);
+  const sheetCells = usePivotStore((s) => s.sheetCells);
+  const setMainView = usePivotStore((s) => s.setMainView);
+  const setSheetCells = usePivotStore((s) => s.setSheetCells);
 
   // ==================== SNAPSHOT HANDLERS ====================
   /** The screen as a saved view; null before the first query has been committed. */
@@ -67,9 +70,12 @@ export function usePivotHandlers({
       secondaryDisplayMode,
       chartConfig: chartConfig ?? null,
       splitPosition: splitPane.splitPosition,
-      drilldownFilters: drilldown.drilldownFilters ?? null
+      drilldownFilters: drilldown.drilldownFilters ?? null,
+      ...(mainView === 'sheet' || Object.keys(sheetCells).length > 0
+        ? { sheet: { show: mainView === 'sheet', cells: sheetCells } }
+        : {})
     };
-  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown]);
+  }, [executionConfig, availableFields, sortConfig, activeView, secondaryDisplayMode, chartConfig, splitPane, drilldown, mainView, sheetCells]);
 
   const handleCreateSnapshot = useCallback((name?: string) => {
     const view = buildView();
@@ -101,10 +107,12 @@ export function usePivotHandlers({
     setChartConfig(view.chartConfig as ChartConfig | null);
     setSort(view.sortConfig);
     splitPane.setSplitPosition(view.splitPosition);
+    setMainView(view.sheet?.show ? 'sheet' : 'table');
+    setSheetCells(view.sheet?.cells ?? {});
 
     drilldown.clearDrilldown();
     setPendingDrilldown(view.drilldownFilters);
-  }, [availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane]);
+  }, [availableFields, setAvailableFields, setConfig, commitConfig, setActiveView, setSecondaryDisplayMode, setChartConfig, setSort, drilldown, splitPane, setMainView, setSheetCells]);
 
   const handleLoadSnapshot = useCallback((snapshotId: string) => {
     const saved = snapshots.snapshots.find(s => s.id === snapshotId);
@@ -183,19 +191,7 @@ export function usePivotHandlers({
 
       // 3. Add expected_output.csv
       if (displayData && !('error' in displayData)) {
-        const rowFieldNames = config.rows.map((f: any) => typeof f === 'string' ? f : f.id);
-        const leafCols = computeLeafColumns(displayData, true, true);
-        const expectedOutputCSV = buildPivotCSV(
-          displayData,
-          leafCols,
-          rowFieldNames,
-          true,
-          config.showGrandTotal !== false,
-          config,
-          undefined,
-          calculation.dtypes,
-          dialect
-        );
+        const expectedOutputCSV = layoutCSV(displayData, config, undefined, calculation.dtypes, dialect);
         zip.file('expected_output.csv', expectedOutputCSV);
       }
 

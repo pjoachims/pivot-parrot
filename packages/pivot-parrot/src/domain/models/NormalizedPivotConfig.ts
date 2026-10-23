@@ -23,6 +23,7 @@ export class NormalizedPivotConfig {
   readonly autoExecute: boolean;
   readonly enableSQLPlayground: boolean;
   readonly showSnapshots: boolean;
+  readonly enableSheetMode: boolean;
   readonly devMode: boolean;
   readonly locale: string;
   readonly height: number;
@@ -59,6 +60,7 @@ export class NormalizedPivotConfig {
     // to the host's backend, so the host opts in (and guards it server-side).
     this.enableSQLPlayground = config.settings?.enableSQLPlayground ?? this.mode !== 'remote';
     this.showSnapshots = config.settings?.showSnapshots ?? true;
+    this.enableSheetMode = config.settings?.enableSheetMode ?? false;
     this.devMode = config.settings?.devMode ?? false;
     this.locale = config.settings?.locale ?? 'en-US';
     this.height = config.settings?.height ?? 1000;

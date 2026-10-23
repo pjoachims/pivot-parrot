@@ -13,6 +13,8 @@ import { useColumnCollapse, type ColumnCollapse } from '../../application/hooks/
 import { rowKey } from '../../application/utils/treeOperations';
 import { useContextMenus } from '../../application/hooks/useContextMenus';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
+import { displayTotals } from '../../application/utils/displayTotals';
+import { computeLeafColumns } from '../../application/utils/columnHelpers';
 
 const ROW_HEIGHT = 25; // Single source of truth for row height
 
@@ -45,10 +47,6 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
     // Read display state from store (everything PivotDisplay needs is here now)
     // No more prop drilling for display state!
     const parentRef = useRef(null);
-
-    // Use config values for subtotals and grand totals (default to 'both' if not set)
-    const subtotalsConfig = config.subtotals || 'both';
-    const grandTotalsConfig = config.grandTotals || 'both';
 
     // Expansion state management
     const { expanded, toggle, foldLevel, unfoldLevel, foldAll, unfoldAll } = useExpansionState({ data });
@@ -83,30 +81,8 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
     const formatValue = useMemo(() => createFormatValue(config, locale, dtypes, dialect), [config, locale, dtypes, dialect]);
     const formatRowLabel = useMemo(() => createFormatRowLabel(null, detectedTypes, dtypes, dialect), [detectedTypes, dtypes, dialect]);
 
-    // Determine what subtotals to show based on config
-    const showColSubtotals = subtotalsConfig === 'col' || subtotalsConfig === 'both';
-    const showRowSubtotals = subtotalsConfig === 'row' || subtotalsConfig === 'both';
-
-    // Determine what grand totals to show based on config
-    const showGrandTotalCol = grandTotalsConfig === 'col' || grandTotalsConfig === 'both';
-    const showGrandTotalRow = grandTotalsConfig === 'row' || grandTotalsConfig === 'both';
-
-    // Calculate max depth and collect leaf columns
-    const hierarchy = data.columnConfig.hierarchy || [];
-    function collectLeaves(nodes, leaves=[]){
-      nodes.forEach(node=>{
-        if(node.children?.length>0) collectLeaves(node.children, leaves);
-        else {
-          // Filter grand total columns based on setting (check this first!)
-          if(node.isGrandTotal && !showGrandTotalCol) return;
-          // Filter subtotal columns based on mode (but not grand total)
-          if(node.isSubtotal && !node.isGrandTotal && !showColSubtotals) return;
-          leaves.push(node);
-        }
-      });
-      return leaves;
-    }
-    const leafColumns = collectLeaves(hierarchy);
+    const { rowSubtotals: showRowSubtotals, colSubtotals: showColSubtotals, grandTotalRow: showGrandTotalRow, grandTotalCol: showGrandTotalCol } = displayTotals(config);
+    const leafColumns = computeLeafColumns(data, showGrandTotalCol, showColSubtotals);
 
     // Flatten tree into a list of visible rows based on expanded state
     const flattenedRows = useMemo(() => {
@@ -338,7 +314,7 @@ function PivotTable({ data, cubeResults, dtypes = {}, dataEngine = null, rowFiel
 }
 
 /** Why column groups show folded that the user did not collapse, or why one did not open. */
-function ColumnFitNotice({ collapse, groupName }: { collapse: ColumnCollapse; groupName: (group: unknown[]) => string }) {
+export function ColumnFitNotice({ collapse, groupName }: { collapse: ColumnCollapse; groupName: (group: unknown[]) => string }) {
   const { autoCollapsed, refused, limit } = collapse;
   if (!refused && autoCollapsed.length === 0) return null;
   const folded = autoCollapsed.length === 1 ? '1 column group' : `${autoCollapsed.length} column groups`;

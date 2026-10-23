@@ -8,6 +8,10 @@ import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
 import { decodeNumber, findValueFormat } from './formatters';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
+import { rowKey } from './treeOperations';
+import { columnPathKey } from './cubeIndex';
+import { computeLeafColumns } from './columnHelpers';
+import { displayTotals } from './displayTotals';
 
 // Escape a string for safe use inside a RegExp
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -108,13 +112,67 @@ export const exportDataCSV = (displayData, config = null, locale?: string, dtype
  */
 export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('buildPivotCSV', () => {
+  const { cells } = buildPivotGrid(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, dtypes, dialect);
+  return cells.length ? toCSV(cells, locale) : '';
+  });
+};
+
+/**
+ * What a row of the pivot grid is: a header row (column members, metric names),
+ * a member row at its depth (`group` when members sit under it: `key` is its
+ * expansion key, see rowKey, and `open` whether they are shown), or a grand-total row.
+ */
+export type PivotGridRow =
+  | { kind: 'header' }
+  | { kind: 'item'; depth: number }
+  | { kind: 'group'; depth: number; key: string; open: boolean }
+  | { kind: 'total' };
+
+/** What a column of the pivot grid is: the row labels, a metric's values, a column subtotal or a grand total. */
+export type PivotGridColumn = 'label' | 'value' | 'subtotal' | 'total';
+
+/**
+ * A column group in the header: at header row `row`, its first column `col`;
+ * `key` is its columnPathKey and `open` whether its members' columns are shown.
+ */
+export interface PivotGridColumnGroup {
+  row: number;
+  col: number;
+  key: string;
+  open: boolean;
+}
+
+/** The pivot's visual layout: its cells, what each row and column of them is, and its column groups. */
+export interface PivotGrid {
+  cells: CsvCell[][];
+  rows: PivotGridRow[];
+  columns: PivotGridColumn[];
+  columnGroups: PivotGridColumnGroup[];
+}
+
+const leafKind = (leaf): PivotGridColumn => leaf.isGrandTotal ? 'total' : leaf.isSubtotal ? 'subtotal' : 'value';
+
+/**
+ * The pivot's visual layout as rows of cells: what the "Visual Layout" CSV writes and sheet mode shows.
+ * Without `expanded` every member is shown; with it, a member's children only when expanded[rowKey(member)],
+ * as the table shows them. Column groups are as `data` was built: a collapsed group is one leaf per metric.
+ */
+export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, dtypes: Dtypes = {}, dialect: SQLDialect | null = null, expanded?: Record<string, boolean>): PivotGrid => {
   if (!data || !data.rowGroups) {
-    return '';
+    return { cells: [], rows: [], columns: [], columnGroups: [] };
   }
 
   const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
+  // A dimension member as the table shows it: the dialect renders a typed value (a date's epoch ms as 2024-01-01).
+  const member = (value, field: string | undefined) => {
+    if (value === null || value === undefined) return '';
+    const typeName = field ? dtypes[field] : undefined;
+    return typeName && dialect ? String(dialect.toDisplay(value, typeName)) : String(value);
+  };
 
   const lines: CsvCell[][] = [];
+  const rows: PivotGridRow[] = [];
+  const columnGroups: PivotGridColumnGroup[] = [];
   const valuesIndex = (rowFields || []).indexOf(SIGMA_VALUES_ID);
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
@@ -139,23 +197,40 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
         } else if (leaf.isGrandTotal) {
           row.push(level === 0 ? 'Grand Total' : '');
         } else if (leaf.isSubtotal) {
-          row.push(level < path.length ? path[level] : level === path.length ? 'Subtotal' : '');
+          row.push(level < path.length ? member(path[level], colFields[level]) : level === path.length ? 'Subtotal' : '');
         } else if (level < path.length) {
-          row.push(path[level]);
+          row.push(member(path[level], colFields[level]));
         } else {
           row.push(level === metricLevel ? getMetricName(leaf.metric) : '');
         }
       });
 
       lines.push(row);
+      rows.push({ kind: 'header' });
+    }
+
+    // Header row `level` shows the members of column field `level`; a group starts where its key first appears.
+    const collapsible = new Set((data.columnConfig.groups || []).map(columnPathKey));
+    for (let level = 0; level < colFields.length - 1; level++) {
+      let previous: string | null = null;
+      leafCols.forEach((leaf, i) => {
+        const path = leaf.isGrandTotal ? [] : leaf.columnPath ?? leaf.path ?? [];
+        const key = path.length > level ? columnPathKey(path.slice(0, level + 1)) : null;
+        if (key && key !== previous && collapsible.has(key)) {
+          columnGroups.push({ row: level, col: i + 1, key, open: !(leaf.isCollapsed && path.length === level + 1) });
+        }
+        previous = key;
+      });
     }
   } else if (valuesInRows) {
     lines.push(['Row Labels', ...(leafCols || []).map(leaf => leaf.isGrandTotal ? 'Grand Total' : leaf.label)]);
+    rows.push({ kind: 'header' });
   } else {
     // Simple header: Row Labels + value fields (map to friendly names)
     const valueHeaders = (data.columnConfig.valueFields || []).map(getMetricName);
     const headers = ['Row Labels', ...valueHeaders];
     lines.push(headers);
+    rows.push({ kind: 'header' });
   }
 
   // Build data rows with indentation
@@ -164,10 +239,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     if (config?.showNullGroups === false && (row.groupLabel === '(null)' || row.groupLabel === null)) return;
 
     const indent = '    '.repeat(depth); // 4 spaces per level
-    // Export raw row label without formatting - handle false, 0, "" correctly
-    const labelValue = row.groupLabel;
-    const labelStr = (labelValue === null || labelValue === undefined) ? '' : String(labelValue);
-    const label = indent + labelStr;
+    const label = indent + (depth === valuesIndex ? member(row.groupLabel, undefined) : member(row.label, rowFields?.[depth]));
 
     // Determine which values to show
     const hasKids = row.children && row.children.length > 0;
@@ -181,12 +253,16 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     }
 
     const rowMetric = valuesIndex >= 0 ? row.path?.[valuesIndex] : null;
-    lines.push([label, ...(leafCols || []).map((leaf, idx) => metricCell(config, cellValues?.[idx], rowMetric || leaf.metric, dtypes, dialect))]);
+    lines.push([label, ...(leafCols || []).map(leaf => metricCell(config, cellValues?.[leaf.valueIndex], rowMetric || leaf.metric, dtypes, dialect))]);
 
-    // Recurse for children
-    if (hasKids && row.children) {
-      row.children.forEach(child => buildRow(child, depth + 1));
+    if (!hasKids) {
+      rows.push({ kind: 'item', depth });
+      return;
     }
+    const key = rowKey(row);
+    const open = !expanded || !!expanded[key];
+    rows.push({ kind: 'group', depth, key, open });
+    if (open) row.children.forEach(child => buildRow(child, depth + 1));
   };
 
   data.rowGroups.forEach(group => buildRow(group, 0));
@@ -196,32 +272,33 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     if (valuesInRows) {
       // One grand-total row per metric: data.grandTotal holds {metric, metricLabel, values}
       data.grandTotal.forEach(gt => {
-        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map((leaf, idx) => metricCell(config, gt.values?.[idx], gt.metric, dtypes, dialect))]);
+        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map(leaf => metricCell(config, gt.values?.[leaf.valueIndex], gt.metric, dtypes, dialect))]);
+        rows.push({ kind: 'total' });
       });
     } else {
-      lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric, dtypes, dialect))]);
+      lines.push(['Grand Total', ...(leafCols || []).map(leaf => metricCell(config, data.grandTotal[leaf.valueIndex], leaf.metric, dtypes, dialect))]);
+      rows.push({ kind: 'total' });
     }
   }
 
-  return toCSV(lines, locale);
-  });
+  return { cells: lines, rows, columns: ['label', ...(leafCols || []).map(leafKind)], columnGroups };
 };
 
 /**
- * Export visual pivot layout to CSV file (browser download)
- * @param {Object} data - Pivot display data
- * @param {Array} leafCols - Leaf columns from column hierarchy
- * @param {Array} rowFields - Row field names
- * @param {boolean} showRowSubtotals - Whether to show row subtotals
- * @param {boolean} showGrandTotal - Whether to show grand total
- * @param {Object} config - Pivot config for mapping custom metric names
- * @param {string} locale - Decides delimiter and decimal mark
- * @param {Object} dtypes - Result column → engine type name, to decode raw cells
- * @param {Object} dialect - SQL dialect that decodes them
+ * The "Visual Layout" CSV: the pivot with the table's totals (displayTotals) and column groups, every row group open.
+ * It is the whole result as laid out, not the part of the rows the view shows open.
  */
-export const exportPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
+export const layoutCSV = (data, config, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null): string => {
+  const rowFields = (config?.rows || []).map(f => typeof f === 'string' ? f : f.id);
+  const totals = displayTotals(config);
+  const leafCols = computeLeafColumns(data, totals.grandTotalCol, totals.colSubtotals);
+  return buildPivotCSV(data, leafCols, rowFields, totals.rowSubtotals, totals.grandTotalRow, config, locale, dtypes, dialect);
+};
+
+/** Download the "Visual Layout" CSV (see layoutCSV). */
+export const exportPivotCSV = (data, config, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('exportPivotCSV', () => {
-  const csv = buildPivotCSV(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, locale, dtypes, dialect);
+  const csv = layoutCSV(data, config, locale, dtypes, dialect);
 
   if (!csv) {
     alert('No pivot data to export');

@@ -7,6 +7,7 @@ interface CustomExpressionItemProps {
   id: string;
   name: string;
   type: CustomExpressionType;
+  depth?: number;            // folder depth in the field tree
   isChecked: boolean;
   onToggle: (id: string, checked: boolean) => void;
   onMoveToZone?: (targetZone: string) => void;
@@ -24,6 +25,7 @@ export function CustomExpressionItem({
   id,
   name,
   type,
+  depth = 0,
   isChecked,
   onToggle,
   onMoveToZone,
@@ -38,6 +40,7 @@ export function CustomExpressionItem({
       draggable={true}
       onDragStart={(e) => onDragStart(e, id, 'list')}
       onDragEnd={onDragEnd}
+      style={depth ? { paddingLeft: `calc(var(--space-2) + ${depth * 16}px)` } : undefined}
     >
       <input
         type="checkbox"

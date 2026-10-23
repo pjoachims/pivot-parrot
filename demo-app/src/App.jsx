@@ -21,7 +21,8 @@ const SAMPLE_CONFIG = {
   customMetrics: [{
     id: 'avg_sale_price',
     name: 'Avg Sale Price',
-    expr: 'SUM(sales) / NULLIF(SUM(qty), 0)'
+    expr: 'SUM(sales) / NULLIF(SUM(qty), 0)',
+    path: ['Pricing']
   }],
   customGroupings: [
     {
@@ -202,6 +203,7 @@ function App() {
           initialConfig: pivotConfig,
           settings: {
             autoUpdate: autoUpdate,
+            enableSheetMode: true,
             devMode: true
           },
           callbacks: {

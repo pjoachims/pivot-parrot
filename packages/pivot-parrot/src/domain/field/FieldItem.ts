@@ -11,6 +11,7 @@
  */
 
 import { FieldKind } from '../models/types';
+import { normalizePath } from './fieldTree';
 
 /**
  * FieldItem plain object interface
@@ -25,6 +26,7 @@ export interface FieldItem {
   aggregation: string | null;   // 'sum', 'avg', etc.
   formula: string | null;       // SQL expression
   format: any | null;           // Display formatting config
+  path?: string[];              // Folders in the field list, from the top
 }
 
 /**
@@ -34,7 +36,8 @@ export interface FieldItem {
 /**
  * Create a base field from schema
  */
-export function fromSchema(columnInfo: { name: string; type: string; originalType?: string }): FieldItem {
+export function fromSchema(columnInfo: { name: string; type: string; originalType?: string; path?: unknown }): FieldItem {
+  const path = normalizePath(columnInfo.path);
   return {
     id: columnInfo.name,
     name: columnInfo.name,
@@ -44,7 +47,8 @@ export function fromSchema(columnInfo: { name: string; type: string; originalTyp
     sourceField: null,
     aggregation: null,
     formula: null,
-    format: null
+    format: null,
+    ...(path ? { path } : {})
   };
 }
 

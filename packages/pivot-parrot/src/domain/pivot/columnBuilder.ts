@@ -109,7 +109,7 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
         columns.push({ path: [], metric, label, value: label });
       });
     }
-    return columns;
+    return withValueIndex(columns);
   }
 
   // Collect all unique paths from SQL rows
@@ -341,6 +341,12 @@ export function buildColumnOutline(sqlRows, colFields, valueFields, valuesIndex,
     });
   }
 
+  return withValueIndex(columns);
+}
+
+/** Each column's place in a row's values array, which follows the outline. */
+function withValueIndex(columns) {
+  columns.forEach((col, valueIndex) => { col.valueIndex = valueIndex; });
   return columns;
 }
 
@@ -508,6 +514,7 @@ function markLeafNodes(tree, columnOutline) {
           node.metric = col.metric;
           node.columnPath = col.path;
           node.isCollapsed = col.isCollapsed || false;
+          node.valueIndex = col.valueIndex;
 
           outlineIndex++;
         }
@@ -568,7 +575,8 @@ function buildDimensionTree(columnOutline, colFields) {
         isGrandTotal: true,
         label: col.label,
         metric: col.metric,
-        columnPath: col.path
+        columnPath: col.path,
+        valueIndex: col.valueIndex
       });
       return;
     }
@@ -610,7 +618,8 @@ function buildDimensionTree(columnOutline, colFields) {
         isGrandTotal: false,
         label: col.label,
         metric: col.metric,
-        columnPath: col.path
+        columnPath: col.path,
+        valueIndex: col.valueIndex
       };
       currentLevel.push(subtotalNode);
       return;
@@ -645,6 +654,7 @@ function buildDimensionTree(columnOutline, colFields) {
         node.metric = col.metric;
         node.columnPath = col.path;
         node.isCollapsed = col.isCollapsed || false;
+        node.valueIndex = col.valueIndex;
       }
 
       currentLevel = node.children;

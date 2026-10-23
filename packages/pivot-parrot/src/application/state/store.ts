@@ -19,6 +19,7 @@ import {
 } from './actions';
 import { autoManageValuesField } from '../../application/utils/fieldUtils';
 import { getFieldById } from '../../application/utils/getFieldById';
+import type { SheetCells } from '../../domain/sheet/sheet';
 
 /** A field's fetched unique values; truncated when the fetch hit its cap. */
 export interface UniqueValues {
@@ -63,12 +64,19 @@ interface PivotStore {
   sidebarCollapsed: boolean;
   activeView: 'chart' | 'drilldown' | 'sql' | null;
   secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
+  /** How the pivot result is shown: the pivot table, or a spreadsheet range next to the user's own cells. */
+  mainView: 'table' | 'sheet';
+  /** The user's sheet-mode cells by A1 address, as typed. */
+  sheetCells: SheetCells;
+  /** The pivot rows shown open, by their expansion key (see rowKey); shared by the table and the sheet. */
+  expanded: Record<string, boolean>;
   showChartDialog: boolean;
   showSQLTooltip: boolean;
   autoUpdate: boolean;
 
   // Field Options UI State
   searchQuery: string;
+  openFolders: string[];  // field-list folder keys (fieldTree PATH_SEP-joined paths) shown open
   dragOverZone: string | null;
   insertionIndex: number | null;
   showSnapshots: boolean;
@@ -156,6 +164,10 @@ interface PivotStore {
   setSidebarCollapsed: (collapsed: boolean) => void;
   setActiveView: (view: 'chart' | 'drilldown' | 'sql' | null) => void;
   setSecondaryDisplayMode: (mode: 'hidden' | 'full' | 'split-below' | 'split-right') => void;
+  setMainView: (view: 'table' | 'sheet') => void;
+  setSheetCells: (cells: SheetCells) => void;
+  setExpanded: (expanded: Record<string, boolean>) => void;
+  toggleExpanded: (key: string) => void;
   openChartDialog: () => void;
   closeChartDialog: () => void;
   setAutoUpdate: (autoUpdate: boolean) => void;
@@ -163,6 +175,7 @@ interface PivotStore {
 
   // Field Options UI Actions
   setSearchQuery: (query: string) => void;
+  toggleFolder: (key: string) => void;
   setDragOverZone: (zone: string | null) => void;
   setInsertionIndex: (index: number | null) => void;
   setShowSnapshots: (show: boolean) => void;
@@ -247,12 +260,16 @@ const initialState = {
   sidebarCollapsed: false,
   activeView: null,
   secondaryDisplayMode: 'split-below' as const,
+  mainView: 'table' as const,
+  sheetCells: {},
+  expanded: {},
   showChartDialog: false,
   showSQLTooltip: false,
   autoUpdate: true,
 
   // Field Options UI
   searchQuery: '',
+  openFolders: [],
   dragOverZone: null,
   insertionIndex: null,
   showSnapshots: false,
@@ -303,6 +320,8 @@ type PivotContextValue = {
   };
   instanceKey: string;
   locale?: string;
+  /** settings.enableSheetMode: the toolbar offers sheet mode. */
+  sheetMode?: boolean;
 };
 
 /**
@@ -419,6 +438,18 @@ export function createPivotStore(instanceKey: string = 'default') {
       setActiveView: (view) =>
         set({ activeView: view }, false, 'setActiveView'),
 
+      setMainView: (view) =>
+        set({ mainView: view }, false, 'setMainView'),
+
+      setSheetCells: (cells) =>
+        set({ sheetCells: cells }, false, 'setSheetCells'),
+
+      setExpanded: (expanded) =>
+        set({ expanded }, false, 'setExpanded'),
+
+      toggleExpanded: (key) =>
+        set((state) => ({ expanded: { ...state.expanded, [key]: !state.expanded[key] } }), false, 'toggleExpanded'),
+
       setSecondaryDisplayMode: (mode) =>
         set({ secondaryDisplayMode: mode }, false, 'setSecondaryDisplayMode'),
 
@@ -437,6 +468,13 @@ export function createPivotStore(instanceKey: string = 'default') {
       // Field Options UI Actions
       setSearchQuery: (query) =>
         set({ searchQuery: query }, false, 'setSearchQuery'),
+
+      toggleFolder: (key) =>
+        set(state => ({
+          openFolders: state.openFolders.includes(key)
+            ? state.openFolders.filter(k => k !== key)
+            : [...state.openFolders, key]
+        }), false, 'toggleFolder'),
 
       setDragOverZone: (zone) =>
         set({ dragOverZone: zone }, false, 'setDragOverZone'),
@@ -758,6 +796,11 @@ export function usePivotInstanceKey(): string {
     throw new Error('usePivotInstanceKey must be used within a Pivot component');
   }
   return context.instanceKey;
+}
+
+/** settings.enableSheetMode, for the toolbar's Table/Sheet switch. */
+export function usePivotSheetModeEnabled(): boolean {
+  return useContext(PivotStoreContext)?.sheetMode ?? false;
 }
 
 /** The pivot's settings.locale, for components the locale prop does not reach. */

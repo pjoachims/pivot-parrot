@@ -25,7 +25,8 @@ export default [
       'ag-grid-react',
       'plotly.js-dist-min',
       'jszip',
-      '@tanstack/react-virtual'
+      '@tanstack/react-virtual',
+      'jspreadsheet-ce'
     ],
     plugins: [
       postcss({

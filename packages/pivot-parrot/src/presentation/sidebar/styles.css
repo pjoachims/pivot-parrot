@@ -706,6 +706,33 @@
   user-select: none;
   cursor: inherit;
 }
+/* A folder of the field tree: [chevron] [folder] [name], toggles on click */
+.pp-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: var(--row-h);
+  padding: 0 2px 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.pp-folder-row:hover {
+  background: var(--surface-hover);
+}
+.pp-folder-row .pp-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.pp-folder-row--used .pp-field-row__label {
+  font-weight: 600;
+}
 .pp-list-caption {
   padding: var(--space-3) var(--space-2) var(--space-1);
   font-size: var(--text-xs);
