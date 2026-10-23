@@ -12,8 +12,12 @@ export interface CellRange { x0: number; y0: number; x1: number; y1: number }
 
 const REF = '\\$?[A-Za-z]{1,3}\\$?[1-9][0-9]*';
 const RANGE = `${REF}(?::${REF})?`;
-/** What a reference may follow: the "=", an operator, an opening parenthesis, an argument separator, a range colon. */
+/** What a function name may follow: the "=", an operator, an opening parenthesis, an argument separator. */
+export const FUNCTION_MAY_FOLLOW = /[=+\-*/^&<>(,;]\s*$/;
+/** What a reference may follow: the same, or a range colon. */
 const REF_MAY_FOLLOW = /[=+\-*/^&<>(,;:]\s*$/;
+/** A whole cell reference such as B2 or $B$2. */
+export const CELL_REFERENCE = new RegExp(`^${REF}$`);
 const REF_AT_END = new RegExp(`(${RANGE})$`);
 const PART_OF_A_TOKEN = /[A-Za-z0-9_$.:!"]/;
 
@@ -32,7 +36,7 @@ export function rangeAddress(r: CellRange): string {
   return r.x0 === r.x1 && r.y0 === r.y1 ? a : `${a}:${cellAddress(r.x1, r.y1)}`;
 }
 
-function insideText(text: string, end: number): boolean {
+export function insideText(text: string, end: number): boolean {
   return (text.slice(0, end).split('"').length - 1) % 2 === 1;
 }
 

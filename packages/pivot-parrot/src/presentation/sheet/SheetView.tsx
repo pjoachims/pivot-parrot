@@ -26,6 +26,7 @@ import {
   type ArrowKey,
   type Cell
 } from '../../domain/sheet/formula';
+import { completionName, functionMatches, functionSlot, toEngineFormula, type SheetFunction } from '../../domain/sheet/functions';
 
 export interface SheetViewProps {
   /** The pivot's visual layout, written read-only from A1. */
@@ -54,6 +55,9 @@ interface Rect { x0: number; y0: number; x1: number; y1: number }
 /** The reference last picked into the open formula editor: where it sits in the text and the cells it names. */
 interface Pick { slot: [number, number]; anchor: Cell; active: Cell }
 
+/** A formula being typed in the cell editor or the formula bar, with its caret: the function list follows it. */
+interface Typing { where: 'cell' | 'bar'; text: string; caret: number }
+
 const ARROWS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 /** One colour per reference of the formula being looked at, as Excel does. */
 const REF_COLORS = ['#1f6feb', '#d1242f', '#8250df', '#1a7f37', '#bf3989', '#9a6700', '#0a7ea4'];
@@ -64,7 +68,9 @@ const REF_COLORS = ['#1f6feb', '#d1242f', '#8250df', '#1a7f37', '#bf3989', '#9a6
  * never pays for the spreadsheet library.
  */
 export default function SheetView({ grid, cells, onCellsChange, onToggle, onToggleColumn, onToggleMenu, locale = 'en-US' }: SheetViewProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<Worksheet>(null);
   const range = useMemo(() => pivotRange(grid), [grid]);
   const { covered } = useMemo(() => composeSheet(range, cells), [range, cells]);
@@ -88,6 +94,8 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
   // The text of the open cell editor, while one is open.
   const [editText, setEditText] = useState<string | null>(null);
   const pickRef = useRef<Pick | null>(null);
+  const [typing, setTyping] = useState<Typing | null>(null);
+  const [highlight, setHighlight] = useState(0);
 
   const format = useMemo(() => {
     const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
@@ -189,6 +197,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
         secureFormulas: true
       }],
       contextMenu: () => [],
+      onbeforeformula: (_ws: Worksheet, expression: string) => toEngineFormula(expression),
       oneditionstart: () => {
         pickRef.current = null;
         // The editor element is created right after this event.
@@ -197,6 +206,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       oneditionend: () => {
         pickRef.current = null;
         setEditText(null);
+        setTyping(null);
       },
       onchange: (_ws: Worksheet, _td: HTMLTableCellElement, x: string | number, y: string | number, value: unknown) => {
         if (writingRef.current) return;
@@ -274,7 +284,8 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
     const onKeyDown = (e: KeyboardEvent) => {
       const ws = wsRef.current;
       const input = editorOf(ws);
-      if (!input || e.target !== input || !ARROWS.has(e.key)) return;
+      if (!input || e.target !== input || listKeyRef.current(e)) return;
+      if (!ARROWS.has(e.key)) return;
       const slot = slotOf(input);
       if (!slot) return;
       e.preventDefault();
@@ -286,7 +297,10 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       put(input, slot, e.shiftKey ? (pick?.anchor ?? from) : to, to);
     };
     const onInput = (e: Event) => {
-      if (e.target === editorOf(wsRef.current)) setEditText((e.target as HTMLInputElement).value);
+      const input = e.target as HTMLInputElement;
+      if (input !== editorOf(wsRef.current)) return;
+      setEditText(input.value);
+      follow('cell', input);
     };
     const onContextMenu = (e: MouseEvent) => {
       const toggle = (e.target as Element).closest?.('.pp-sheet-toggle') as HTMLElement | null;
@@ -307,6 +321,52 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       host.removeEventListener('input', onInput, true);
     };
   }, []);
+
+  // The function list: the functions whose name starts with the partial name before the caret.
+  const completion = useMemo(() => {
+    const slot = typing && functionSlot(typing.text, typing.caret);
+    if (!typing || !slot) return null;
+    const prefix = typing.text.slice(slot[0], slot[1]);
+    const matches = functionMatches(prefix);
+    return matches.length > 0 ? { ...typing, slot, prefix, matches } : null;
+  }, [typing]);
+
+  function follow(where: Typing['where'], input: HTMLInputElement | HTMLTextAreaElement) {
+    setTyping({ where, text: input.value, caret: input.selectionStart ?? input.value.length });
+    setHighlight(0);
+  }
+
+  function accept(f: SheetFunction) {
+    const input = completion?.where === 'cell' ? editorOf(wsRef.current) : barRef.current;
+    if (!completion || !input) return;
+    const { text, caret } = putReference(completion.text, completion.slot, `${completionName(f, completion.prefix)}(`);
+    input.value = text;
+    input.focus();
+    input.setSelectionRange(caret, caret);
+    if (completion.where === 'cell') setEditText(text);
+    else setDraft(text);
+    follow(completion.where, input);
+  }
+
+  /** Up, Down, Tab, Enter and Escape act on the open list and go no further; true when one did. */
+  function listKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
+    if (!completion) return false;
+    const last = completion.matches.length - 1;
+    if (e.key === 'ArrowDown') setHighlight(h => Math.min(h + 1, last));
+    else if (e.key === 'ArrowUp') setHighlight(h => Math.max(h - 1, 0));
+    else if (e.key === 'Tab' || e.key === 'Enter') accept(completion.matches[highlight]);
+    else if (e.key === 'Escape') setTyping(null);
+    else {
+      // The caret moves away from the name; the list would no longer match it.
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') setTyping(null);
+      return false;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    return true;
+  }
+  const listKeyRef = useRef(listKey);
+  listKeyRef.current = listKey;
 
   const active = selection ? { x: selection.x0, y: selection.y0 } : null;
   const activeIsPivot = !!active && inPivot(range, active.x, active.y);
@@ -358,6 +418,46 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
     )];
   }) : null;
 
+  // Under the edited cell, or under the formula bar.
+  const listAnchor = completion && (completion.where === 'cell' ? wsRef.current?.edition?.[0] : barRef.current) as HTMLElement | null;
+  const rootBox = rootRef.current?.getBoundingClientRect();
+  const anchorBox = listAnchor?.getBoundingClientRect();
+  const functionList = completion && rootBox && anchorBox && (
+    <div
+      className="pp-menu pp-sheet-functions"
+      role="listbox"
+      aria-label="Functions"
+      style={{ left: anchorBox.left - rootBox.left, top: anchorBox.bottom - rootBox.top + 2 }}
+      // Keeps the focus in the editor, and keeps jspreadsheet from closing it as a click outside.
+      onMouseDown={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {completion.matches.map((f, i) => {
+        const name = completionName(f, completion.prefix);
+        const other = name === f.name ? f.de : f.name;
+        return (
+          <div
+            key={f.name}
+            role="option"
+            aria-selected={i === highlight}
+            className="pp-menu-item pp-sheet-function"
+            ref={i === highlight ? el => el?.scrollIntoView?.({ block: 'nearest' }) : undefined}
+            onMouseEnter={() => setHighlight(i)}
+            onClick={() => accept(f)}
+          >
+            <span className="pp-sheet-function-name">{name}{other && <span className="pp-hint"> {other}</span>}</span>
+            <span className="pp-sheet-function-text">
+              <span className="pp-sheet-function-args">{name}({f.args})</span>
+              <span className="pp-hint">{f.description}</span>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const commitDraft = () => {
     const ws = wsRef.current;
     if (!ws || !active || activeIsPivot) return;
@@ -365,7 +465,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
   };
 
   return (
-    <div className="pp-sheet">
+    <div ref={rootRef} className="pp-sheet">
       <div className="pp-sheet-formula-bar">
         <span className="pp-sheet-name-box" aria-label="Cell">{active ? cellAddress(active.x, active.y) : ''}</span>
         <span className="pp-sheet-fx" aria-hidden="true">fx</span>
@@ -374,8 +474,14 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
           value={draft}
           readOnly={activeIsPivot}
           title={activeIsPivot ? 'Pivot result: read-only' : 'Type a value or a formula, e.g. =B2/B5'}
-          onChange={e => setDraft(e.target.value)}
+          ref={barRef}
+          onChange={e => {
+            setDraft(e.target.value);
+            follow('bar', e.target);
+          }}
+          onBlur={() => setTyping(null)}
           onKeyDown={e => {
+            if (listKey(e)) return;
             if (e.key === 'Enter') commitDraft();
             if (e.key === 'Escape') setRevision(r => r + 1);
           }}
@@ -383,6 +489,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       </div>
       <div ref={hostRef} className="pp-sheet-grid" />
       {content && outlines && createPortal(outlines, content)}
+      {functionList}
       <div className="pp-sheet-status" role="status">
         <span className="pp-sheet-status-note">
           {covered.length > 0
