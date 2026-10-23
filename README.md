@@ -132,6 +132,7 @@ Define `duckdbBundles` outside the component. A new object on every render resta
 - `autoUpdate` (default `true`): re-run the pivot on every layout change.
 - `enableSQLPlayground` (default `true` in local mode, `false` in remote mode): the toolbar's SQL Playground. In remote mode its queries go through your `executeQuery` callback like every other query, so turn it on only when your backend guards what it runs; a rejected query shows its error in the playground's status line.
 - `showSnapshots` (default `true`): the built-in Snapshots panel.
+- `enableSheetMode` (default `false`): a Table/Sheet switch in the toolbar. Sheet mode shows the result as a read-only range from A1 in a spreadsheet, and the user types values and formulas next to it (`=B3/B7`, `=SUM(B3:B6)`). Formulas recompute when the pivot changes. A saved view keeps the mode and the typed cells. The spreadsheet ([Jspreadsheet CE](https://github.com/jspreadsheet/ce)) loads on the first switch. See [docs/SHEET_MODE.md](docs/SHEET_MODE.md).
 - `locale` (default `'en-US'`): number and date formatting.
 
 ### Saved snapshots

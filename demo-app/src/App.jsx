@@ -203,6 +203,7 @@ function App() {
           initialConfig: pivotConfig,
           settings: {
             autoUpdate: autoUpdate,
+            enableSheetMode: true,
             devMode: true
           },
           callbacks: {

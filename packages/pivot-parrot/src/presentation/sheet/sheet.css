@@ -1,0 +1,90 @@
+.pp-sheet {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-bg);
+  font-size: var(--text-sm, 13px);
+}
+
+.pp-sheet-formula-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  height: 30px;
+  padding: 0 var(--space-2, 8px);
+  border-bottom: var(--border-width, 1px) solid var(--border-color-light);
+}
+
+.pp-sheet-name-box {
+  width: 64px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary);
+}
+
+.pp-sheet-fx {
+  font-style: italic;
+  color: var(--text-muted);
+  padding-right: var(--space-2, 8px);
+  border-right: var(--border-width, 1px) solid var(--border-color-light);
+}
+
+.pp-sheet-formula-bar input {
+  flex: 1;
+  height: 24px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+}
+
+.pp-sheet-formula-bar input[readonly] {
+  color: var(--text-muted);
+}
+
+.pp-sheet-grid {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pp-sheet-grid .jss_container,
+.pp-sheet-grid .jss_content {
+  height: 100%;
+  max-height: none !important;
+  width: 100%;
+  box-shadow: none;
+  padding: 0;
+}
+
+.pp-sheet-grid .jtabs-headers-container {
+  display: none;
+}
+
+.pp-sheet-grid > div {
+  height: 100%;
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td.readonly {
+  background: var(--surface-subtle, #f3f4f6);
+  color: var(--text-secondary, #4b5563);
+}
+
+.pp-sheet-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  height: 26px;
+  padding: 0 var(--space-3, 12px);
+  border-top: var(--border-width, 1px) solid var(--border-color-light);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  font-size: var(--text-xs, 12px);
+}
+
+.pp-sheet-status-stats {
+  display: flex;
+  gap: var(--space-4, 16px);
+}

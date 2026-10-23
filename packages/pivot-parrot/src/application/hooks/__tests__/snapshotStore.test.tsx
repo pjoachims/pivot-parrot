@@ -290,3 +290,27 @@ it('an import that fails part-way reports how many snapshots were not saved', as
   expect(hook.result.current.snapshots.snapshots.map(s => s.name)).toEqual(['first', 'third']);
   expect(hook.result.current.snapshots.error).toBe('Could not import 1 of 3 snapshots: second: quota exceeded');
 });
+
+it('a snapshot keeps sheet mode and the cells typed next to the pivot, and restoring brings them back', async () => {
+  const snapshotStore = fakeStore();
+  const { store, hook, backend } = setup(snapshotStore);
+  await showPivot(store, backend);
+  await act(async () => {
+    store.getState().setMainView('sheet');
+    store.getState().setSheetCells({ D2: '=B2*2', E1: 'note' });
+  });
+  await act(async () => hook.result.current.handlers.handleCreateSnapshot('with sheet'));
+  expect(snapshotStore.save.mock.calls[0][0].view.sheet).toEqual({ show: true, cells: { D2: '=B2*2', E1: 'note' } });
+
+  await act(async () => {
+    store.getState().setMainView('table');
+    store.getState().setSheetCells({});
+  });
+  await act(async () => hook.result.current.handlers.handleLoadSnapshot('srv-1'));
+  expect(store.getState().mainView).toBe('sheet');
+  expect(store.getState().sheetCells).toEqual({ D2: '=B2*2', E1: 'note' });
+
+  await act(async () => hook.result.current.handlers.applyView(savedQ2.view));
+  expect(store.getState().mainView).toBe('table');
+  expect(store.getState().sheetCells).toEqual({});
+});

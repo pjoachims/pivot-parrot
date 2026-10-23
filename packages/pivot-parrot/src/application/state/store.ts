@@ -19,6 +19,7 @@ import {
 } from './actions';
 import { autoManageValuesField } from '../../application/utils/fieldUtils';
 import { getFieldById } from '../../application/utils/getFieldById';
+import type { SheetCells } from '../../domain/sheet/sheet';
 
 /** A field's fetched unique values; truncated when the fetch hit its cap. */
 export interface UniqueValues {
@@ -63,6 +64,10 @@ interface PivotStore {
   sidebarCollapsed: boolean;
   activeView: 'chart' | 'drilldown' | 'sql' | null;
   secondaryDisplayMode: 'hidden' | 'full' | 'split-below' | 'split-right';
+  /** How the pivot result is shown: the pivot table, or a spreadsheet range next to the user's own cells. */
+  mainView: 'table' | 'sheet';
+  /** The user's sheet-mode cells by A1 address, as typed. */
+  sheetCells: SheetCells;
   showChartDialog: boolean;
   showSQLTooltip: boolean;
   autoUpdate: boolean;
@@ -157,6 +162,8 @@ interface PivotStore {
   setSidebarCollapsed: (collapsed: boolean) => void;
   setActiveView: (view: 'chart' | 'drilldown' | 'sql' | null) => void;
   setSecondaryDisplayMode: (mode: 'hidden' | 'full' | 'split-below' | 'split-right') => void;
+  setMainView: (view: 'table' | 'sheet') => void;
+  setSheetCells: (cells: SheetCells) => void;
   openChartDialog: () => void;
   closeChartDialog: () => void;
   setAutoUpdate: (autoUpdate: boolean) => void;
@@ -249,6 +256,8 @@ const initialState = {
   sidebarCollapsed: false,
   activeView: null,
   secondaryDisplayMode: 'split-below' as const,
+  mainView: 'table' as const,
+  sheetCells: {},
   showChartDialog: false,
   showSQLTooltip: false,
   autoUpdate: true,
@@ -306,6 +315,8 @@ type PivotContextValue = {
   };
   instanceKey: string;
   locale?: string;
+  /** settings.enableSheetMode: the toolbar offers sheet mode. */
+  sheetMode?: boolean;
 };
 
 /**
@@ -421,6 +432,12 @@ export function createPivotStore(instanceKey: string = 'default') {
 
       setActiveView: (view) =>
         set({ activeView: view }, false, 'setActiveView'),
+
+      setMainView: (view) =>
+        set({ mainView: view }, false, 'setMainView'),
+
+      setSheetCells: (cells) =>
+        set({ sheetCells: cells }, false, 'setSheetCells'),
 
       setSecondaryDisplayMode: (mode) =>
         set({ secondaryDisplayMode: mode }, false, 'setSecondaryDisplayMode'),
@@ -768,6 +785,11 @@ export function usePivotInstanceKey(): string {
     throw new Error('usePivotInstanceKey must be used within a Pivot component');
   }
   return context.instanceKey;
+}
+
+/** settings.enableSheetMode, for the toolbar's Table/Sheet switch. */
+export function usePivotSheetModeEnabled(): boolean {
+  return useContext(PivotStoreContext)?.sheetMode ?? false;
 }
 
 /** The pivot's settings.locale, for components the locale prop does not reach. */

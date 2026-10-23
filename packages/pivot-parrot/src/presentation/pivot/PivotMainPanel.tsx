@@ -1,9 +1,10 @@
 import React from 'react';
 import PivotDisplay from '../pivot-table/PivotDisplay';
+import PivotSheet from '../sheet/PivotSheet';
 import ChartDialog from '../charts/ChartDialog';
 import SecondaryView from '../secondary/SecondaryView';
 import ErrorBanner from '../shared/ErrorBanner';
-import { usePivotStore } from '../../application/state/store';
+import { usePivotStore, usePivotSheetModeEnabled } from '../../application/state/store';
 import type { PivotDisplayResult } from '../../application/hooks/usePivotDisplay';
 import type { DataEngine } from '../../infrastructure/data-engines/DataEngine';
 import type {
@@ -122,6 +123,8 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
   const secondaryDisplayMode = usePivotStore((s) => s.secondaryDisplayMode);
   const showChartDialog = usePivotStore((s) => s.showChartDialog);
   const chartConfig = usePivotStore((s) => s.chartConfig);
+  const mainView = usePivotStore((s) => s.mainView);
+  const sheetModeEnabled = usePivotSheetModeEnabled();
 
   // Get actions from store
   const closeChartDialog = usePivotStore((s) => s.closeChartDialog);
@@ -198,6 +201,17 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
                   flex: activeView ? '0 0 auto' : '0 1 98%',
                   flexShrink: activeView ? 0 : 1
                 }}>
+                  {sheetModeEnabled && mainView === 'sheet' ? (
+                    <PivotSheet
+                      data={displayData}
+                      cubeResults={calculation.cubeResults}
+                      dtypes={calculation.dtypes}
+                      dialect={dataEngine?.getDialect() ?? null}
+                      config={executionConfig || config}
+                      locale={locale}
+                      onOpenSQL={enableSQLPlayground ? handlers.handleOpenSQL : null}
+                    />
+                  ) : (
                   <PivotDisplay
                     data={displayData}
                     cubeResults={calculation.cubeResults}
@@ -211,6 +225,7 @@ export const PivotMainPanel: React.FC<PivotMainPanelProps> = ({
                     onDrilldown={handlers.handleDrilldown}
                     onOpenSQL={enableSQLPlayground ? handlers.handleOpenSQL : null}
                   />
+                  )}
                 </div>
               )}
 

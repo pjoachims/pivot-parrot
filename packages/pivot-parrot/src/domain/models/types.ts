@@ -171,6 +171,8 @@ export interface PivotUISettings {
   enableSQLPlayground?: boolean;
   /** The built-in Snapshots panel (default true). A host with its own saved-views UI hides it and uses the ref's getView/loadView. */
   showSnapshots?: boolean;
+  /** Sheet mode (default false): a toolbar switch shows the result as a read-only range in a spreadsheet, next to cells and formulas the user types. */
+  enableSheetMode?: boolean;
   locale?: string;
   height?: number;
   uniqueValuesLimit?: number | null;  // Max unique values to fetch (null = auto based on row count)
@@ -316,6 +318,8 @@ export interface PivotView {
   splitPosition: number;
   /** The cell the drilldown was opened on; restoring re-queries its rows. */
   drilldownFilters: DimensionFilters | null;
+  /** Sheet mode: shown as a sheet, and the user's own cells by A1 address. Absent: the table, no cells. */
+  sheet?: { show: boolean; cells: Record<string, string> };
 }
 
 export interface SavedView {
