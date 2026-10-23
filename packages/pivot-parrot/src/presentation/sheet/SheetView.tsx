@@ -117,7 +117,10 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
         allowInsertColumn: false,
         allowDeleteColumn: false,
         allowInsertRow: false,
-        allowDeleteRow: false
+        allowDeleteRow: false,
+        // Upper-cases a formula outside its double-quoted text on entry, like Excel; its
+        // reference pattern is upper case only, so =c25/c21 would not compute. Off unless set.
+        secureFormulas: true
       }],
       contextMenu: () => [],
       onchange: (_ws: Worksheet, _td: HTMLTableCellElement, x: string | number, y: string | number, value: unknown) => {

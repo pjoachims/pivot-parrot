@@ -62,3 +62,19 @@ it('numbers show formatted while formulas, chained ones too, compute with the ra
   expect(shown(3, 1).textContent).toBe('2,470.1356');
   expect(shown(3, 1).dataset.raw).toBe('2470.1356');
 });
+
+it('a formula typed in lower case computes, and the cell and the state hold it in upper case', () => {
+  const sheet = mount(q1, {});
+  const ws = sheet.ws();
+  act(() => ws.setValueFromCoords(3, 1, '=b2/b4'));
+  expect(ws.getValue('D2', true)).toBe('0.6');
+  expect(ws.getValueFromCoords(3, 1)).toBe('=B2/B4');
+  expect(sheet.onCellsChange).toHaveBeenCalledTimes(1);
+  expect(sheet.onCellsChange).toHaveBeenLastCalledWith({ D2: '=B2/B4' });
+
+  act(() => ws.setValueFromCoords(4, 1, '=if(b2>100,"gut","")'));
+  expect(ws.getValueFromCoords(4, 1)).toBe('=IF(B2>100,"gut","")');
+  expect(ws.getValue('E2', true)).toBe('gut');
+  act(() => ws.setValueFromCoords(5, 1, '=concatenate("sag ""hi""",a2)'));
+  expect(ws.getValueFromCoords(5, 1)).toBe('=CONCATENATE("sag ""hi""",A2)');
+});
