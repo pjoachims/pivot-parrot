@@ -3,6 +3,7 @@ import { buildPivotDisplayData, countDisplayColumns, type PivotDisplayData } fro
 import { columnGroups } from '../../domain/pivot/columnBuilder';
 import { fitColumns, expandGroup, type ColumnFolds } from '../../domain/pivot/columnFit';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
+import { displayTotals } from '../utils/displayTotals';
 
 const MAX_COLUMNS = 100;
 
@@ -40,7 +41,8 @@ export function usePivotDisplay(
   expandedColumns: string[] = []
 ): PivotDisplayResult | null {
   const lastDisplayRef = useRef<PivotDisplayResult | null>(null);
-  const { rows, columns, subtotals = 'both', grandTotals = 'both' } = executionConfig ?? {};
+  const { rows, columns } = executionConfig ?? {};
+  const { colSubtotals, grandTotalCol } = displayTotals(executionConfig);
 
   return useMemo(() => {
     if (!queryResult || !rows) return null;
@@ -68,10 +70,7 @@ export function usePivotDisplay(
     let columnFit: ColumnFitView | undefined;
     const dimColFields = colFieldNames.filter((f: string) => f !== SIGMA_VALUES_ID);
     if (dimColFields.length > 0) {
-      const visibility = {
-        showColSubtotals: subtotals === 'col' || subtotals === 'both',
-        showGrandTotalCol: grandTotals === 'col' || grandTotals === 'both'
-      };
+      const visibility = { showColSubtotals: colSubtotals, showGrandTotalCol: grandTotalCol };
       const countColumns = (folded: Set<string>) =>
         countDisplayColumns(cubeResults, rowFieldNames, colFieldNames, enrichedValues, folded, visibility);
       const groups = columnGroups(cubeResults, dimColFields);
@@ -108,5 +107,5 @@ export function usePivotDisplay(
     // Store for future comparisons
     lastDisplayRef.current = newDisplay;
     return newDisplay;
-  }, [queryResult, sortConfig, collapsedColumns, expandedColumns, rows, columns, subtotals, grandTotals, enrichedValues]);
+  }, [queryResult, sortConfig, collapsedColumns, expandedColumns, rows, columns, colSubtotals, grandTotalCol, enrichedValues]);
 }

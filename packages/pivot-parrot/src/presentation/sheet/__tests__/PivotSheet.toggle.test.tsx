@@ -37,7 +37,7 @@ function setup() {
   const ui = (mode: 'sheet' | 'table') => (
     <PivotStoreContext.Provider value={{ store, instanceKey: 'pivot-sheet-toggle', sheetMode: true }}>
       {mode === 'sheet'
-        ? <PivotSheet data={data} cubeResults={sqlRows} dtypes={{}} dialect={null} config={config} onOpenSQL={null} onDrilldown={() => {}} />
+        ? <PivotSheet data={data} cubeResults={sqlRows} dtypes={{}} dialect={null} config={config} onOpenSQL={null} />
         : <PivotDisplay data={data} cubeResults={sqlRows} rowFields={config.rows} config={config} />}
     </PivotStoreContext.Provider>
   );

@@ -2,9 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import JSZip from 'jszip';
 import { usePivotStore, type ChartConfig } from '../state/store';
 import type { useSnapshots } from './useSnapshots';
-import { computeLeafColumns } from '../utils/columnHelpers';
 import type { PivotDisplayResult } from './usePivotDisplay';
-import { buildPivotCSV } from '../../application/utils/export';
+import { layoutCSV } from '../../application/utils/export';
 import { dataToCSV } from '../../domain/query/utils/csv';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { FieldKind } from '../../domain/models/types';
@@ -192,19 +191,7 @@ export function usePivotHandlers({
 
       // 3. Add expected_output.csv
       if (displayData && !('error' in displayData)) {
-        const rowFieldNames = config.rows.map((f: any) => typeof f === 'string' ? f : f.id);
-        const leafCols = computeLeafColumns(displayData, true, true);
-        const expectedOutputCSV = buildPivotCSV(
-          displayData,
-          leafCols,
-          rowFieldNames,
-          true,
-          config.showGrandTotal !== false,
-          config,
-          undefined,
-          calculation.dtypes,
-          dialect
-        );
+        const expectedOutputCSV = layoutCSV(displayData, config, undefined, calculation.dtypes, dialect);
         zip.file('expected_output.csv', expectedOutputCSV);
       }
 

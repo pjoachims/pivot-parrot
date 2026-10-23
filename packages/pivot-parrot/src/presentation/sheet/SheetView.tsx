@@ -35,6 +35,8 @@ export interface SheetViewProps {
   onCellsChange: (cells: SheetCells) => void;
   /** Opens or closes a row group, by its expansion key (the ⊞/⊟ in front of its label). */
   onToggle?: (key: string) => void;
+  /** Opens or closes a column group, by its columnPathKey (the ⊞/⊟ in front of its header). */
+  onToggleColumn?: (key: string) => void;
   locale?: string;
 }
 
@@ -59,7 +61,7 @@ const REF_COLORS = ['#1f6feb', '#d1242f', '#8250df', '#1a7f37', '#bf3989', '#9a6
  * user's own cells and formulas around it. Loaded on demand, so the table mode
  * never pays for the spreadsheet library.
  */
-export default function SheetView({ grid, cells, onCellsChange, onToggle, locale = 'en-US' }: SheetViewProps) {
+export default function SheetView({ grid, cells, onCellsChange, onToggle, onToggleColumn, locale = 'en-US' }: SheetViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<Worksheet>(null);
   const range = useMemo(() => pivotRange(grid), [grid]);
@@ -70,8 +72,8 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, locale
   const cellsRef = useRef(cells);
   const onCellsChangeRef = useRef(onCellsChange);
   onCellsChangeRef.current = onCellsChange;
-  const onToggleRef = useRef(onToggle);
-  onToggleRef.current = onToggle;
+  const onToggleRef = useRef({ row: onToggle, column: onToggleColumn });
+  onToggleRef.current = { row: onToggle, column: onToggleColumn };
   // The cells this sheet itself reported: getting them back as props needs no rewrite.
   const emittedRef = useRef<SheetCells | null>(null);
   const writingRef = useRef(false);
@@ -129,23 +131,26 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, locale
       td.dataset.role = style.role;
       td.classList.toggle('pp-rule-top', style.ruleTop);
       td.classList.toggle('pp-rule-left', style.ruleLeft);
+      const withToggle = (axis: 'row' | 'column', group: { key: string; open: boolean }, label: string) => {
+        const toggle = document.createElement('span');
+        toggle.className = 'pp-sheet-toggle';
+        toggle.dataset.toggle = group.key;
+        toggle.dataset.axis = axis;
+        toggle.textContent = group.open ? '⊟' : '⊞';
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('aria-expanded', String(group.open));
+        toggle.setAttribute('aria-label', `${group.open ? 'Collapse' : 'Expand'} ${label}`);
+        td.replaceChildren(toggle, label);
+      };
+      const columnGroup = rangeRef.current.columnGroups.get(cellAddress(x, y));
+      if (columnGroup) return withToggle('column', columnGroup, String(value));
       const row = rangeRef.current.rowKinds[y];
       if (rangeRef.current.colKinds[x] !== 'label' || !row || (row.kind !== 'item' && row.kind !== 'group')) return;
       // The label's depth as an indent (its leading spaces collapse in HTML); a group gets its toggle in front.
       const label = String(value).trimStart();
       td.style.paddingLeft = `${4 + row.depth * 16}px`;
-      if (row.kind === 'item') {
-        td.textContent = label;
-        return;
-      }
-      const toggle = document.createElement('span');
-      toggle.className = 'pp-sheet-toggle';
-      toggle.dataset.toggle = row.key;
-      toggle.textContent = row.open ? '⊟' : '⊞';
-      toggle.setAttribute('role', 'button');
-      toggle.setAttribute('aria-expanded', String(row.open));
-      toggle.setAttribute('aria-label', `${row.open ? 'Collapse' : 'Expand'} ${label}`);
-      td.replaceChildren(toggle, label);
+      if (row.kind === 'item') td.textContent = label;
+      else withToggle('row', row, label);
     };
 
     writingRef.current = true;
@@ -243,7 +248,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, locale
       if (toggle && !input) {
         e.preventDefault();
         e.stopPropagation();
-        onToggleRef.current?.(toggle.dataset.toggle!);
+        onToggleRef.current[toggle.dataset.axis as 'row' | 'column']?.(toggle.dataset.toggle!);
         return;
       }
       const td = (e.target as Element).closest?.('td[data-x][data-y]') as HTMLTableCellElement | null;

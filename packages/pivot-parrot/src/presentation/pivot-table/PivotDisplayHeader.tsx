@@ -91,26 +91,6 @@ export default function PivotDisplayHeader({
   useClickOutside('.export-menu-container', () => setShowExportMenu(false));
   useClickOutside('.chart-mode-menu-container', () => setShowChartModeMenu(false));
 
-  // Helper to compute leaf columns for CSV export
-  function computeLeafColumns(displayData) {
-    if (!displayData || !displayData.columnConfig) return [];
-
-    const hierarchy = displayData.columnConfig.hierarchy || [];
-
-    function collectLeaves(nodes, leaves = []) {
-      nodes.forEach(node => {
-        if (node.children?.length > 0) {
-          collectLeaves(node.children, leaves);
-        } else {
-          leaves.push(node);
-        }
-      });
-      return leaves;
-    }
-
-    return collectLeaves(hierarchy);
-  }
-
   const handleExportData = () => {
     if (cubeResults && cubeResults.length > 0) {
       exportDataCSV({ cubeResults }, config, locale, dtypes, dialect);
@@ -123,9 +103,7 @@ export default function PivotDisplayHeader({
 
   const handleExportLayout = () => {
     if (data && config) {
-      const rowFieldNames = config.rows.map(f => typeof f === 'string' ? f : f.id);
-      const leafCols = computeLeafColumns(data);
-      exportPivotCSV(data, leafCols, rowFieldNames, true, config.showGrandTotal !== false, config, locale, dtypes, dialect);
+      exportPivotCSV(data, config, locale, dtypes, dialect);
       setShowExportMenu(false);
     }
   };

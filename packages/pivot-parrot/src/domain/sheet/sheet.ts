@@ -14,7 +14,8 @@ export type SheetCells = Record<string, string>;
 
 /**
  * The pivot written as a range from A1. `percent` lists the addresses whose number is a fraction shown as %.
- * `rowKinds` and `colKinds` say what each row and column of the range is (see PivotGrid).
+ * `rowKinds` and `colKinds` say what each row and column of the range is (see PivotGrid);
+ * `columnGroups` holds, by address, the header cells that open and close a column group.
  */
 export interface PivotRange {
   values: SheetValue[][];
@@ -23,6 +24,7 @@ export interface PivotRange {
   percent: Set<string>;
   rowKinds: PivotGridRow[];
   colKinds: PivotGridColumn[];
+  columnGroups: Map<string, { key: string; open: boolean }>;
 }
 
 /** The area of the pivot a cell belongs to, styled apart like an Excel PivotTable style. */
@@ -81,7 +83,8 @@ export function pivotRange(grid: PivotGrid): PivotRange {
     cols: Math.max(0, ...values.map(r => r.length)),
     percent,
     rowKinds: grid.rows,
-    colKinds: grid.columns
+    colKinds: grid.columns,
+    columnGroups: new Map(grid.columnGroups.map(g => [cellAddress(g.col, g.row), { key: g.key, open: g.open }]))
   };
 }
 

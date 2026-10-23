@@ -188,7 +188,7 @@ describe('exportPivotCSV', () => {
     URL.revokeObjectURL = vi.fn();
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     const d = buildPivotDisplayData(cubeRows.slice(0, 1), ['Märkte'], ['Σ Values'], config.values);
-    exportPivotCSV(d, d._columnOutline, ['Märkte'], true, false, config, 'de-DE');
+    exportPivotCSV(d, { ...config, rows: ['Märkte'], grandTotals: 'col' }, 'de-DE');
     const buffer = await new Promise<ArrayBuffer>(resolve => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as ArrayBuffer);
