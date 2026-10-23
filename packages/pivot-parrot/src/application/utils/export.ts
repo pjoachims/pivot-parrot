@@ -5,7 +5,7 @@
 import { profiler } from '../../domain/query/utils/profiler';
 import { fieldDisplayName } from '../../domain/field/fieldDisplayName';
 import { toCSV, type CsvCell } from '../../domain/query/utils/csv';
-import { decodeNumber, findValueFormat } from './formatters';
+import { createFormatRowLabel, decodeNumber, findValueFormat } from './formatters';
 import type { SQLDialect } from '../../domain/query/dialects/SQLDialect';
 import { SIGMA_VALUES_ID } from '../../domain/models/types';
 import { rowKey } from './treeOperations';
@@ -184,12 +184,8 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
   }
 
   const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
-  // A dimension member as the table shows it: the dialect renders a typed value (a date's epoch ms as 2024-01-01).
-  const member = (value, field: string | undefined) => {
-    if (value === null || value === undefined) return '';
-    const typeName = field ? dtypes[field] : undefined;
-    return typeName && dialect ? String(dialect.toDisplay(value, typeName)) : String(value);
-  };
+  // A dimension member as the table shows it: the dialect renders a typed value (a date's epoch ms as 2024-01-01), an empty one is "(Blank)".
+  const member = createFormatRowLabel(null, null, dtypes, dialect);
 
   const fields: string[] = rowFields || [];
   const leaves = leafCols || [];

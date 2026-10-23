@@ -13,24 +13,27 @@ const facts = [
   { Region: 'Süd', Stadt: 'München', Jahr: 2024, Monat: 2, sales: 8 }
 ];
 const dims = ['Region', 'Stadt', 'Jahr', 'Monat'];
-const cube: any[] = [];
-for (let mask = 0; mask < 16; mask++) {
-  const rolled = dims.map((_, i) => (mask >> i) & 1);
-  // Only the grouping sets a hierarchy has: a child is rolled up whenever its parent is.
-  if ((rolled[0] && !rolled[1]) || (rolled[2] && !rolled[3])) continue;
-  const groups = new Map<string, any>();
-  for (const f of facts) {
-    const row: any = Object.fromEntries(dims.map((d, i) => [d, rolled[i] ? null : (f as any)[d]]));
-    const key = JSON.stringify(row);
-    const acc = groups.get(key) ?? { ...row, sum_sales: 0, ...Object.fromEntries(dims.map((d, i) => [`_grouping_${d}`, rolled[i]])) };
-    acc.sum_sales += f.sales;
-    groups.set(key, acc);
+const cubeOf = (rows: Array<Record<string, unknown> & { sales: number }>) => {
+  const cube: any[] = [];
+  for (let mask = 0; mask < 16; mask++) {
+    const rolled = dims.map((_, i) => (mask >> i) & 1);
+    // Only the grouping sets a hierarchy has: a child is rolled up whenever its parent is.
+    if ((rolled[0] && !rolled[1]) || (rolled[2] && !rolled[3])) continue;
+    const groups = new Map<string, any>();
+    for (const f of rows) {
+      const row: any = Object.fromEntries(dims.map((d, i) => [d, rolled[i] ? null : f[d]]));
+      const key = JSON.stringify(row);
+      const acc = groups.get(key) ?? { ...row, sum_sales: 0, ...Object.fromEntries(dims.map((d, i) => [`_grouping_${d}`, rolled[i]])) };
+      acc.sum_sales += f.sales;
+      groups.set(key, acc);
+    }
+    cube.push(...groups.values());
   }
-  cube.push(...groups.values());
-}
+  return cube;
+};
 const values = [{ field: 'sales', aggregation: 'sum' }];
 const rowFields = ['Region', 'Stadt'];
-const data = buildPivotDisplayData(cube, rowFields, ['Jahr', 'Monat', 'Σ Values'], values);
+const data = buildPivotDisplayData(cubeOf(facts), rowFields, ['Jahr', 'Monat', 'Σ Values'], values);
 const grid = (expanded?: Record<string, boolean>) => buildPivotGrid(data, computeLeafColumns(data), rowFields, true, true, { values }, {}, null, expanded);
 const nord = rowKey(data.rowGroups.find((g: any) => g.label === 'Nord'));
 
@@ -54,6 +57,18 @@ describe('buildPivotGrid rows and columns', () => {
     expect(nordOpen.cells.map(r => String(r[0]).trim())).toEqual(['Region / Stadt', '', '', 'Nord', 'Kiel', 'Hamburg', 'Süd', 'Grand Total']);
     expect(nordOpen.rowGroups.map(g => [g.row, g.open])).toEqual([[3, true], [6, false]]);
     expect(nordOpen.cells[3].slice(1)).toEqual([5, 2, 7, 7]);
+  });
+});
+
+describe('buildPivotGrid empty members', () => {
+  it('labels an empty row or column member "(Blank)", as the table does', () => {
+    const blanks = buildPivotDisplayData(cubeOf([
+      { Region: 'Nord', Stadt: null, Jahr: 2024, Monat: null, sales: 3 },
+      { Region: 'Nord', Stadt: 'Kiel', Jahr: 2024, Monat: 1, sales: 1 }
+    ]), rowFields, ['Jahr', 'Monat', 'Σ Values'], values);
+    const g = buildPivotGrid(blanks, computeLeafColumns(blanks), rowFields, true, true, { values }, {}, null);
+    expect(g.cells.map(r => String(r[0]).trim())).toContain('(Blank)');
+    expect(g.cells[1]).toContain('(Blank)');
   });
 });
 
