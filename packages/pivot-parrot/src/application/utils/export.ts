@@ -177,31 +177,33 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
   const colFields = data.columnConfig.colFields || [];
   const hasColFields = colFields.length > 0;
 
-  // With Σ Values in rows the metric names label rows, so the header has no metric level
+  // With Σ Values in rows the metric names label rows, so the header has no metric line. In columns the
+  // metric line sits where Σ Values does, as in the table (ColumnHeaders): column fields after it one line lower.
   const valuesInRows = valuesIndex >= 0;
-  const metricLevel = valuesInRows ? -1 : colFields.length;
+  const colValuesIndex = data.columnConfig.valuesIndex ?? -1;
+  const metricLine = valuesInRows ? -1 : colValuesIndex >= 0 ? colValuesIndex : colFields.length;
+  const lineOfField = (d: number) => (valuesInRows || d < metricLine ? d : d + 1);
 
   if (hasColFields && leafCols && leafCols.length > 0) {
-    // Build multi-row headers for column hierarchy
-    const numLevels = valuesInRows ? colFields.length : colFields.length + 1;
+    const numLines = valuesInRows ? colFields.length : colFields.length + 1;
 
-    for (let level = 0; level < numLevels; level++) {
-      const row = level === 0 ? ['Row Labels'] : [''];
+    for (let line = 0; line < numLines; line++) {
+      const row = line === 0 ? ['Row Labels'] : [''];
+      const d = valuesInRows || line < metricLine ? line : line - 1;
 
       leafCols.forEach(leaf => {
         // A hierarchy leaf's path may hold its metric too; columnPath, and an outline column's path, hold only members
         const path = leaf.columnPath ?? leaf.path ?? [];
 
-        if (level === metricLevel && (leaf.isSubtotal || leaf.isGrandTotal)) {
+        if (leaf.isGrandTotal) {
+          // As the table heads it: "Grand Total" above, its metric on the last line
+          row.push(!valuesInRows && line === numLines - 1 ? getMetricName(leaf.metric) || '' : line === 0 ? 'Grand Total' : '');
+        } else if (line === metricLine) {
           row.push(getMetricName(leaf.metric) || '');
-        } else if (leaf.isGrandTotal) {
-          row.push(level === 0 ? 'Grand Total' : '');
-        } else if (leaf.isSubtotal) {
-          row.push(level < path.length ? member(path[level], colFields[level]) : level === path.length ? 'Subtotal' : '');
-        } else if (level < path.length) {
-          row.push(member(path[level], colFields[level]));
+        } else if (d < path.length) {
+          row.push(member(path[d], colFields[d]));
         } else {
-          row.push(level === metricLevel ? getMetricName(leaf.metric) : '');
+          row.push(leaf.isSubtotal && d === path.length ? 'Subtotal' : '');
         }
       });
 
@@ -209,7 +211,7 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
       rows.push({ kind: 'header' });
     }
 
-    // Header row `level` shows the members of column field `level`; a group starts where its key first appears.
+    // Column field `level`'s members are on line lineOfField(level); a group starts where its key first appears.
     const collapsible = new Set((data.columnConfig.groups || []).map(columnPathKey));
     for (let level = 0; level < colFields.length - 1; level++) {
       let previous: string | null = null;
@@ -217,7 +219,7 @@ export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, show
         const path = leaf.isGrandTotal ? [] : leaf.columnPath ?? leaf.path ?? [];
         const key = path.length > level ? columnPathKey(path.slice(0, level + 1)) : null;
         if (key && key !== previous && collapsible.has(key)) {
-          columnGroups.push({ row: level, col: i + 1, key, open: !(leaf.isCollapsed && path.length === level + 1) });
+          columnGroups.push({ row: lineOfField(level), col: i + 1, key, open: !(leaf.isCollapsed && path.length === level + 1) });
         }
         previous = key;
       });
