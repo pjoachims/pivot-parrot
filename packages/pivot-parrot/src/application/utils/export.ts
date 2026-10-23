@@ -108,8 +108,15 @@ export const exportDataCSV = (displayData, config = null, locale?: string, dtype
  */
 export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, locale?: string, dtypes: Dtypes = {}, dialect: SQLDialect | null = null) => {
   return profiler.profile('buildPivotCSV', () => {
+  const lines = buildPivotGrid(data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config, dtypes, dialect);
+  return lines.length ? toCSV(lines, locale) : '';
+  });
+};
+
+/** The pivot's visual layout as rows of cells: what the "Visual Layout" CSV writes and sheet mode shows. */
+export const buildPivotGrid = (data, leafCols, rowFields, showRowSubtotals, showGrandTotal, config = null, dtypes: Dtypes = {}, dialect: SQLDialect | null = null): CsvCell[][] => {
   if (!data || !data.rowGroups) {
-    return '';
+    return [];
   }
 
   const getMetricName = (metricId) => metricId && fieldDisplayName(metricId, config || {});
@@ -203,8 +210,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     }
   }
 
-  return toCSV(lines, locale);
-  });
+  return lines;
 };
 
 /**
