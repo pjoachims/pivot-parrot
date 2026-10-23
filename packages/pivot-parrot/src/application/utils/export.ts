@@ -181,7 +181,7 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     }
 
     const rowMetric = valuesIndex >= 0 ? row.path?.[valuesIndex] : null;
-    lines.push([label, ...(leafCols || []).map((leaf, idx) => metricCell(config, cellValues?.[idx], rowMetric || leaf.metric, dtypes, dialect))]);
+    lines.push([label, ...(leafCols || []).map(leaf => metricCell(config, cellValues?.[leaf.valueIndex], rowMetric || leaf.metric, dtypes, dialect))]);
 
     // Recurse for children
     if (hasKids && row.children) {
@@ -196,10 +196,10 @@ export const buildPivotCSV = (data, leafCols, rowFields, showRowSubtotals, showG
     if (valuesInRows) {
       // One grand-total row per metric: data.grandTotal holds {metric, metricLabel, values}
       data.grandTotal.forEach(gt => {
-        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map((leaf, idx) => metricCell(config, gt.values?.[idx], gt.metric, dtypes, dialect))]);
+        lines.push([`Grand Total - ${gt.metricLabel}`, ...(leafCols || []).map(leaf => metricCell(config, gt.values?.[leaf.valueIndex], gt.metric, dtypes, dialect))]);
       });
     } else {
-      lines.push(['Grand Total', ...(leafCols || []).map((leaf, idx) => metricCell(config, data.grandTotal[idx], leaf.metric, dtypes, dialect))]);
+      lines.push(['Grand Total', ...(leafCols || []).map(leaf => metricCell(config, data.grandTotal[leaf.valueIndex], leaf.metric, dtypes, dialect))]);
     }
   }
 

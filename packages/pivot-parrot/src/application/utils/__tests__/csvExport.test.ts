@@ -5,6 +5,7 @@ import { computeLeafColumns } from '../columnHelpers';
 import { columnPathKey } from '../cubeIndex';
 import { dataToCSV, toCSV } from '../../../domain/query/utils/csv';
 import { DuckDBDialect } from '../../../domain/query/dialects/DuckDBDialect';
+import { cubeRows as cubeRowsOf, expected, leafMembers } from './salesCube';
 
 const config = {
   values: [
@@ -209,5 +210,22 @@ describe('toCSV dates', () => {
   it('writes a date as ISO YYYY-MM-DD and a timestamp as ISO date and time', () => {
     const csv = toCSV([[new Date(Date.UTC(2026, 9, 15)), new Date(Date.UTC(2026, 9, 15, 8, 9, 58))]], 'de-DE');
     expect(csv).toBe('2026-10-15;2026-10-15 08:09:58');
+  });
+});
+
+describe('buildPivotCSV without column subtotals', () => {
+  it('writes in every cell the aggregate of its row and its column', () => {
+    const values = [{ field: 'qty', aggregation: 'sum' }, { field: 'price', aggregation: 'sum' }];
+    const d = buildPivotDisplayData(cubeRowsOf(['region', 'category', 'product']), ['region'], ['category', 'product', 'Σ Values'], values);
+    const leaves = computeLeafColumns(d, true, false);
+    const lines = buildPivotCSV(d, leaves, ['region'], true, true, { values }).split('\n').map(line => line.split(','));
+    const wrong = [];
+    for (const line of lines.filter(l => ['North', 'South', 'Grand Total'].includes(l[0]))) {
+      leaves.forEach((leaf, i) => {
+        const want = expected(line[0] === 'Grand Total' ? null : line[0], leafMembers(leaf), leaf.metric);
+        if (Number(line[i + 1]) !== want) wrong.push(`${line[0]} ${JSON.stringify(leafMembers(leaf))} ${leaf.metric}: writes ${line[i + 1]}, is ${want}`);
+      });
+    }
+    expect(wrong).toEqual([]);
   });
 });
