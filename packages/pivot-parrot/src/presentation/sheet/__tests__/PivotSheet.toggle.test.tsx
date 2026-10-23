@@ -56,11 +56,11 @@ const press = (el: Element) => act(() => { fireEvent.mouseDown(el); });
 it('a toggle in the sheet opens the group, and the table shows the same open rows', async () => {
   const sheet = setup();
   const expand = await screen.findByRole('button', { name: 'Expand Nord' });
-  expect(sheet.labels()).toEqual(['Row Labels', 'Nord', 'Süd', 'Grand Total', '', '']);
+  expect(sheet.labels()).toEqual(['region / city', 'Nord', 'Süd', 'Grand Total', '', '']);
   expect(sheet.ws().isReadOnly(0, 1)).toBe(true);
 
   press(expand);
-  expect(sheet.labels()).toEqual(['Row Labels', 'Nord', 'Kiel', 'Süd', 'Grand Total', '']);
+  expect(sheet.labels()).toEqual(['region / city', 'Nord', 'Kiel', 'Süd', 'Grand Total', '']);
   expect(screen.getByRole('button', { name: 'Collapse Nord' })).toHaveAttribute('aria-expanded', 'true');
   expect(sheet.ws().getCellFromCoords(0, 2).dataset.role).toBe('rowLabel');
   expect(sheet.ws().getCellFromCoords(1, 1).dataset.role).toBe('subtotal');
@@ -74,7 +74,7 @@ it('a toggle in the sheet opens the group, and the table shows the same open row
 
   sheet.show('sheet');
   await screen.findByRole('button', { name: 'Expand Nord' });
-  expect(sheet.labels()).toEqual(['Row Labels', 'Nord', 'Süd', 'Grand Total', '', '']);
+  expect(sheet.labels()).toEqual(['region / city', 'Nord', 'Süd', 'Grand Total', '', '']);
 });
 
 it('a toggle while the cell editor is open does not toggle: the click picks its cell, as in Excel', async () => {
@@ -104,4 +104,27 @@ it('a formula with a fixed address points at another row once a group above it c
   press(screen.getByRole('button', { name: 'Collapse Nord' }));
   expect(sheet.labels()[2]).toBe('Süd');
   expect(sheet.ws().getValue('D3', true)).toBe('20');
+});
+
+it('the Layout menu switches the sheet to tabular, and a parent\'s toggle sits at its label on its first child\'s row', async () => {
+  const sheet = setup();
+  act(() => sheet.store.getState().setMainView('sheet'));
+  press(await screen.findByRole('button', { name: 'Expand Nord' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Report layout' }));
+  expect(screen.getByRole('menuitemcheckbox', { name: 'Repeat item labels' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('menuitemradio', { name: /Tabular/ }));
+
+  expect(sheet.store.getState().sheetLayout).toEqual({ form: 'tabular', repeatLabels: false });
+  const row = (y: number) => [0, 1, 2].map(x => String(sheet.ws().getValueFromCoords(x, y)));
+  expect([row(0), row(1), row(2), row(3)]).toEqual([
+    ['region', 'city', 'sum_sales'],
+    ['Nord', 'Kiel', '10'],
+    ['Nord Total', '', '10'],
+    ['Süd', '', '20']
+  ]);
+  const collapse = screen.getByRole('button', { name: 'Collapse Nord' });
+  expect(collapse.closest('td')).toBe(sheet.ws().getCellFromCoords(0, 1));
+
+  fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Repeat item labels' }));
+  expect(sheet.store.getState().sheetLayout).toEqual({ form: 'tabular', repeatLabels: true });
 });

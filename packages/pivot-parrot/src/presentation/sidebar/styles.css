@@ -628,6 +628,11 @@
 .pp-menu-item[aria-checked='true'] {
   background: var(--color-accent-subtle);
 }
+.pp-menu-item:disabled {
+  background: transparent;
+  color: var(--text-muted);
+  cursor: default;
+}
 
 /* Toolbar brand wordmark: quiet by default, reveals it's a link on hover */
 .pp-brand-link:hover,

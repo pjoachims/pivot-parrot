@@ -29,6 +29,7 @@ export default function PivotSheet({ data, cubeResults, dtypes, dialect, config,
   // The table's open rows: a toggle in either mode changes both.
   const expanded = usePivotStore((s) => s.expanded);
   const toggleExpanded = usePivotStore((s) => s.toggleExpanded);
+  const layout = usePivotStore((s) => s.sheetLayout);
 
   // The table's column groups: a toggle here folds the same groups, under the same column limit.
   const groups: unknown[][] | undefined = data?.columnConfig?.groups;
@@ -44,8 +45,8 @@ export default function PivotSheet({ data, cubeResults, dtypes, dialect, config,
     const rowFields = config.rows.map((f: any) => typeof f === 'string' ? f : f.id);
     const totals = displayTotals(config);
     const leaves = computeLeafColumns(data, totals.grandTotalCol, totals.colSubtotals);
-    return buildPivotGrid(data, leaves, rowFields, totals.rowSubtotals, totals.grandTotalRow, config, dtypes, dialect, expanded);
-  }, [data, config, dtypes, dialect, expanded]);
+    return buildPivotGrid(data, leaves, rowFields, totals.rowSubtotals, totals.grandTotalRow, config, dtypes, dialect, expanded, layout);
+  }, [data, config, dtypes, dialect, expanded, layout]);
   const groupName = (group: unknown[]) => group.map((m, d) => formatHeaderValue(m, data.columnConfig.colFields[d], dialect, dtypes)).join(' / ');
 
   return (
