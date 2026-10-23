@@ -37,6 +37,8 @@ export interface SheetViewProps {
   onToggle?: (key: string) => void;
   /** Opens or closes a column group, by its columnPathKey (the ⊞/⊟ in front of its header). */
   onToggleColumn?: (key: string) => void;
+  /** Right-click on a ⊞/⊟: the group's axis and key, a row group's level, and where the menu opens. */
+  onToggleMenu?: (toggle: { axis: 'row' | 'column'; key: string; depth: number; x: number; y: number }) => void;
   locale?: string;
 }
 
@@ -61,7 +63,7 @@ const REF_COLORS = ['#1f6feb', '#d1242f', '#8250df', '#1a7f37', '#bf3989', '#9a6
  * user's own cells and formulas around it. Loaded on demand, so the table mode
  * never pays for the spreadsheet library.
  */
-export default function SheetView({ grid, cells, onCellsChange, onToggle, onToggleColumn, locale = 'en-US' }: SheetViewProps) {
+export default function SheetView({ grid, cells, onCellsChange, onToggle, onToggleColumn, onToggleMenu, locale = 'en-US' }: SheetViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<Worksheet>(null);
   const range = useMemo(() => pivotRange(grid), [grid]);
@@ -74,6 +76,8 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
   onCellsChangeRef.current = onCellsChange;
   const onToggleRef = useRef({ row: onToggle, column: onToggleColumn });
   onToggleRef.current = { row: onToggle, column: onToggleColumn };
+  const onToggleMenuRef = useRef(onToggleMenu);
+  onToggleMenuRef.current = onToggleMenu;
   // The cells this sheet itself reported: getting them back as props needs no rewrite.
   const emittedRef = useRef<SheetCells | null>(null);
   const writingRef = useRef(false);
@@ -132,11 +136,12 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       td.dataset.role = style.role;
       td.classList.toggle('pp-rule-top', style.ruleTop);
       td.classList.toggle('pp-rule-left', style.ruleLeft);
-      const withToggle = (axis: 'row' | 'column', group: { key: string; open: boolean }, label: string) => {
+      const withToggle = (axis: 'row' | 'column', group: { key: string; open: boolean }, label: string, depth = 0) => {
         const toggle = document.createElement('span');
         toggle.className = 'pp-sheet-toggle';
         toggle.dataset.toggle = group.key;
         toggle.dataset.axis = axis;
+        toggle.dataset.depth = String(depth);
         toggle.textContent = group.open ? '⊟' : '⊞';
         toggle.setAttribute('role', 'button');
         toggle.setAttribute('aria-expanded', String(group.open));
@@ -152,7 +157,8 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       const label = String(value).trimStart();
       if (labelColumns === 1) td.style.paddingLeft = `${4 + row.depth * 16}px`;
       const rowGroup = rowGroups.get(cellAddress(x, y));
-      if (rowGroup) withToggle('row', rowGroup, label);
+      // A row group's level: its depth in the compact form, its label column in the others.
+      if (rowGroup) withToggle('row', rowGroup, label, labelColumns === 1 ? row.depth : x);
       else td.textContent = label;
     };
 
@@ -249,6 +255,7 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
       // A group toggle opens or closes it; while the cell editor is open, a click on it is a click on its cell.
       const toggle = (e.target as Element).closest?.('.pp-sheet-toggle') as HTMLElement | null;
       if (toggle && !input) {
+        if (e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         onToggleRef.current[toggle.dataset.axis as 'row' | 'column']?.(toggle.dataset.toggle!);
@@ -281,10 +288,20 @@ export default function SheetView({ grid, cells, onCellsChange, onToggle, onTogg
     const onInput = (e: Event) => {
       if (e.target === editorOf(wsRef.current)) setEditText((e.target as HTMLInputElement).value);
     };
+    const onContextMenu = (e: MouseEvent) => {
+      const toggle = (e.target as Element).closest?.('.pp-sheet-toggle') as HTMLElement | null;
+      if (!toggle || !onToggleMenuRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const { axis, toggle: key, depth } = toggle.dataset;
+      onToggleMenuRef.current({ axis: axis as 'row' | 'column', key: key!, depth: Number(depth), x: e.clientX, y: e.clientY });
+    };
     host.addEventListener('mousedown', onMouseDown, true);
     host.addEventListener('keydown', onKeyDown, true);
     host.addEventListener('input', onInput, true);
+    host.addEventListener('contextmenu', onContextMenu, true);
     return () => {
+      host.removeEventListener('contextmenu', onContextMenu, true);
       host.removeEventListener('mousedown', onMouseDown, true);
       host.removeEventListener('keydown', onKeyDown, true);
       host.removeEventListener('input', onInput, true);

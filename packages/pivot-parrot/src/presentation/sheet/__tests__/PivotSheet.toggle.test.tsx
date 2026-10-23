@@ -128,3 +128,20 @@ it('the Layout menu switches the sheet to tabular, and a parent\'s toggle sits a
   fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Repeat item labels' }));
   expect(sheet.store.getState().sheetLayout).toEqual({ form: 'tabular', repeatLabels: true });
 });
+
+it('a right-click on a toggle opens the fold menu without toggling, and "Unfold all" opens every group', async () => {
+  const sheet = setup();
+  const expand = await screen.findByRole('button', { name: 'Expand Nord' });
+
+  act(() => { fireEvent.mouseDown(expand, { button: 2 }); fireEvent.contextMenu(expand); });
+  expect(sheet.labels()).toEqual(['region / city', 'Nord', 'Süd', 'Grand Total', '', '']);
+  expect(screen.getByRole('menuitem', { name: 'Fold region' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Unfold all' }));
+  expect(sheet.labels()).toEqual(['region / city', 'Nord', 'Kiel', 'Süd', 'München', 'Grand Total']);
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+  act(() => { fireEvent.contextMenu(screen.getByRole('button', { name: 'Collapse Süd' })); });
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Fold all' }));
+  expect(sheet.labels()).toEqual(['region / city', 'Nord', 'Süd', 'Grand Total', '', '']);
+});
