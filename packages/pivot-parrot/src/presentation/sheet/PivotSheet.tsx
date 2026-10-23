@@ -49,7 +49,7 @@ export default function PivotSheet({ data, cubeResults, dtypes, dialect, config,
   const groupName = (group: unknown[]) => group.map((m, d) => formatHeaderValue(m, data.columnConfig.colFields[d], dialect, dtypes)).join(' / ');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, fontSize: 'var(--text-sm)' }}>
       <PivotDisplayHeader
         data={data}
         cubeResults={cubeResults}
