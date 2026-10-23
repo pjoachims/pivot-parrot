@@ -1,4 +1,5 @@
 .pp-sheet {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -185,4 +186,46 @@
   box-sizing: border-box;
   border: 2px solid;
   pointer-events: none;
+}
+
+.pp-sheet-functions {
+  position: absolute;
+  z-index: 10;
+  width: 420px;
+  max-height: 336px;
+  overflow-y: auto;
+}
+
+/* Two lines, the call and the description: 40px a row, 8 rows before it scrolls. */
+.pp-sheet-function {
+  height: 40px;
+  cursor: pointer;
+}
+
+.pp-sheet-function[aria-selected='true'] {
+  background: var(--color-accent-subtle);
+}
+
+/* A fixed name column, so every row's hint starts at the same place. */
+.pp-sheet-function-name {
+  flex: none;
+  width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono, monospace);
+}
+
+.pp-sheet-function-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.pp-sheet-function-args {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary);
 }

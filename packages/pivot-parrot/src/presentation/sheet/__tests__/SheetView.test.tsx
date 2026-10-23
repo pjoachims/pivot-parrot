@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, fireEvent } from '@testing-library/react';
 import SheetView from '../SheetView';
 import { gridOf } from '../../../domain/sheet/__tests__/gridOf';
 
@@ -143,6 +143,85 @@ describe('point mode', () => {
     click(sheet.ws().getCellFromCoords(1, 2));
     expect(sheet.ws().edition).toBeNull();
     expect(sheet.ws().getValue('D2', true)).toBe('240');
+  });
+
+  const options = (sheet: ReturnType<typeof mount>) =>
+    [...sheet.container.querySelectorAll('[role="option"]')].map(el => [el.querySelector('.pp-sheet-function-name')!.textContent, el.getAttribute('aria-selected')]);
+
+  it('a formula with German names and semicolons computes', async () => {
+    const sheet = mount(q1, {});
+    const { td, input } = await edit(sheet, 3, 1);
+    type(input, '=SUMME(B2;B3)');
+    act(() => sheet.ws().closeEditor(td, true));
+    expect(sheet.ws().getValue('D2', true)).toBe('200');
+    expect(sheet.onCellsChange).toHaveBeenLastCalledWith({ D2: '=SUMME(B2;B3)' });
+  });
+
+  it('a typed name prefix lists the functions; Tab inserts the name as typed', async () => {
+    const sheet = mount(q1, {});
+    const { td, input } = await edit(sheet, 3, 1);
+    type(input, '=');
+    expect(options(sheet)).toEqual([]);
+    type(input, 'mit');
+    expect(options(sheet)).toEqual([['MITTELWERT AVERAGE', 'true']]);
+    key(input, 'Tab');
+    expect(input.value).toBe('=MITTELWERT(');
+    expect(input.selectionStart).toBe(12);
+    expect(options(sheet)).toEqual([]);
+    expect(sheet.ws().edition).not.toBeNull();
+
+    type(input, 'B2;B3)');
+    act(() => sheet.ws().closeEditor(td, true));
+    expect(sheet.ws().getValue('D2', true)).toBe('100');
+  });
+
+  it('while the list is open, arrows move its highlight, Enter inserts, Escape closes it; the editor stays open', async () => {
+    const sheet = mount(q1, {});
+    const { input } = await edit(sheet, 3, 1);
+    type(input, '=B2+ROUND');
+    expect(options(sheet)).toEqual([['ROUND RUNDEN', 'true'], ['ROUNDUP AUFRUNDEN', 'false'], ['ROUNDDOWN ABRUNDEN', 'false']]);
+    key(input, 'ArrowDown');
+    key(input, 'ArrowDown');
+    key(input, 'ArrowDown');
+    key(input, 'ArrowUp');
+    expect(options(sheet).map(([, selected]) => selected)).toEqual(['false', 'true', 'false']);
+    expect(input.value).toBe('=B2+ROUND');
+    key(input, 'Enter');
+    expect(input.value).toBe('=B2+ROUNDUP(');
+    expect(sheet.ws().edition).not.toBeNull();
+
+    type(input, 'B2;0)+MA');
+    expect(options(sheet)).toEqual([['MAX', 'true']]);
+    key(input, 'Escape');
+    expect(options(sheet)).toEqual([]);
+    expect(sheet.ws().edition).not.toBeNull();
+    expect(sheet.onCellsChange).not.toHaveBeenCalled();
+  });
+
+  it('a click on a listed function inserts it', async () => {
+    const sheet = mount(q1, {});
+    const { input } = await edit(sheet, 3, 1);
+    type(input, '=WU');
+    const option = sheet.container.querySelector('[role="option"]') as HTMLElement;
+    act(() => { option.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); });
+    act(() => { option.click(); });
+    expect(input.value).toBe('=WURZEL(');
+    expect(sheet.ws().edition).not.toBeNull();
+  });
+
+  it('the formula bar lists the functions too; Enter inserts instead of committing', () => {
+    const sheet = mount(q1, {});
+    act(() => sheet.ws().updateSelectionFromCoords(3, 1, 3, 1));
+    const bar = sheet.getByLabelText('Formula') as HTMLInputElement;
+    fireEvent.change(bar, { target: { value: '=su', selectionStart: 3 } });
+    expect(options(sheet)).toEqual([['SUM SUMME', 'true']]);
+    fireEvent.keyDown(bar, { key: 'Enter' });
+    expect(bar.value).toBe('=SUM(');
+    expect(sheet.onCellsChange).not.toHaveBeenCalled();
+
+    fireEvent.change(bar, { target: { value: '=SUM(B2:B3)' } });
+    fireEvent.keyDown(bar, { key: 'Enter' });
+    expect(sheet.ws().getValue('D2', true)).toBe('200');
   });
 
   it('a selected formula cell shows its references outlined', () => {
