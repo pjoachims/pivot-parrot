@@ -1,4 +1,4 @@
-import type { CsvCell } from '../query/utils/csv';
+import type { PivotGrid, PivotGridColumn, PivotGridRow } from '../../application/utils/export';
 
 /**
  * Sheet mode: the pivot result is written read-only from A1, and the user's own
@@ -12,12 +12,27 @@ export type SheetValue = string | number;
 /** The user's cells by A1 address, as typed ("12", "=B2/B5"). */
 export type SheetCells = Record<string, string>;
 
-/** The pivot written as a range from A1. `percent` lists the addresses whose number is a fraction shown as %. */
+/**
+ * The pivot written as a range from A1. `percent` lists the addresses whose number is a fraction shown as %.
+ * `rowKinds` and `colKinds` say what each row and column of the range is (see PivotGrid).
+ */
 export interface PivotRange {
   values: SheetValue[][];
   rows: number;
   cols: number;
   percent: Set<string>;
+  rowKinds: PivotGridRow[];
+  colKinds: PivotGridColumn[];
+}
+
+/** The area of the pivot a cell belongs to, styled apart like an Excel PivotTable style. */
+export type PivotCellRole = 'header' | 'rowLabel' | 'value' | 'subtotal' | 'grandTotal';
+
+/** A pivot cell's role, and whether it starts the grand total: a rule above (total row) or to its left (total column). */
+export interface PivotCellStyle {
+  role: PivotCellRole;
+  ruleTop: boolean;
+  ruleLeft: boolean;
 }
 
 export function columnLabel(x: number): string {
@@ -44,9 +59,9 @@ export function inPivot(range: Pick<PivotRange, 'rows' | 'cols'>, x: number, y: 
 }
 
 /** The pivot's visual layout (the "Visual Layout" CSV rows) as a sheet range. */
-export function pivotRange(grid: CsvCell[][]): PivotRange {
+export function pivotRange(grid: PivotGrid): PivotRange {
   const percent = new Set<string>();
-  const values = grid.map((row, y) => row.map((cell, x): SheetValue => {
+  const values = grid.cells.map((row, y) => row.map((cell, x): SheetValue => {
     if (cell == null) return '';
     if (typeof cell === 'number') return Number.isFinite(cell) ? cell : '';
     if (typeof cell === 'bigint') return Number(cell);
@@ -60,7 +75,32 @@ export function pivotRange(grid: CsvCell[][]): PivotRange {
     // A label that looks like a formula must stay text.
     return cell.startsWith('=') ? `'${cell}` : cell;
   }));
-  return { values, rows: values.length, cols: Math.max(0, ...values.map(r => r.length)), percent };
+  return {
+    values,
+    rows: values.length,
+    cols: Math.max(0, ...values.map(r => r.length)),
+    percent,
+    rowKinds: grid.rows,
+    colKinds: grid.columns
+  };
+}
+
+/** The style of the pivot cell at x, y; null outside the pivot (the user's cells). */
+export function pivotCellStyle(range: PivotRange, x: number, y: number): PivotCellStyle | null {
+  if (!inPivot(range, x, y)) return null;
+  const row = range.rowKinds[y]?.kind;
+  const col = range.colKinds[x];
+  const role: PivotCellRole =
+    row === 'header' ? 'header'
+    : row === 'total' || col === 'total' ? 'grandTotal'
+    : row === 'group' || col === 'subtotal' ? 'subtotal'
+    : col === 'label' ? 'rowLabel'
+    : 'value';
+  return {
+    role,
+    ruleTop: row === 'total' && range.rowKinds[y - 1]?.kind !== 'total',
+    ruleLeft: col === 'total' && range.colKinds[x - 1] !== 'total'
+  };
 }
 
 /**

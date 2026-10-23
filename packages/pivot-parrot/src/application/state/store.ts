@@ -68,6 +68,8 @@ interface PivotStore {
   mainView: 'table' | 'sheet';
   /** The user's sheet-mode cells by A1 address, as typed. */
   sheetCells: SheetCells;
+  /** The pivot rows shown open, by their expansion key (see rowKey); shared by the table and the sheet. */
+  expanded: Record<string, boolean>;
   showChartDialog: boolean;
   showSQLTooltip: boolean;
   autoUpdate: boolean;
@@ -164,6 +166,8 @@ interface PivotStore {
   setSecondaryDisplayMode: (mode: 'hidden' | 'full' | 'split-below' | 'split-right') => void;
   setMainView: (view: 'table' | 'sheet') => void;
   setSheetCells: (cells: SheetCells) => void;
+  setExpanded: (expanded: Record<string, boolean>) => void;
+  toggleExpanded: (key: string) => void;
   openChartDialog: () => void;
   closeChartDialog: () => void;
   setAutoUpdate: (autoUpdate: boolean) => void;
@@ -258,6 +262,7 @@ const initialState = {
   secondaryDisplayMode: 'split-below' as const,
   mainView: 'table' as const,
   sheetCells: {},
+  expanded: {},
   showChartDialog: false,
   showSQLTooltip: false,
   autoUpdate: true,
@@ -438,6 +443,12 @@ export function createPivotStore(instanceKey: string = 'default') {
 
       setSheetCells: (cells) =>
         set({ sheetCells: cells }, false, 'setSheetCells'),
+
+      setExpanded: (expanded) =>
+        set({ expanded }, false, 'setExpanded'),
+
+      toggleExpanded: (key) =>
+        set((state) => ({ expanded: { ...state.expanded, [key]: !state.expanded[key] } }), false, 'toggleExpanded'),
 
       setSecondaryDisplayMode: (mode) =>
         set({ secondaryDisplayMode: mode }, false, 'setSecondaryDisplayMode'),

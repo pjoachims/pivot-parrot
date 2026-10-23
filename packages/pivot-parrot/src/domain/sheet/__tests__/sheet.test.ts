@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { cellAddress, columnLabel, composeSheet, editCell, parseAddress, pivotRange, summarize } from '../sheet';
+import { cellAddress, columnLabel, composeSheet, editCell, parseAddress, pivotRange as rangeOf, summarize } from '../sheet';
+import { gridOf } from './gridOf';
+
+const pivotRange = (cells: any[][]) => rangeOf(gridOf(cells));
 
 const grid = [
   ['Row Labels', 'Sum of sales', 'Share'],

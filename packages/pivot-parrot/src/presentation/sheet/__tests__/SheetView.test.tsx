@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import SheetView from '../SheetView';
+import { gridOf } from '../../../domain/sheet/__tests__/gridOf';
 
 const q1 = [
   ['Row Labels', 'Sum of sales'],
@@ -18,7 +19,7 @@ const q2 = [
 
 function mount(grid: any[][], cells: Record<string, string>) {
   const onCellsChange = vi.fn();
-  const ui = (g: any[][], c: Record<string, string>) => <SheetView grid={g} cells={c} onCellsChange={onCellsChange} />;
+  const ui = (g: any[][], c: Record<string, string>) => <SheetView grid={gridOf(g)} cells={c} onCellsChange={onCellsChange} />;
   const view = render(ui(grid, cells));
   const host = view.container.querySelector('.pp-sheet-grid') as any;
   const ws = () => (host.querySelector('.jss_container') as any).jssWorksheet;
@@ -38,7 +39,7 @@ it('formulas next to the pivot compute from its cells, and recompute when the pi
   expect(sheet.ws().getValue('E2', true)).toBe('gut');
 });
 
-it('the pivot range is read-only and greyed; typing next to it reports the new cells', () => {
+it('the pivot range is read-only; typing next to it reports the new cells', () => {
   const sheet = mount(q1, {});
   const ws = sheet.ws();
   expect(ws.isReadOnly(1, 1)).toBe(true);

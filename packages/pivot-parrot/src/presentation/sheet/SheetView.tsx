@@ -3,13 +3,15 @@ import { createPortal } from 'react-dom';
 import jspreadsheet from 'jspreadsheet-ce';
 import 'jsuites/dist/jsuites.css';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';
+import 'jspreadsheet-ce/dist/jspreadsheet.themes.css';
 import './sheet.css';
-import type { CsvCell } from '../../domain/query/utils/csv';
+import type { PivotGrid } from '../../application/utils/export';
 import {
   cellAddress,
   composeSheet,
   editCell,
   inPivot,
+  pivotCellStyle,
   pivotRange,
   summarize,
   type SheetCells
@@ -27,10 +29,12 @@ import {
 
 export interface SheetViewProps {
   /** The pivot's visual layout, written read-only from A1. */
-  grid: CsvCell[][];
+  grid: PivotGrid;
   /** The user's cells by A1 address. */
   cells: SheetCells;
   onCellsChange: (cells: SheetCells) => void;
+  /** Opens or closes a row group, by its expansion key (the ⊞/⊟ in front of its label). */
+  onToggle?: (key: string) => void;
   locale?: string;
 }
 
@@ -51,11 +55,11 @@ const ARROWS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 const REF_COLORS = ['#1f6feb', '#d1242f', '#8250df', '#1a7f37', '#bf3989', '#9a6700', '#0a7ea4'];
 
 /**
- * The pivot result as a greyed, read-only range in a spreadsheet, with the
+ * The pivot result as a read-only range in a spreadsheet, styled by area, with the
  * user's own cells and formulas around it. Loaded on demand, so the table mode
  * never pays for the spreadsheet library.
  */
-export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US' }: SheetViewProps) {
+export default function SheetView({ grid, cells, onCellsChange, onToggle, locale = 'en-US' }: SheetViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<Worksheet>(null);
   const range = useMemo(() => pivotRange(grid), [grid]);
@@ -66,6 +70,8 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
   const cellsRef = useRef(cells);
   const onCellsChangeRef = useRef(onCellsChange);
   onCellsChangeRef.current = onCellsChange;
+  const onToggleRef = useRef(onToggle);
+  onToggleRef.current = onToggle;
   // The cells this sheet itself reported: getting them back as props needs no rewrite.
   const emittedRef = useRef<SheetCells | null>(null);
   const writingRef = useRef(false);
@@ -117,9 +123,34 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
         }
       }
       td.style.textAlign = numeric ? 'right' : 'left';
+
+      const style = pivotCellStyle(rangeRef.current, x, y);
+      if (!style) return;
+      td.dataset.role = style.role;
+      td.classList.toggle('pp-rule-top', style.ruleTop);
+      td.classList.toggle('pp-rule-left', style.ruleLeft);
+      const row = rangeRef.current.rowKinds[y];
+      if (rangeRef.current.colKinds[x] !== 'label' || !row || (row.kind !== 'item' && row.kind !== 'group')) return;
+      // The label's depth as an indent (its leading spaces collapse in HTML); a group gets its toggle in front.
+      const label = String(value).trimStart();
+      td.style.paddingLeft = `${4 + row.depth * 16}px`;
+      if (row.kind === 'item') {
+        td.textContent = label;
+        return;
+      }
+      const toggle = document.createElement('span');
+      toggle.className = 'pp-sheet-toggle';
+      toggle.dataset.toggle = row.key;
+      toggle.textContent = row.open ? '⊟' : '⊞';
+      toggle.setAttribute('role', 'button');
+      toggle.setAttribute('aria-expanded', String(row.open));
+      toggle.setAttribute('aria-label', `${row.open ? 'Collapse' : 'Expand'} ${label}`);
+      td.replaceChildren(toggle, label);
     };
 
     writingRef.current = true;
+    // A rebuild (a toggled group, a new result) keeps the scroll position.
+    const scroll = wsRef.current?.content ? { left: wsRef.current.content.scrollLeft, top: wsRef.current.content.scrollTop } : null;
     // jspreadsheet.destroy finds nothing to destroy on a v5 root, so a rebuild starts on a fresh element.
     host.replaceChildren();
     const el = host.appendChild(document.createElement('div'));
@@ -169,6 +200,10 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
     for (let y = 0; y < range.rows; y++) {
       for (let x = 0; x < range.cols; x++) ws.setReadOnly(cellAddress(x, y), true);
     }
+    if (scroll && ws.content) {
+      ws.content.scrollLeft = scroll.left;
+      ws.content.scrollTop = scroll.top;
+    }
     wsRef.current = ws;
     writingRef.current = false;
     setRevision(r => r + 1);
@@ -203,6 +238,14 @@ export default function SheetView({ grid, cells, onCellsChange, locale = 'en-US'
     const onMouseDown = (e: MouseEvent) => {
       const ws = wsRef.current;
       const input = editorOf(ws);
+      // A group toggle opens or closes it; while the cell editor is open, a click on it is a click on its cell.
+      const toggle = (e.target as Element).closest?.('.pp-sheet-toggle') as HTMLElement | null;
+      if (toggle && !input) {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggleRef.current?.(toggle.dataset.toggle!);
+        return;
+      }
       const td = (e.target as Element).closest?.('td[data-x][data-y]') as HTMLTableCellElement | null;
       if (!input || !td || td.contains(input)) return;
       const slot = slotOf(input);

@@ -1,10 +1,14 @@
 # Sheet mode (prototype)
 
-Sheet mode shows the pivot result as a read-only, greyed range in a spreadsheet. The user types values and formulas in the free cells next to it. A host turns it on with `settings.enableSheetMode: true`. The table stays the default view.
+Sheet mode shows the pivot result as a read-only range in a spreadsheet, styled by area like an Excel PivotTable. The user types values and formulas in the free cells next to it. A host turns it on with `settings.enableSheetMode: true`. The table stays the default view.
 
 ## How it works
 
-- `buildPivotGrid` (in `application/utils/export.ts`) builds the pivot's visual layout as rows of cells. The "Visual Layout" CSV export uses the same function.
+- `buildPivotGrid` (in `application/utils/export.ts`) builds the pivot's visual layout as rows of cells. The "Visual Layout" CSV export uses the same function. It also says what each row is (`header`, `item`, `group` with its expansion key and open state, `total`) and what each column is (`label`, `value`, `subtotal`, `total`).
+- Row groups open and close like in the table. A group row has a ⊞ or ⊟ in front of its label. A click on it toggles the same open state the table uses (`expanded` in the store, keyed by `rowKey`), so switching between Table and Sheet keeps it. The sheet builds again from the grid with only the open groups' rows. The CSV export passes no open state and writes every row. The table cannot collapse column groups, so the sheet cannot either.
+- While the cell editor is open, a click on a toggle is a click on its cell: in point mode it picks the cell as a reference, as Excel does, otherwise jspreadsheet closes the editor. The toggle does not take focus, so the arrow keys move the selection as before.
+- `pivotCellStyle` (in `domain/sheet/sheet.ts`) gives each pivot cell its role from its row and column: `header` (column members and metric names), `rowLabel`, `value`, `subtotal` (a group row or a column subtotal, bold) and `grandTotal` (bold, with a rule above the grand-total row and left of the grand-total column). The view writes it as `data-role` on the cell. The user's cells have no role and keep the plain surface.
+- Colours come from the theme tokens. Each area is a step of `--color-accent` mixed into `--surface-bg`. The grid, its headers, the selection and the cell editor use jspreadsheet's theme variables (`jspreadsheet.themes.css`) set from the same tokens, so the dark theme shows a dark grid.
 - `domain/sheet/sheet.ts` holds the pure parts. `pivotRange` writes the grid from A1. `composeSheet` adds the user's cells. `editCell` keeps the pivot range read-only. `summarize` computes the status bar values.
 - The user's cells are a map from A1 address to the typed text, for example `{ "K3": "=H3/H7" }`. They are in the store (`sheetCells`), and a saved view stores them as `view.sheet = { show, cells }`. A view without `sheet` loads as the table with no cells, so views saved before this change still load.
 - When the pivot result changes, the sheet is built again from the new range and the same cells, so every formula recomputes.
@@ -34,7 +38,9 @@ Jspreadsheet CE is the choice. It is the smallest. It has cell formulas with ran
 
 - Formulas use absolute addresses. If the pivot's shape changes (another row or column field), `=H3/H7` still points to H3 and H7. There is no `GETPIVOTDATA`.
 - The formula engine is the basic Jspreadsheet one. Division by zero shows `NaN`, not `#DIV/0!`. Jspreadsheet uses `eval` and `new Function`, so a page whose CSP has no `'unsafe-eval'` cannot run formulas.
-- No undo across a pivot change: each new result builds the sheet again, which also resets scroll and selection.
+- No undo across a pivot change: each new result or toggled group builds the sheet again.
 - Number formats are generic: two decimals for pivot values, four for formula results, and percent for percentage metrics. The pivot's per-metric currency format is not used.
 - Point mode works only in the cell editor, not in the formula bar. A range is picked with shift, not by dragging.
-- The theme is light only. The dark theme leaves the grid light.
+- Formulas with fixed addresses shift when a group opens or closes. Opening or closing a group above the formula's row moves the pivot rows, so `=B3` points at another member afterwards. The test `a formula with a fixed address points at another row once a group above it closes` in `presentation/sheet/__tests__/PivotSheet.toggle.test.tsx` shows it.
+- No keyboard shortcut toggles a group. A click is the only way.
+- A rebuild keeps the scroll position, but not the selection.

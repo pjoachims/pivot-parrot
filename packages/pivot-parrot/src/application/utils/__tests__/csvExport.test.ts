@@ -244,7 +244,7 @@ describe('buildPivotGrid with a date dimension', () => {
   it('writes row members as the table shows them, not as epoch milliseconds', () => {
     const dtypes = { Tag: 'date32<DAY>' };
     const d = buildPivotDisplayData(rows, ['Tag'], ['Σ Values'], umsatz.values, null, dtypes);
-    const grid = buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, true, umsatz, dtypes, dialect);
+    const grid = buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, true, umsatz, dtypes, dialect).cells;
     expect(grid.map(r => r[0])).toEqual(['Row Labels', '2024-01-01', '2024-02-01', 'Grand Total']);
   });
 
@@ -252,13 +252,13 @@ describe('buildPivotGrid with a date dimension', () => {
     const dtypes = { Tag: 'timestamp<MICROSECOND>' };
     const ts = [{ Tag: jan + 3_600_000, m1: 10, _grouping_Tag: 0 }];
     const d = buildPivotDisplayData(ts, ['Tag'], ['Σ Values'], umsatz.values, null, dtypes);
-    expect(buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, false, umsatz, dtypes, dialect)[1][0]).toBe('2024-01-01 01:00:00');
+    expect(buildPivotGrid(d, computeLeafColumns(d), ['Tag'], true, false, umsatz, dtypes, dialect).cells[1][0]).toBe('2024-01-01 01:00:00');
   });
 
   it('writes column members as the table shows them', () => {
     const dtypes = { Tag: 'date32<DAY>' };
     const d = buildPivotDisplayData(rows, [], ['Tag', 'Σ Values'], umsatz.values, null, dtypes);
-    const grid = buildPivotGrid(d, computeLeafColumns(d), [], true, true, umsatz, dtypes, dialect);
+    const grid = buildPivotGrid(d, computeLeafColumns(d), [], true, true, umsatz, dtypes, dialect).cells;
     expect(grid[0]).toContain('2024-01-01');
     expect(grid[0]).toContain('2024-02-01');
     expect(grid.flat().some(c => c === jan || c === String(jan))).toBe(false);

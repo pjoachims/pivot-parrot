@@ -66,9 +66,93 @@
   height: 100%;
 }
 
-.pp-sheet-grid .jss_worksheet > tbody > tr > td.readonly {
-  background: var(--surface-subtle, #f3f4f6);
-  color: var(--text-secondary, #4b5563);
+/* The grid in the theme's colours, through jspreadsheet's own theme variables (jspreadsheet.themes.css). */
+.pp-sheet-grid {
+  --border_color: var(--border-color-light);
+  --border_color_highlighted: var(--color-accent);
+  --header_background: var(--surface-subtle);
+  --header_background_highlighted: var(--surface-hover);
+  --header_color: var(--text-muted);
+  --header_color_highlighted: var(--text-primary);
+  --content_background: var(--surface-bg);
+  --content_color: var(--text-primary);
+  --selection: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --cursor: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  --pp-pivot-tint: var(--color-accent);
+}
+
+.pp-sheet-grid .jss_worksheet {
+  background-color: var(--surface-bg);
+  border-right-color: var(--border-color-light);
+  border-bottom-color: var(--border-color-light);
+}
+
+.pp-sheet-grid .jss_content {
+  scrollbar-color: var(--border-color-dark) transparent;
+}
+
+.pp-sheet-grid .jss_content::-webkit-scrollbar-track {
+  background: var(--surface-subtle);
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td > input,
+.pp-sheet-grid .jss_worksheet > tbody > tr > td > textarea {
+  background: var(--surface-bg);
+  color: var(--text-primary);
+}
+
+/*
+ * The pivot's areas, like an Excel PivotTable style: each a step of the accent
+ * over the surface, so it reads in the light and the dark theme. The user's own
+ * cells keep the plain surface.
+ */
+.pp-sheet-grid .jss_worksheet > tbody > tr > td[data-role] {
+  color: var(--text-primary);
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td[data-role='header'] {
+  background-color: color-mix(in srgb, var(--pp-pivot-tint) 22%, var(--surface-bg));
+  font-weight: 600;
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td[data-role='rowLabel'] {
+  background-color: color-mix(in srgb, var(--pp-pivot-tint) 10%, var(--surface-bg));
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td[data-role='value'] {
+  background-color: color-mix(in srgb, var(--pp-pivot-tint) 5%, var(--surface-bg));
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td[data-role='subtotal'] {
+  background-color: color-mix(in srgb, var(--pp-pivot-tint) 13%, var(--surface-bg));
+  font-weight: 600;
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td[data-role='grandTotal'] {
+  background-color: color-mix(in srgb, var(--pp-pivot-tint) 22%, var(--surface-bg));
+  font-weight: 700;
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td.pp-rule-top {
+  border-top: 2px solid var(--border-color-dark);
+}
+
+.pp-sheet-grid .jss_worksheet > tbody > tr > td.pp-rule-left {
+  border-left: 2px solid var(--border-color-dark);
+}
+
+.pp-sheet-toggle {
+  display: inline-block;
+  width: 12px;
+  margin-right: 4px;
+  color: var(--text-muted);
+  font-weight: 400;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pp-sheet-toggle:hover {
+  color: var(--color-accent);
 }
 
 .pp-sheet-status {

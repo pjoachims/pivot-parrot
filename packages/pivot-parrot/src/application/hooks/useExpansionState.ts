@@ -3,8 +3,9 @@
  * Consolidates all expand/collapse logic from PivotDisplay
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { setLevelExpansion, expandAll, collapseAll, pruneExpanded } from '../utils/treeOperations';
+import { usePivotStore } from '../state/store';
 
 interface TreeNode {
   children?: TreeNode[];
@@ -16,20 +17,14 @@ interface UseExpansionStateProps {
 }
 
 export function useExpansionState({ data }: UseExpansionStateProps) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // In the store, so the sheet mode shows and changes the same open rows.
+  const expanded = usePivotStore(s => s.expanded);
+  const setExpanded = usePivotStore(s => s.setExpanded);
+  const toggle = usePivotStore(s => s.toggleExpanded);
 
-  const [prevRowGroups, setPrevRowGroups] = useState(data.rowGroups);
-  if (prevRowGroups !== data.rowGroups) {
-    setPrevRowGroups(data.rowGroups);
-    setExpanded(prev => pruneExpanded(data.rowGroups, prev));
-  }
-
-  /**
-   * Toggle a single node by its row key (see rowKey)
-   */
-  const toggle = useCallback((key: string) => {
-    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  useEffect(() => {
+    setExpanded(pruneExpanded(data.rowGroups, expanded));
+  }, [data.rowGroups]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Fold all nodes at a specific depth
@@ -37,7 +32,7 @@ export function useExpansionState({ data }: UseExpansionStateProps) {
   const foldLevel = useCallback((depth: number) => {
     const newExpanded = setLevelExpansion(data.rowGroups, expanded, depth, false);
     setExpanded(newExpanded);
-  }, [data.rowGroups, expanded]);
+  }, [data.rowGroups, expanded, setExpanded]);
 
   /**
    * Unfold all nodes at a specific depth
@@ -45,14 +40,14 @@ export function useExpansionState({ data }: UseExpansionStateProps) {
   const unfoldLevel = useCallback((depth: number) => {
     const newExpanded = setLevelExpansion(data.rowGroups, expanded, depth, true);
     setExpanded(newExpanded);
-  }, [data.rowGroups, expanded]);
+  }, [data.rowGroups, expanded, setExpanded]);
 
   /**
    * Fold all nodes
    */
   const foldAll = useCallback(() => {
     setExpanded(collapseAll());
-  }, []);
+  }, [setExpanded]);
 
   /**
    * Unfold all nodes
@@ -60,7 +55,7 @@ export function useExpansionState({ data }: UseExpansionStateProps) {
   const unfoldAll = useCallback(() => {
     const newExpanded = expandAll(data.rowGroups);
     setExpanded(newExpanded);
-  }, [data.rowGroups]);
+  }, [data.rowGroups, setExpanded]);
 
   return {
     expanded,
