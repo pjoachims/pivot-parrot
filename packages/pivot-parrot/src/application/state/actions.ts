@@ -132,12 +132,10 @@ export function buildHandleDrop(
       return { config, shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
     }
 
-    // A field sits in at most one of Rows, Columns and Filters, so dropping it into one moves it
-    // there whatever the source; Values may hold it alongside.
-    if (isDimensionZone(targetZone)) {
-      for (const zone of DIMENSION_ZONES) {
-        if (zone !== targetZone) newConfig = removeFromZone(newConfig, zone, fieldName);
-      }
+    // Rows and Columns hold a field once between them, so dropping it into one moves it there whatever
+    // the source. Filters and Values may hold it alongside: a row field can be filtered too.
+    if (targetZone === 'rows' || targetZone === 'columns') {
+      newConfig = removeFromZone(newConfig, targetZone === 'rows' ? 'columns' : 'rows', fieldName);
     }
 
     if (targetZone === 'rows' || targetZone === 'columns') {
