@@ -628,6 +628,11 @@
 .pp-menu-item[aria-checked='true'] {
   background: var(--color-accent-subtle);
 }
+/* A check mark's slot keeps its width when unchecked, so every item's text starts at the same place. */
+.pp-menu-check {
+  display: inline-flex;
+  flex: none;
+}
 .pp-menu-item:disabled {
   background: transparent;
   color: var(--text-muted);

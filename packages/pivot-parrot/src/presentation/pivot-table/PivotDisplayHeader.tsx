@@ -294,7 +294,7 @@ export default function PivotDisplayHeader({
                   <Icon name="columns" />
                 </button>
                 {showLayoutMenu && (
-                  <div className="pp-menu" role="menu" style={{ ...menuAnchor, minWidth: '220px' }}>
+                  <div className="pp-menu" role="menu" style={{ ...menuAnchor, width: 'max-content' }}>
                     <div className="pp-menu-title">Report Layout</div>
                     {layoutForms.map(option => (
                       <button
@@ -305,7 +305,7 @@ export default function PivotDisplayHeader({
                         className="pp-menu-item"
                         style={{ height: 'auto', padding: '6px var(--space-3)' }}
                       >
-                        <span style={{ visibility: sheetLayout.form === option.form ? 'visible' : 'hidden' }}><Icon name="check" /></span>
+                        <span className="pp-menu-check" style={{ visibility: sheetLayout.form === option.form ? 'visible' : 'hidden' }}><Icon name="check" /></span>
                         <span>
                           <span style={{ display: 'block' }}>{option.label}</span>
                           <span className="pp-hint" style={{ display: 'block' }}>{option.desc}</span>
@@ -323,7 +323,7 @@ export default function PivotDisplayHeader({
                       title={sheetLayout.form === 'compact' ? 'Only in Outline and Tabular' : 'Write every parent\'s label on each row'}
                       style={{ borderTop: '1px solid var(--border-color-light)' }}
                     >
-                      <span style={{ visibility: sheetLayout.form !== 'compact' && sheetLayout.repeatLabels ? 'visible' : 'hidden' }}><Icon name="check" /></span>
+                      <span className="pp-menu-check" style={{ visibility: sheetLayout.form !== 'compact' && sheetLayout.repeatLabels ? 'visible' : 'hidden' }}><Icon name="check" /></span>
                       Repeat item labels
                     </button>
                   </div>
