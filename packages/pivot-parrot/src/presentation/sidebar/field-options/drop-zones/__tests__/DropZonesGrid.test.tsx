@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { createPivotStore, PivotStoreContext } from '../../../../../application/state/store';
 import { fromSchema } from '../../../../../domain/field/FieldItem';
@@ -65,5 +65,28 @@ describe('DropZonesGrid', () => {
 
     expect(screen.getByText('order_date: Last 7 days')).toBeInTheDocument();
     expect(screen.getByText('ship_date: not Previous month')).toBeInTheDocument();
+  });
+
+  it('removes a filter from its chip', () => {
+    const store = createPivotStore('drop-zones-remove-filter');
+    act(() => {
+      store.getState().setAvailableFields(['channel', 'region'].map(name => fromSchema({ name, type: 'string' })));
+      store.getState().setConfig({
+        rows: ['region'],
+        columns: [],
+        filters: [{ field: 'channel', type: 'one_of', selectedValues: ['web'] }],
+        values: [],
+      });
+    });
+
+    render(
+      <PivotStoreContext.Provider value={{ store, instanceKey: 'drop-zones-remove-filter' }}>
+        <DropZonesGrid />
+      </PivotStoreContext.Provider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove channel/ }));
+    expect(store.getState().config.filters).toEqual([]);
+    expect(store.getState().config.rows).toEqual(['region']);
   });
 });

@@ -61,7 +61,7 @@ export default function FieldItem({
       <span className="pp-chip__label">{children || label}</span>
 
       <span className="pp-row-actions">
-        {isFilterZone && onFilterClick ? (
+        {isFilterZone && onFilterClick && (
           <button
             onClick={handleFilterIconClick}
             className="pp-icon-btn pp-icon-btn--sm"
@@ -70,35 +70,32 @@ export default function FieldItem({
           >
             <Icon name="filter" />
           </button>
-        ) : (
-          <>
-            {isAvailableZone && isDateField && onShowDerived && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onShowDerived(fieldId);
-                }}
-                className="pp-icon-btn pp-icon-btn--sm"
-                title="Create derived fields"
-                aria-label={`Create derived fields from ${label}`}
-              >
-                <Icon name="calendar-plus" />
-              </button>
-            )}
-            {onRemove && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove(fieldId, zone);
-                }}
-                className="pp-icon-btn pp-icon-btn--sm pp-icon-btn--danger"
-                title="Remove"
-                aria-label={`Remove ${label}`}
-              >
-                <Icon name="x" />
-              </button>
-            )}
-          </>
+        )}
+        {isAvailableZone && isDateField && onShowDerived && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowDerived(fieldId);
+            }}
+            className="pp-icon-btn pp-icon-btn--sm"
+            title="Create derived fields"
+            aria-label={`Create derived fields from ${label}`}
+          >
+            <Icon name="calendar-plus" />
+          </button>
+        )}
+        {onRemove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(fieldId, zone);
+            }}
+            className="pp-icon-btn pp-icon-btn--sm pp-icon-btn--danger"
+            title="Remove"
+            aria-label={`Remove ${label}`}
+          >
+            <Icon name="x" />
+          </button>
         )}
 
         {onMoveToZone && zone && (
