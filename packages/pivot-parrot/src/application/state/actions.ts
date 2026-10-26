@@ -87,6 +87,23 @@ function removeFromZone(config: PivotTableConfig, zone: DimensionZone, fieldName
     : { ...config, [zone]: config[zone].filter(f => f !== fieldName) };
 }
 
+/** The Values entry a field dropped into Values becomes. */
+function measureValueConfig(
+  fieldName: string,
+  kind: FieldKind,
+  fieldItem: FieldItem | null | undefined,
+  draggedValueConfig: ValueConfig | undefined,
+  detectedTypes: Record<string, string | number>
+): ValueConfig {
+  if (kind === FieldKind.CUSTOM_METRIC) return { field: fieldName, aggregation: 'custom', isCustom: true };
+  if (kind === FieldKind.AGGREGATION && draggedValueConfig) return { ...draggedValueConfig };
+  if (kind === FieldKind.AGGREGATION && fieldItem?.sourceField && fieldItem.aggregation) {
+    // Coming back from Filters, where the aggregation lived as a HAVING filter
+    return { field: fieldItem.sourceField, aggregation: fieldItem.aggregation as ValueConfig['aggregation'] };
+  }
+  return { field: fieldName, aggregation: isNumericType(detectedTypes[fieldName]) ? 'Sum' : 'Count' };
+}
+
 export function buildHandleDrop(
   config: PivotTableConfig,
   availableFields: FieldItem[],
@@ -128,8 +145,25 @@ export function buildHandleDrop(
     // Step 4: Add to target zone
     const insertAt = index !== null ? index : 0;
 
-    if (isMeasure && (targetZone === 'rows' || targetZone === 'columns')) {
+    // Σ Values only lays out the metrics, in Rows or Columns.
+    if (kind === FieldKind.SIGMA_VALUES && targetZone !== 'rows' && targetZone !== 'columns') {
       return { config, shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
+    }
+
+    // A metric dropped on Rows or Columns lays the metrics out there (like dragging Σ Values in Excel):
+    // it stays in Values, or joins them, and Σ Values moves to the drop position.
+    if (isMeasure && (targetZone === 'rows' || targetZone === 'columns')) {
+      const kept = sourceZone === 'values' ? config : newConfig;
+      const values = draggedValueConfig
+        ? kept.values
+        : [...kept.values, measureValueConfig(fieldName, kind, fieldItem, draggedValueConfig, detectedTypes)];
+      const sigmaIndex = config[targetZone].indexOf(SIGMA_VALUES_ID);
+      const sigmaAt = sigmaIndex !== -1 && sigmaIndex < insertAt ? insertAt - 1 : insertAt;
+      const withoutSigma = (zone: 'rows' | 'columns') => kept[zone].filter(f => f !== SIGMA_VALUES_ID);
+      const placed = { ...kept, values, rows: withoutSigma('rows'), columns: withoutSigma('columns') };
+      placed[targetZone] = [...placed[targetZone]];
+      placed[targetZone].splice(Math.min(sigmaAt, placed[targetZone].length), 0, SIGMA_VALUES_ID);
+      return { config: autoManageValuesField(placed), shouldOpenFilterDialog: false, shouldOpenHavingDialog: false, fieldName: null };
     }
 
     // Rows and Columns hold a field once between them, so dropping it into one moves it there whatever
@@ -142,18 +176,7 @@ export function buildHandleDrop(
       newConfig[targetZone] = insertOnce(config[targetZone], fieldName, insertAt, f => f === fieldName);
 
     } else if (targetZone === 'values') {
-      let valueConfig: ValueConfig;
-      if (kind === FieldKind.CUSTOM_METRIC) {
-        valueConfig = { field: fieldName, aggregation: 'custom', isCustom: true };
-      } else if (kind === FieldKind.AGGREGATION && draggedValueConfig) {
-        valueConfig = { ...draggedValueConfig };
-      } else if (kind === FieldKind.AGGREGATION && fieldItem?.sourceField && fieldItem.aggregation) {
-        // Coming back from Filters, where the aggregation lived as a HAVING filter
-        valueConfig = { field: fieldItem.sourceField, aggregation: fieldItem.aggregation as ValueConfig['aggregation'] };
-      } else {
-        const defaultAgg = isNumericType(detectedTypes[fieldName]) ? 'Sum' : 'Count';
-        valueConfig = { field: fieldName, aggregation: defaultAgg };
-      }
+      const valueConfig = measureValueConfig(fieldName, kind, fieldItem, draggedValueConfig, detectedTypes);
       // A field may sit in Values with several aggregations (and in Rows too), but not twice with the same one.
       newConfig.values = insertOnce(config.values, valueConfig, insertAt,
         (v, position) => sameValue(v, valueConfig) || (sourceZone === 'values' && position === sourceIndex));
