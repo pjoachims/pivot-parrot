@@ -112,3 +112,60 @@ describe('an aggregation moved from Values to Filters stays one field', () => {
     expect(back.filters).toEqual([]);
   });
 });
+
+describe('a metric dropped on Rows or Columns lays the metrics out there', () => {
+  const metrics: any[] = [
+    ...available,
+    { id: 'revenue', kind: FieldKind.CUSTOM_METRIC },
+    { id: 'orders', kind: FieldKind.CUSTOM_METRIC }
+  ];
+  const revenue = { field: 'revenue', aggregation: 'custom', isCustom: true };
+  const orders = { field: 'orders', aggregation: 'custom', isCustom: true };
+
+  it('moves Σ Values to Rows when a metric is dragged from Values to Rows, keeping the metrics', () => {
+    const base = config({ rows: ['city'], columns: ['region', 'Σ Values'], values: [revenue, orders] });
+    const { config: c } = buildHandleDrop(base, metrics, types)('revenue', 'values', 'rows', 1, 0);
+    expect(c.rows).toEqual(['city', 'Σ Values']);
+    expect(c.columns).toEqual(['region']);
+    expect(c.values).toEqual([revenue, orders]);
+  });
+
+  it('puts a single metric in Rows', () => {
+    const base = config({ rows: ['city'], columns: [], values: [revenue] });
+    const { config: c } = buildHandleDrop(base, metrics, types)('revenue', 'values', 'rows', 0, 0);
+    expect(c.rows).toEqual(['Σ Values', 'city']);
+    expect(c.values).toEqual([revenue]);
+  });
+
+  it('adds a metric from the field list to Values and lays the metrics out in Columns', () => {
+    const base = config({ rows: ['city', 'Σ Values'], columns: ['region'], values: [revenue, orders] });
+    const { config: c } = buildHandleDrop(base, metrics, types)('orders', 'available', 'columns', 0);
+    expect(c.rows).toEqual(['city']);
+    expect(c.columns).toEqual(['Σ Values', 'region']);
+    expect(c.values).toEqual([revenue, orders]);
+  });
+
+  it('counts the drop position as seen when Σ Values moves within Rows', () => {
+    const base = config({ rows: ['Σ Values', 'city', 'shop'], columns: [], values: [revenue, orders] });
+    const { config: c } = buildHandleDrop(base, metrics, types)('revenue', 'values', 'rows', 3, 0);
+    expect(c.rows).toEqual(['city', 'shop', 'Σ Values']);
+  });
+
+  it('a single metric in Rows stays there; Σ Values in Columns goes with the second metric', () => {
+    const inRows = config({ rows: ['city', 'Σ Values'], columns: [], values: [revenue, orders] });
+    const removedFromRows = buildHandleDrop(inRows, metrics, types)('orders', 'values', null, null, 1).config;
+    expect(removedFromRows.rows).toEqual(['city', 'Σ Values']);
+    const inColumns = config({ rows: ['city'], columns: ['Σ Values'], values: [revenue, orders] });
+    const removedFromColumns = buildHandleDrop(inColumns, metrics, types)('orders', 'values', null, null, 1).config;
+    expect(removedFromColumns.columns).toEqual([]);
+    const lastGone = buildHandleDrop(removedFromRows, metrics, types)('revenue', 'values', null, null, 0).config;
+    expect(lastGone.rows).toEqual(['city']);
+  });
+
+  it('does not put Σ Values into Values or Filters', () => {
+    const base = config({ rows: ['city'], columns: ['Σ Values'], values: [revenue, orders] });
+    const drop = buildHandleDrop(base, metrics, types);
+    expect(drop('Σ Values', 'columns', 'values', 0).config).toBe(base);
+    expect(drop('Σ Values', 'columns', 'filters', 0).config).toBe(base);
+  });
+});

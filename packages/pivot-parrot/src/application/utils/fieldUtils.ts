@@ -312,8 +312,8 @@ export function autoManageValuesField(config: any) {
   if (hasMultipleValues && !hasValuesInRows && !hasValuesInCols) {
     // Auto-inject to columns at the end
     newConfig.columns = [...config.columns, SIGMA_VALUES_ID];
-  } else if (!hasMultipleValues && (hasValuesInRows || hasValuesInCols)) {
-    // Auto-remove when only 1 or 0 value fields
+  } else if (config.values.length === 0 || (!hasMultipleValues && hasValuesInCols)) {
+    // Auto-remove when there is nothing to lay out; a single metric the user put in Rows stays there
     newConfig.rows = config.rows.filter((f: any) => getFieldId(f) !== SIGMA_VALUES_ID);
     newConfig.columns = config.columns.filter((f: any) => getFieldId(f) !== SIGMA_VALUES_ID);
   }
