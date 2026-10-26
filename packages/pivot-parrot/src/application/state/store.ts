@@ -41,6 +41,9 @@ interface PivotStore {
   // ==================== Config State ====================
   config: PivotTableConfig;
   executionConfig: PivotTableConfig | null;
+  /** Earlier configs, newest last, for undo; and the ones undone, for redo. */
+  configPast: PivotTableConfig[];
+  configFuture: PivotTableConfig[];
 
   // ==================== Data State ====================
   dataHash: string | null;
@@ -142,6 +145,9 @@ interface PivotStore {
   updateConfig: (partial: Partial<PivotTableConfig>) => void;
   commitConfig: () => void;
   resetConfig: () => void;
+  undo: () => void;
+  redo: () => void;
+  clearHistory: () => void;
 
   // ==================== Data Actions ====================
   setDataLoading: (loading: boolean) => void;
@@ -243,6 +249,8 @@ const initialState = {
   // Config
   config: defaultConfig,
   executionConfig: null,
+  configPast: [],
+  configFuture: [],
 
   // Data
   dataHash: null,
@@ -309,6 +317,12 @@ const initialState = {
   sqlHistory: []
 };
 
+const HISTORY_LIMIT = 100;
+
+function sameConfig(a: PivotTableConfig, b: PivotTableConfig): boolean {
+  return a === b || JSON.stringify(a, bigIntReplacer) === JSON.stringify(b, bigIntReplacer);
+}
+
 // ==================== MULTI-INSTANCE SUPPORT ====================
 
 /**
@@ -346,7 +360,24 @@ export function createPivotStore(instanceKey: string = 'default') {
   return create<PivotStore>()(
     devtools(
       persist(
-        (set, get) => ({
+        (rawSet, get) => {
+      // Every change to config is one undo step, whichever action makes it.
+      const set: typeof rawSet = (partial: any, replace?: any, action?: any) =>
+        rawSet((state: PivotStore) => {
+          const next = typeof partial === 'function' ? partial(state) : partial;
+          if (!next?.config || sameConfig(next.config, state.config)) return next;
+          return {
+            ...next,
+            configPast: [...state.configPast, state.config].slice(-HISTORY_LIMIT),
+            configFuture: []
+          };
+        }, replace, action);
+
+      // An undone config also closes the dialogs, which may belong to a field it no longer holds.
+      const restore = (config: PivotTableConfig, configPast: PivotTableConfig[], configFuture: PivotTableConfig[], action: string) =>
+        rawSet({ config, configPast, configFuture, filterDialog: null, havingFilterDialog: null, expressionDialog: null }, false, action);
+
+      return {
       ...initialState,
 
       // ==================== Config Actions ====================
@@ -371,6 +402,21 @@ export function createPivotStore(instanceKey: string = 'default') {
 
       resetConfig: () =>
         set({ config: defaultConfig, executionConfig: null }, false, 'resetConfig'),
+
+      undo: () => {
+        const { config, configPast, configFuture } = get();
+        if (!configPast.length) return;
+        restore(configPast[configPast.length - 1], configPast.slice(0, -1), [config, ...configFuture], 'undo');
+      },
+
+      redo: () => {
+        const { config, configPast, configFuture } = get();
+        if (!configFuture.length) return;
+        restore(configFuture[0], [...configPast, config], configFuture.slice(1), 'redo');
+      },
+
+      clearHistory: () =>
+        rawSet({ configPast: [], configFuture: [] }, false, 'clearHistory'),
 
       // ==================== Data Actions ====================
       setDataLoading: (loading) =>
@@ -744,8 +790,9 @@ export function createPivotStore(instanceKey: string = 'default') {
       },
 
       reset: () =>
-        set({ ...initialState }, false, 'reset')
-      }),
+        rawSet({ ...initialState }, false, 'reset')
+      };
+      },
       {
         name: `pivot-preferences-${instanceKey}`,
         // A sort column's members can be BigInt, which plain JSON cannot write.

@@ -24,6 +24,41 @@ import { createLogger } from '../../application/utils/logger';
 
 const logger = createLogger('Pivot');
 
+/** Where the last click went: Ctrl+Z undoes in that pivot, unless it went into the sheet grid, which has its own undo. */
+let lastPointer: { root: Element | null; inSheetGrid: boolean } = { root: null, inSheetGrid: false };
+
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+
+/** Ctrl/⌘+Z undoes the last change to the layout, Ctrl/⌘+Shift+Z and Ctrl+Y redo it. */
+function useUndoKeys(rootRef: React.RefObject<HTMLDivElement>, undo: () => void, redo: () => void) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target instanceof Element ? e.target : null;
+      lastPointer = { root, inSheetGrid: Boolean(target?.closest('.pp-sheet-grid')) };
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      const action = key === 'z' ? (e.shiftKey ? redo : undo) : key === 'y' && !e.shiftKey ? redo : null;
+      if (!action || lastPointer.root !== root || lastPointer.inSheetGrid || isTextEntry(e.target)) return;
+      e.preventDefault();
+      action();
+    }
+    root.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      root.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('keydown', onKeyDown);
+      if (lastPointer.root === root) lastPointer = { root: null, inSheetGrid: false };
+    };
+  }, [rootRef, undo, redo]);
+}
+
 /**
  * PivotInner - Internal component with all pivot logic
  * Must be wrapped with PivotStoreContext.Provider
@@ -86,6 +121,11 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
   const setDataLoading = usePivotStore((s) => s.setDataLoading);
   const setAutoUpdate = usePivotStore((s) => s.setAutoUpdate);
   const toggleSidebar = usePivotStore((s) => s.toggleSidebar);
+  const undo = usePivotStore((s) => s.undo);
+  const redo = usePivotStore((s) => s.redo);
+  const clearHistory = usePivotStore((s) => s.clearHistory);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useUndoKeys(rootRef, undo, redo);
 
   // Step 0: Component renders immediately with empty field options
   // No early config loading - let skeleton render first
@@ -262,6 +302,8 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
     if (!initialConfig || key === appliedInitialConfigRef.current) return;
     appliedInitialConfigRef.current = key;
     setConfig(initialConfig);
+    // The host's starting layout is where undo stops.
+    clearHistory();
   }
 
   // A new initialConfig after init loads that view.
@@ -432,7 +474,7 @@ const PivotInner = forwardRef<PivotHandle, { config?: PivotConfig }>(({ config: 
 
   return (
     <ErrorBoundary>
-    <div className="pp-root" style={styles.container}>
+    <div ref={rootRef} className="pp-root" style={styles.container}>
       {/* Global Query Progress Overlay */}
       <PivotQueryProgress
         queryProgress={queryProgress}
