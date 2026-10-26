@@ -120,9 +120,10 @@ export function buildHandleDrop(
           : config.values.find(v => matchesValueConfig(fieldName, v)))
       : config.values.find(v => matchesValueConfig(fieldName, v));
 
-    // Step 2: Remove from source
+    // Step 2: Remove from source. A filter dragged to Rows or Columns stays: it still filters what is laid out there.
     let newConfig = { ...config };
-    if (isDimensionZone(sourceZone)) {
+    const keepsFilter = sourceZone === 'filters' && (targetZone === 'rows' || targetZone === 'columns');
+    if (isDimensionZone(sourceZone) && !keepsFilter) {
       newConfig = removeFromZone(newConfig, sourceZone, fieldName);
     } else if (sourceZone === 'values') {
       if (sourceIndex !== null && sourceIndex >= 0 && sourceIndex < config.values.length) {

@@ -62,15 +62,24 @@ describe('a field may be filtered while it sits in Rows or Columns; Rows and Col
     expect(c.filters.map((f: any) => f.field)).toEqual(['region']);
   });
 
-  it('keeps the filter of a field sent from the list to Rows; dragging it out of Filters still moves it', () => {
-    const base = config({ filters: [{ field: 'shop', type: 'in', values: ['A'] }] });
-    const drop = buildHandleDrop(base, available, types);
+  it('keeps the filter of a field sent to Rows or Columns, from the list or out of Filters', () => {
+    const filter = { field: 'shop', type: 'in', values: ['A'] };
+    const drop = buildHandleDrop(config({ filters: [filter] }), available, types);
     const fromList = drop('shop', 'available', 'rows', 1).config;
     expect(fromList.rows).toEqual(['city', 'shop']);
-    expect(fromList.filters).toEqual([{ field: 'shop', type: 'in', values: ['A'] }]);
-    const fromFilters = drop('shop', 'filters', 'rows', 1, 0).config;
-    expect(fromFilters.rows).toEqual(['city', 'shop']);
-    expect(fromFilters.filters).toEqual([]);
+    expect(fromList.filters).toEqual([filter]);
+    const toRows = drop('shop', 'filters', 'rows', 1, 0).config;
+    expect(toRows.rows).toEqual(['city', 'shop']);
+    expect(toRows.filters).toEqual([filter]);
+    const toColumns = drop('shop', 'filters', 'columns', 0, 0).config;
+    expect(toColumns.columns).toEqual(['shop', 'region']);
+    expect(toColumns.filters).toEqual([filter]);
+  });
+
+  it('drops the filter when it is dragged out of Filters onto nothing', () => {
+    const base = config({ filters: [{ field: 'shop', type: 'in', values: ['A'] }] });
+    const { config: c } = buildHandleDrop(base, available, types)('shop', 'filters', null);
+    expect(c.filters).toEqual([]);
   });
 
   it('moves a row field to Columns, keeping its filter', () => {

@@ -1,6 +1,6 @@
 {
   "name": "pivot-parrot",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "description": "DuckDB-powered pivot table with React UI components",
   "type": "module",
   "main": "./dist/index.js",
